@@ -1,0 +1,132 @@
+<template lang="pug">
+  section.section
+    .container
+      h1.title {{ $t('discover.title') }}
+
+      b-tabs(v-model="tab")
+        b-tab-item(:label="$t('discover.people')" value="people")
+        b-tab-item(:label="$t('discover.groups')" value="groups")
+
+      .field.has-addons
+        .control.is-expanded
+          input.input(v-model="inputText" :placeholder="$t('discover.placeholder')" @keyup.enter="search")
+        .control(v-if="speechSupported")
+          button.button(@click="toggleListening" :class="{ 'is-danger': isListening }" title="Voice input") 🎤
+        .control
+          button.button.is-primary(@click="search") {{ $t('common.search') }}
+
+      b-field(v-if="tab === 'people'")
+        b-checkbox(v-model="availableOnly" @input="search") {{ $t('discover.availableOnly') }}
+
+      b-message(v-if="loading" type="is-info") Loading…
+
+      template(v-else-if="tab === 'people'")
+        p.has-text-grey(v-if="!people.length") {{ $t('discover.noResults') }}
+        .box(v-for="p in people" :key="p.id")
+          .level.is-mobile
+            .level-left
+              div
+                p.is-size-5.has-text-weight-semibold
+                  | {{ p.name }} · {{ p.title }} · {{ p.city }}, {{ p.country }}
+                  b-tag.ml-2(v-if="p.available" type="is-success") {{ $t('common.available') }}
+                p.has-text-grey Strengths: {{ (p.strengths || []).join(', ') }}
+            .level-right
+              button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
+
+      template(v-else)
+        p.has-text-grey(v-if="!groups.length") {{ $t('discover.noResults') }}
+        .box(v-for="g in groups" :key="g.id")
+          p.is-size-5 {{ g.icon }} {{ g.name }} · {{ g.firms }} {{ $t('discover.firms') }} · {{ g.memberCount }} {{ $t('discover.members') }}
+          p {{ g.summary }}
+          p.has-text-grey {{ (g.tags || []).join(' · ') }}
+          button.button.is-small.mt-2 {{ $t('common.requestToJoin') }}
+
+      b-modal(v-model="outreachOpen" has-modal-card)
+        .modal-card
+          header.modal-card-head
+            p.modal-card-title
+              | {{ $t('outreach.title') }}
+              span(v-if="outreachTarget")  · {{ outreachTarget.name }}
+          section.modal-card-body
+            b-message(type="is-info" size="is-small") {{ $t('outreach.hint') }}
+            b-field(:label="$t('outreach.context')")
+              b-input(type="textarea" v-model="outreach.context")
+            b-field(:label="$t('outreach.ask')")
+              b-input(v-model="outreach.ask")
+          footer.modal-card-foot
+            b-button(type="is-primary" @click="sendOutreach") {{ $t('outreach.send') }}
+            span.has-text-grey.is-size-7.ml-2 {{ $t('outreach.onePerPerson') }}
+</template>
+
+<script>
+import speechMixin from '~/mixins/speechMixin'
+
+export default {
+  name: 'DiscoverPage',
+  mixins: [speechMixin],
+  data () {
+    return {
+      tab: 'people',
+      inputText: '',
+      availableOnly: false,
+      people: [],
+      groups: [],
+      loading: false,
+      outreachOpen: false,
+      outreachTarget: null,
+      outreach: { context: '', ask: '' }
+    }
+  },
+  watch: {
+    tab () { this.search() }
+  },
+  mounted () {
+    this.search()
+  },
+  methods: {
+    async search () {
+      this.loading = true
+      try {
+        if (this.tab === 'people') {
+          const params = new URLSearchParams({ q: this.inputText, available: this.availableOnly ? 'true' : 'false' })
+          const res = await fetch('/api/people/advisors?' + params.toString())
+          this.people = await res.json()
+        } else {
+          const params = new URLSearchParams({ q: this.inputText })
+          const res = await fetch('/api/people/groups?' + params.toString())
+          this.groups = await res.json()
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Search failed — is the backend running?', type: 'is-danger' })
+      } finally {
+        this.loading = false
+      }
+    },
+    openOutreach (p) {
+      this.outreachTarget = p
+      this.outreach = { context: '', ask: '' }
+      this.outreachOpen = true
+    },
+    async sendOutreach () {
+      if (!this.outreach.context) {
+        this.$buefy.toast.open({ message: 'Please say why you are reaching out.', type: 'is-warning' })
+        return
+      }
+      try {
+        const res = await fetch('/api/people/outreach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toId: this.outreachTarget.id, context: this.outreach.context, ask: this.outreach.ask })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.outreachOpen = false
+          this.$buefy.toast.open({ message: this.$t('outreach.sent'), type: 'is-success' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
+      }
+    }
+  }
+}
+</script>

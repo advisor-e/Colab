@@ -1,0 +1,62 @@
+{
+  "app": {
+    "name": "Advisor-e Collaborate"
+  },
+  "nav": {
+    "discover": "Discover",
+    "profile": "My Profile",
+    "messages": "Messages"
+  },
+  "common": {
+    "search": "Search",
+    "save": "Save",
+    "cancel": "Cancel",
+    "available": "Available",
+    "view": "View",
+    "reachOut": "Reach out",
+    "requestToJoin": "Request to join",
+    "back": "Back"
+  },
+  "profile": {
+    "title": "My Profile",
+    "fromAdvisory": "From Advisory (read-only)",
+    "availability": "Availability",
+    "availableToggle": "Open to collaborate",
+    "strengths": "My strengths",
+    "industries": "Industries I know",
+    "topics": "Topics / projects",
+    "about": "About me (advertised to the network)",
+    "save": "Save profile",
+    "addTag": "Add"
+  },
+  "discover": {
+    "title": "Discover",
+    "people": "People",
+    "groups": "Groups",
+    "availableOnly": "Available only",
+    "placeholder": "Search by specialty, industry, or name…",
+    "noResults": "No matches yet — try a broader search.",
+    "firms": "firms",
+    "members": "members"
+  },
+  "outreach": {
+    "title": "Reach out",
+    "hint": "A good first message explains WHY you are reaching out.",
+    "context": "Why them / context",
+    "ask": "The ask",
+    "attach": "Attach group",
+    "send": "Send invitation",
+    "onePerPerson": "One outreach per person — make it genuine.",
+    "sent": "Invitation sent."
+  },
+  "messages": {
+    "title": "Messages",
+    "requests": "Requests",
+    "chats": "Chats",
+    "type": "Type a message…",
+    "autoTranslate": "Auto-translate",
+    "accept": "Accept",
+    "skip": "Skip",
+    "empty": "Select a conversation."
+  }
+}
