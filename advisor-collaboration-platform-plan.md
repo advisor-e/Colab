@@ -166,6 +166,25 @@ engage, so membership is *always* invite → accept.
 - **The §8 cross-org policy is the outer gate** — it decides whether you can reach outside your
   org at all, *before* any of this applies.
 
+### Cross-cutting must-haves (confirmed 2026-06-30): multi-language & voice
+
+Both are **required from the outset**, and both have **proven, reusable implementations in the
+sibling Virt Advisor app**:
+
+- **Multi-language (i18n) + live chat translation.** The UI is multi-language from day one
+  (reuse Virt Advisor's **vue-i18n + 8 locales + `localeMixin`**). Because members span
+  countries/languages, **messages and chat are translatable**: store each message in its
+  **original language** and offer **per-reader translation** — a manual toggle or auto-translate
+  to the reader's locale. Reuse Virt Advisor's **Node-14-safe backend translate route**
+  (MyMemory API via the `https` module, exposed as a Restify route).
+- **Voice input (speech-to-text).** Users can **talk instead of type** anywhere there's a text
+  field (profile, search, outreach, chat) to speed things up. Reuse Virt Advisor's
+  **`speechMixin`** (browser speech API, behind a mixin, SSR-safe).
+
+Both honour the Stack Constitution (translation = a Restify route; speech = browser API behind a
+mixin). They appear in the screen sketches (§ separate sketches file) as a 🌐 language control
+and a 🎤 mic on text inputs.
+
 ---
 
 ## 5. Role hierarchy & content cascade
