@@ -85,6 +85,23 @@ title, professional bio, LinkedIn URL, phone, country, state, city/town, branch,
 | **Trust / IP** | High — co-created IP & confidentiality are critical; ownership follows a 4-tier model (§6). |
 | **Marketplace** | Groups can license/sell group-owned IP; Advisory hosts, takes no fee, records the transaction only (§7). |
 
+### Scope boundary — what we BUILD vs what we REUSE
+
+**This platform builds the PEOPLE layer — and that is the core job:** how advisers are
+**identified**, **find each other**, **reach out**, **message**, and **invite** one another into
+groups and collaboration. Everything else is leverage.
+
+**Already done in Advisory — we REUSE / hand off to, never rebuild:**
+- Authentication & membership.
+- Advisor profiles (system of record).
+- The **entire Google document cascade** — per-level accounts, clone-down, translation,
+  upstream-update → notify → **accept/decline**, **lock-to-prevent-override**, and archive
+  recovery.
+
+So co-creation of templates (pillar 5) happens inside **Advisory's existing Google tooling**;
+this app's job is to get the right **people** into a group and talking, then hand off into that
+tooling. Don't re-plan or re-build the document mechanics.
+
 ---
 
 ## 4. Capability map — the six pillars
@@ -108,6 +125,46 @@ primitive, two ways in.
   approach *them*.
 - **Advisor searches outward** — finds existing groups, sees who else they could reach out to,
   and identifies **who within a group** to contact to start or join a collaboration.
+
+### Engagement & messaging model (confirmed 2026-06-30) — the core of this app
+
+**Cold outreach is ALLOWED — that is the point of the network.** Advisers and groups can reach
+out to people they don't yet know, because finding people *open to engage* is core value. The
+safeguard is **purpose, not permission**: the first message must explain **why** you're reaching
+out (no "must connect first" gate, no cold-spam either).
+
+*Example of the intended pattern:* "Hi Bob — we're developing a model for the seafood industry.
+We noticed your significant experience in capital raising, which many of our clients struggle
+with. Would you be open to collaborating with us?"
+
+**How it works:**
+- **First contact = a purposeful outreach.** The composer **prompts for *why you* + *the ask*
+  ** (guided by the example structure) so blank/spammy DMs aren't the norm.
+- **Recipient stays in control** — they can **respond** (opens an ongoing thread), **dismiss /
+  ignore**, or **block & report**.
+- Outreach can carry a **group/project context** (e.g. "we're building a seafood model") so the
+  recipient has something concrete to consider joining.
+
+**Everything is by invitation + consent — NO top-down placement.** Even a manager cannot drop
+someone into a group without their acceptance; placing an unwilling member won't make them
+engage, so membership is *always* invite → accept.
+
+**Invitation / request types** (the first-contact carriers):
+- adviser → adviser (connect / collaborate)
+- group → adviser (invite to join)
+- adviser → group (request to join)
+- manager (e.g. Firm Manager) → adviser(s): may invite/request **multiple** people to join a
+  group — but **each invitee must still accept** (consent required; the per-recipient guardrails
+  still apply).
+
+**Anti-spam guardrails (recommended defaults — confirm):**
+- **One pending outreach per recipient** — no repeat-messaging someone who hasn't replied; a
+  dismiss / no-response means no further cold messages from that sender.
+- **Rate limits** on outbound cold outreach (no bulk blasting).
+- **Respect the availability flag** — if someone marks themselves unavailable, cold outreach is
+  limited or off.
+- **The §8 cross-org policy is the outer gate** — it decides whether you can reach outside your
+  org at all, *before* any of this applies.
 
 ---
 
@@ -135,6 +192,24 @@ with Global and Group/country tiers.)*
 The **vertical** hierarchy is about management & content cascade; the **horizontal** pillars
 (§4) are about advisors collaborating across firms/countries. Whether the two cross is governed
 by the cross-org policy in §8.
+
+### Document cascade in Google — EXISTING Advisory capability (OUT OF SCOPE)
+
+> **⚠️ This already exists and works in the current Advisory app. This project does NOT build,
+> rebuild, or modify it.** Recorded only as context the collaboration platform hands off into.
+
+How it already works in Advisory (for reference):
+- One central Advisory account holds the Mentor masters; documents cascade down into **per-level
+  Google accounts** (group → firm → adviser → client), each with its own archived, recoverable set.
+- An upstream update **pushes down**; the lower level gets a **notification** and can **accept or
+  decline** it.
+- An adviser/firm can **LOCK** a perfected template so no upstream update can override it.
+- Any superseded version is **recoverable from the archive**.
+
+➡️ **Implication for this build:** templating, cloning, cascade, translation, versioning,
+lock/override-protection and recovery are **Advisory's job, already done**. When a group formed
+in this app wants to co-develop a template, they use **Advisory's existing Google tooling**. This
+platform's scope is the **people layer** — see the Scope boundary in §3.
 
 ---
 
@@ -258,10 +333,12 @@ inherited auth) are stable; only the named technologies are fixed by the Constit
 - **Permissions:** RBAC scoped by org-hierarchy + group/space membership, enforced on the
   backend; every asset action maps to a **Google Drive permission grant/revoke** via a Restify
   route (never from Nuxt). The §8 cross-org toggle is evaluated on every cross-org action.
-- **Co-creation:** Restify routes orchestrate the Drive / Docs / Sheets / Slides APIs (clone,
-  scope access, organise per space, clone-and-share-to-client). Live editing is Google-native.
-- **Assets:** Google-hosted; MySQL tracks file references, lineage, IP classification, and
-  access scope — it does not store the files.
+- **Co-creation:** **out of scope to build** — the document cascade/templating already exists in
+  Advisory (§5). This app simply **hands off** a formed group into Advisory's existing Google
+  tooling. At most, the collaboration platform stores a **link/reference** to the relevant doc(s)
+  so a space can point at them; it does not orchestrate the Drive APIs or the cascade.
+- **Assets (light):** the platform may hold **references** (Drive links) a group is working on,
+  for context inside a space — not file storage, not versioning, not cascade (all Advisory's).
 - **Cross-cutting (High-IP):** audit logging on asset access, terms gating before space entry,
   encryption in transit + at rest, explicit per-space IP terms; legal/IP terms run as a parallel
   workstream.
@@ -291,9 +368,9 @@ Each phase is independently valuable; the app is demoable from Phase 1.
   discoverable group directory, topic tags, join-request → approval workflow, group roles and
   group space; the **§8 cross-org engagement toggle** (Global/Group level) built as a config
   flip.
-- **Phase 4 — Co-creation.** Google Drive orchestration: clone master templates into a space,
-  grant members co-edit access, browse the template library, clone-and-share to clients; track
-  **lineage** and **IP classification** (§6); per-space IP terms.
+- **Phase 4 — Co-creation hand-off (light).** **Not** rebuilding documents — when a group is
+  ready to build a template, hand off into **Advisory's existing Google tooling/cascade** (§5).
+  At most: store a doc **reference** in the space and apply per-space IP terms (§6).
 - **Phase 5 — Marketplace / licensing.** List Tier-4 group-owned IP; off-platform, record-only
   transactions; buyer↔source **purchase link** for ongoing updates; transaction analytics.
 - **Phase 6 — Hardening & governance.** Audit/compliance reporting, advanced permissions,
@@ -312,11 +389,11 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 3. **Firm vs branch:** does the existing **branch** field already represent firm/office, and how
    does it map to the role hierarchy / multi-firm model? (Current members — accountants + small
    business owners — may be light on multi-firm structure today.)
-4. **Google environment:** is the template library in a Workspace **Shared Drive** owned by
-   Advisory.com? Do advisors act under their own Google identity or a service account? (Drives
-   the permission/cloning model.)
-5. **Client sharing:** is a client a Google user (Drive share) or do they get a link/PDF export?
-   Are clients ever users of this platform, or always external?
+4. ~~Google environment / cascade~~ — **RESOLVED + OUT OF SCOPE (2026-06-30).** The per-level
+   Google accounts, clone-down, translation, upstream-update → **notify → accept/decline**,
+   **lock-to-prevent-override**, and archive recovery **already exist and work in Advisory**.
+   This app does not build any of it; it hands off into it (§5). No further questions for this
+   build.
 6. **Net-new group IP from scratch** is covered as Tier 4 (group-owned) — confirm no edge cases
    (e.g. a member contributing pre-existing personal IP into a group).
 
@@ -344,6 +421,10 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 | 2026-06-30 | Marketplace: no Advisory fee; **off-platform, record-only**; buyer gets unlimited-client usage (no resale); **ongoing updates** included. |
 | 2026-06-30 | Cross-org engagement controlled at Global/Group level; both-sides consent; Global sets ceiling. Default posture **deferred** (D1). |
 | 2026-06-30 | `googleapis@123.0.0` confirmed as the Node-14-safe Google pin to reuse. |
+| 2026-06-30 | Document cascade is **existing Advisory functionality — OUT OF SCOPE**; this app builds only the people layer. |
+| 2026-06-30 | **Cold outreach ALLOWED** — purposeful (must state why), recipient-in-control (respond/dismiss/block), with anti-spam guardrails. No "connect-first" gate. |
+| 2026-06-30 | **All membership is by invitation + consent — no top-down placement.** Managers may invite many, but every invitee must accept. |
+| 2026-06-30 | Google model = **cascade of per-level accounts** (central Advisory → group → firm → advisor → client), each with its own archived/recoverable doc set; advisers edit their own clone. Orchestration spans many accounts, not one service account. |
 
 ---
 
