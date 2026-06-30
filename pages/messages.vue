@@ -38,7 +38,12 @@
                 a.msg-translate(v-if="isForeign(m) && !translations[msgKey(i)]" @click="translateMsg(m, i)")
                   | {{ translating[msgKey(i)] ? '…' : ('🌐 ' + $t('messages.translate')) }}
                 span.msg-from {{ m.from }}
-            .conv-reply
+            .conv-reply(v-if="isInvitation")
+              template(v-if="current.status === 'request'")
+                b-button(type="is-primary" @click="respondInvite(true)") {{ $t('invite.accept') }}
+                b-button(@click="respondInvite(false)") {{ $t('invite.decline') }}
+              span.has-text-grey.is-size-7(v-else) {{ $t('invite.handled') }}
+            .conv-reply(v-else)
               input.input(v-model="reply" :placeholder="$t('messages.type')" @keyup.enter="send")
               b-button(type="is-primary" @click="send") {{ $t('messages.sendBtn') }}
 </template>
@@ -52,7 +57,8 @@ export default {
   computed: {
     requests () { return this.threads.filter(t => t.status === 'request') },
     chats () { return this.threads.filter(t => t.status !== 'request') },
-    readerLocale () { return this.$i18n.locale }
+    readerLocale () { return this.$i18n.locale },
+    isInvitation () { return !!(this.current && this.current.kind === 'invitation' && this.current.direction === 'incoming') }
   },
   watch: {
     autoTranslate (on) { if (on) { this.translateAllForeign() } }
@@ -117,6 +123,26 @@ export default {
         this.$buefy.toast.open({ message: 'Translation failed', type: 'is-danger' })
       } finally {
         this.$set(this.translating, key, false)
+      }
+    },
+    async respondInvite (accept) {
+      const id = this.current.id
+      const verb = accept ? 'accept' : 'decline'
+      try {
+        const res = await fetch('/api/people/invitations/' + id + '/' + verb, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$buefy.toast.open({
+            message: accept ? this.$t('invite.joined') : this.$t('invite.declined'),
+            type: accept ? 'is-success' : 'is-info'
+          })
+          await this.load()
+          await this.select(id)
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Action failed', type: 'is-danger' })
       }
     },
     async send () {

@@ -68,13 +68,24 @@ const groups = [
     tags: ['hospitality', 'turnaround', 'cashflow'],
     summary: 'Templates and playbooks for rescuing struggling hospitality businesses.',
     members: [{ id: 'sara-okafor', name: 'Sara Okafor' }]
+  },
+  {
+    id: 'tax-automation', name: 'Tax Automation Lab', icon: '🧮',
+    createdBy: 'Bob Lindt (Lindt & Co)', firms: 4, memberCount: 9,
+    visibility: 'listed', joinPolicy: 'request-approval',
+    tags: ['tax', 'automation', 'workflow'],
+    summary: 'Building shared tax-automation workflows and templates.',
+    members: [{ id: 'bob-lindt', name: 'Bob Lindt' }]
   }
 ]
 
 const threads = [
   { id: 't-bob', kind: 'outreach', withId: 'bob-lindt', withName: 'Bob Lindt', status: 'request', direction: 'incoming', messages: [{ from: 'Bob Lindt', text: 'Gerne! Wann passt es Ihnen?', lang: 'de' }] },
   { id: 't-anna', kind: 'outreach', withId: 'anna-r', withName: 'Anna Richter', status: 'request', direction: 'incoming', messages: [{ from: 'Anna Richter', text: 'Would you be open to joining the seafood modelling group?', lang: 'en' }] },
-  { id: 't-seafood-grp', kind: 'group', withId: 'seafood-modelling', withName: 'Seafood Financial Modelling', status: 'active', direction: 'outgoing', messages: [{ from: 'Anna Richter', text: 'Welcome — glad to have you looking at this!', lang: 'en' }] }
+  { id: 't-seafood-grp', kind: 'group', withId: 'seafood-modelling', withName: 'Seafood Financial Modelling', status: 'active', direction: 'outgoing', messages: [{ from: 'Anna Richter', text: 'Welcome — glad to have you looking at this!', lang: 'en' }] },
+  // Incoming group invitations (someone invited "me" to join) — Accept joins the group.
+  { id: 't-inv-hosp', kind: 'invitation', withId: 'hospitality-turnaround', withName: 'Hospitality Turnaround Toolkit', groupId: 'hospitality-turnaround', inviterName: 'Sara Okafor', status: 'request', direction: 'incoming', messages: [{ from: 'Sara Okafor', text: 'We would love your capital-raising experience on the Hospitality Turnaround group — would you join us?', lang: 'en' }] },
+  { id: 't-inv-tax', kind: 'invitation', withId: 'tax-automation', withName: 'Tax Automation Lab', groupId: 'tax-automation', inviterName: 'Bob Lindt', status: 'request', direction: 'incoming', messages: [{ from: 'Bob Lindt', text: 'Would you like to join the Tax Automation Lab? Your workflow experience would help.', lang: 'en' }] }
 ]
 let threadSeq = 1
 
@@ -171,6 +182,58 @@ async function requestJoinGroup (groupId, advisorId) {
   const g = groups.find(x => x.id === groupId)
   if (!g) { return null }
   return { status: 'requested', groupId: g.id, joinPolicy: g.joinPolicy }
+}
+
+// ── Group invitations (group owner/manager → adviser; consent required) ───────
+// The mirror of requestJoinGroup: here the group side invites a person it found.
+// No top-down placement — the invitee must ACCEPT before they become a member
+// (plan §"invitation + consent"). "Manage" is approximated as membership in the
+// mock until per-member roles + RBAC land (see design/ACTIONS.md).
+
+async function listManageableGroups (advisorId) {
+  // SQL SEAM: SELECT g.* FROM `group` g JOIN group_member m ON m.group_id=g.id
+  //           WHERE m.advisor_id=? AND m.role IN ('owner','admin')
+  return groups
+    .filter(g => (g.members || []).some(m => m.id === advisorId))
+    .map(g => ({ id: g.id, name: g.name, icon: g.icon }))
+}
+
+async function inviteToGroup (groupId, inviter, inviteeId, note) {
+  // SQL SEAM: verify inviter manages the group; INSERT INTO group_invitation
+  //   (group_id, advisor_id, invited_by, note, 'invited'); create an incoming
+  //   'invitation' thread for the invitee. Returns {error} sentinels the route maps.
+  const g = groups.find(x => x.id === groupId)
+  if (!g) { return { error: 'GROUP_NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === inviter.id)) { return { error: 'NOT_MANAGER' } }
+  if ((g.members || []).some(m => m.id === inviteeId)) { return { error: 'ALREADY_MEMBER' } }
+
+  const invitee = advisors.find(a => a.id === inviteeId) || { id: inviteeId, name: inviteeId }
+  const text = (note && note.trim()) ? note.trim() : ('We would love you to join ' + g.name + '.')
+  const t = {
+    id: 't-inv-' + (threadSeq++), kind: 'invitation', withId: groupId, withName: g.name,
+    groupId: groupId, inviterName: inviter.name, inviteeName: invitee.name,
+    status: 'active', direction: 'outgoing',
+    messages: [{ from: 'Me', text: text, lang: 'en' }]
+  }
+  threads.unshift(t)
+  return { success: true, threadId: t.id, group: { id: g.id, name: g.name }, invitee: { id: invitee.id, name: invitee.name } }
+}
+
+async function respondInvitation (threadId, advisorId, accept) {
+  // SQL SEAM: UPDATE group_invitation SET status=? WHERE id=? AND advisor_id=? AND
+  //   status='invited'; if accepted INSERT INTO group_member (group_id, advisor_id, 'member')
+  const t = threads.find(x => x.id === threadId && x.kind === 'invitation' && x.direction === 'incoming')
+  if (!t || t.status !== 'request') { return null }
+  t.status = 'active'
+  if (accept) {
+    const g = groups.find(x => x.id === t.groupId)
+    if (g && !(g.members || []).some(m => m.id === advisorId)) {
+      const me = advisors.find(a => a.id === advisorId) || { id: advisorId, name: advisorId }
+      g.members.push({ id: advisorId, name: me.name })
+      g.memberCount = (g.memberCount || 0) + 1
+    }
+  }
+  return { success: true, accepted: !!accept, groupId: t.groupId, groupName: t.withName }
 }
 
 // ── Threads / messages ───────────────────────────────────────────────────────
@@ -300,6 +363,7 @@ async function recordPurchase (listingId, buyerId) {
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup,
+  listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
   requestConnection, listConnections, respondConnection,
   listListings, getListing, createListing, recordPurchase

@@ -41,6 +41,7 @@
                 nuxt-link.button.is-small.is-light(v-else-if="p.connectionStatus === 'pending_in'" to="/connections") {{ $t('common.respond') }}
                 span.button.is-small.is-success.is-light(v-else-if="p.connectionStatus === 'connected'") ✓ {{ $t('common.connected') }}
                 button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
+                button.button.is-link.is-small.is-light(@click="openInvite(p)") {{ $t('common.inviteToGroup') }}
 
       template(v-else)
         .buttons.is-right.mb-2
@@ -74,6 +75,23 @@
           footer.modal-card-foot
             b-button(type="is-primary" @click="sendOutreach") {{ $t('outreach.send') }}
             span.has-text-grey.is-size-7.ml-2 {{ $t('outreach.onePerPerson') }}
+
+      b-modal(v-model="inviteOpen" has-modal-card)
+        .modal-card
+          header.modal-card-head
+            p.modal-card-title
+              | {{ $t('invite.title') }}
+              span(v-if="inviteTarget")  · {{ inviteTarget.name }}
+          section.modal-card-body
+            b-message(v-if="!myGroups.length" type="is-warning" size="is-small") {{ $t('invite.noGroups') }}
+            template(v-else)
+              b-field(:label="$t('invite.whichGroup')")
+                b-select(v-model="invite.groupId" expanded)
+                  option(v-for="g in myGroups" :key="g.id" :value="g.id") {{ g.icon }} {{ g.name }}
+              b-field(:label="$t('invite.note')")
+                b-input(type="textarea" v-model="invite.note")
+          footer.modal-card-foot
+            b-button(type="is-primary" :disabled="!invite.groupId" @click="sendInvite") {{ $t('invite.send') }}
 </template>
 
 <script>
@@ -92,7 +110,11 @@ export default {
       loading: false,
       outreachOpen: false,
       outreachTarget: null,
-      outreach: { context: '', ask: '' }
+      outreach: { context: '', ask: '' },
+      inviteOpen: false,
+      inviteTarget: null,
+      myGroups: [],
+      invite: { groupId: '', note: '' }
     }
   },
   watch: {
@@ -167,6 +189,38 @@ export default {
       this.outreachTarget = p
       this.outreach = { context: '', ask: '' }
       this.outreachOpen = true
+    },
+    async openInvite (p) {
+      this.inviteTarget = p
+      this.invite = { groupId: '', note: '' }
+      try {
+        const res = await fetch('/api/people/my-groups')
+        this.myGroups = await res.json()
+        if (this.myGroups.length) { this.invite.groupId = this.myGroups[0].id }
+      } catch (e) {
+        this.myGroups = []
+      }
+      this.inviteOpen = true
+    },
+    async sendInvite () {
+      if (!this.invite.groupId) { return }
+      try {
+        const res = await fetch('/api/people/groups/' + this.invite.groupId + '/invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ advisorId: this.inviteTarget.id, note: this.invite.note })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.inviteOpen = false
+          this.$buefy.toast.open({ message: this.$t('invite.sent'), type: 'is-success' })
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : 'Invite failed'
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Invite failed', type: 'is-danger' })
+      }
     },
     async sendOutreach () {
       if (!this.outreach.context) {

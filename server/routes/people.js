@@ -71,6 +71,40 @@ async function joinGroup (req, res) {
   ok(res, Object.assign({ success: true }, r))
 }
 
+// Groups the viewer can invite people into (owner/manager).
+async function listMyGroups (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listManageableGroups(me.id))
+}
+
+// Invite a found specialist into one of my groups. Consent-based — they accept.
+async function inviteToGroup (req, res) {
+  const me = await currentAdvisor(req)
+  const body = req.body || {}
+  const inviteeId = body.advisorId || body.toId
+  if (!inviteeId) { fail(res, 400, 'MISSING_ADVISOR', 'Choose who to invite.'); return }
+  const r = await repo.inviteToGroup(req.params.id, me, inviteeId, body.note)
+  if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'You can only invite into a group you manage.'); return }
+  if (r.error === 'ALREADY_MEMBER') { fail(res, 409, 'ALREADY_MEMBER', 'They are already in this group.'); return }
+  ok(res, r)
+}
+
+// Recipient accepts/declines a group invitation. Accept joins the group.
+async function acceptInvitation (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.respondInvitation(req.params.id, me.id, true)
+  if (!r) { fail(res, 404, 'NOT_FOUND', 'Invitation not found.'); return }
+  ok(res, r)
+}
+
+async function declineInvitation (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.respondInvitation(req.params.id, me.id, false)
+  if (!r) { fail(res, 404, 'NOT_FOUND', 'Invitation not found.'); return }
+  ok(res, r)
+}
+
 async function messageGroup (req, res) {
   const g = await repo.getGroupById(req.params.id)
   if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
@@ -173,6 +207,10 @@ module.exports = {
   createGroup,
   joinGroup,
   messageGroup,
+  listMyGroups,
+  inviteToGroup,
+  acceptInvitation,
+  declineInvitation,
   sendOutreach,
   listMessages,
   getThread,
