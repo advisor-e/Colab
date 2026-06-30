@@ -5,6 +5,11 @@
     "node": "14.15.x"
   },
   "scripts": {
+    "check:location": "node scripts/check-run-location.js",
+    "predev": "node scripts/check-run-location.js",
+    "predev:all": "node scripts/check-run-location.js",
+    "prebackend": "node scripts/check-run-location.js",
+    "prestart": "node scripts/check-run-location.js",
     "dev": "nuxt",
     "build": "nuxt build",
     "start": "nuxt start",
