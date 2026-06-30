@@ -401,13 +401,19 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 ## 12. Open questions & deferred decisions
 
 **Open — to resolve before/within Phase 1:**
-1. **Advisory.com integration mechanics:** its stack, and how the session is inherited (shared
-   cookie/JWT, embedded module, OAuth)?
-2. **Service lines & specialty tags:** do these exist in Advisory.com already, or are they new
-   here? (Central to discovery and to specialty groups.)
-3. **Firm vs branch:** does the existing **branch** field already represent firm/office, and how
-   does it map to the role hierarchy / multi-firm model? (Current members — accountants + small
-   business owners — may be light on multi-firm structure today.)
+1. ~~Advisory.com integration mechanics~~ — **RESOLVED (2026-07-01).** Session inherited via a
+   **shared cookie/token** across a common parent domain (reuse Virt Advisor's pattern). The
+   cookie/token is **validated on this app's Restify backend**, never trusted on the frontend, then
+   used to fetch the profile. *(Matches the implemented auth seam — `config/integration.js → AUTH`
+   + `server/middleware/auth.js`. Remaining detail — exact JWT claim names + HS256/RS256 — tracked
+   in `HANDOVER.md` §8; does not block.)*
+2. ~~Service lines & specialty tags~~ — **RESOLVED (2026-07-01).** **New — not in Advisory.com.**
+   This app owns service lines + skills/specialty/interest tags in its own MySQL tables; the master
+   profile is untouched. `service_line` is flagged for **possible future promotion** to the master
+   profile — see `HANDOVER.md` §8.
+3. ~~Firm vs branch~~ — **RESOLVED (2026-07-01).** **`branch` = the firm/office** → maps directly
+   to the **Firm** tier (§5). Bonus: **`country-address` → the Group/country tier**, so much of the
+   hierarchy derives from existing master data.
 4. ~~Google environment / cascade~~ — **RESOLVED + OUT OF SCOPE (2026-06-30).** The per-level
    Google accounts, clone-down, translation, upstream-update → **notify → accept/decline**,
    **lock-to-prevent-override**, and archive recovery **already exist and work in Advisory**.
@@ -415,6 +421,10 @@ Each phase is independently valuable; the app is demoable from Phase 1.
    build.
 6. **Net-new group IP from scratch** is covered as Tier 4 (group-owned) — confirm no edge cases
    (e.g. a member contributing pre-existing personal IP into a group).
+7. **What counts as "one organisation" for the cross-org policy (§8)?** Since `branch` =
+   firm/office, a multi-office firm appears as several branches. Confirm whether the §8 toggle
+   seals at the individual office (branch/Firm tier), the whole firm, or the country Group.
+   *(Raised 2026-07-01; a "see-it-live" refinement, not blocking.)*
 
 **Deferred — decide once we can see the app in action:**
 - **D1 · Default cross-org posture (open vs closed).** A UX-feel call about what a user is first
@@ -444,6 +454,9 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 | 2026-06-30 | **Cold outreach ALLOWED** — purposeful (must state why), recipient-in-control (respond/dismiss/block), with anti-spam guardrails. No "connect-first" gate. |
 | 2026-06-30 | **All membership is by invitation + consent — no top-down placement.** Managers may invite many, but every invitee must accept. |
 | 2026-06-30 | Google model = **cascade of per-level accounts** (central Advisory → group → firm → advisor → client), each with its own archived/recoverable doc set; advisers edit their own clone. Orchestration spans many accounts, not one service account. |
+| 2026-07-01 | **Q1 resolved** — Advisory.com session inherited via a **shared cookie/token** (same parent domain); cookie/token validated on this app's Restify backend, never trusted on the frontend. |
+| 2026-07-01 | **Q2 resolved** — **service lines + skills/specialty/interest tags are NEW**, owned by this app (own MySQL tables); master untouched. `service_line` a candidate for future promotion to the master (see `HANDOVER.md` §8). |
+| 2026-07-01 | **Q3 resolved** — **`branch` = firm/office** → maps to the Firm tier; **`country-address` → Group/country tier**. Hierarchy largely derivable from existing master data. |
 
 ---
 

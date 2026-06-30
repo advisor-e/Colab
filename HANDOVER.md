@@ -162,12 +162,25 @@ join requests are recorded in memory only.
 
 ## 8. Open questions for the master team
 
-See `design/advisor-collaboration-platform-plan.md` §12. Most relevant here:
-1. Advisory **session mechanics** — how the login is shared with this app (cookie/embedded/token).
-2. Confirm the **JWT claim names** and signing algorithm (HS256 vs RS256).
-3. The **advisor profile API/source** to read identity from.
-4. **Service lines / specialty tags** — do they exist in Advisory, or are they new here?
-5. The **role hierarchy** (Mentor→Global→Group→Firm→Advisor→Client) source of truth.
+See `design/advisor-collaboration-platform-plan.md` §12. Status (resolved 2026-07-01 with the
+product owner) and what remains:
+
+1. ✅ Advisory **session mechanics** — **shared cookie/token** on a common parent domain; validate
+   on this backend, never trust the frontend (matches the implemented auth seam). *Remaining: items
+   2–3 below — the exact claim names/algorithm and profile source.*
+2. ⏳ Confirm the **JWT claim names** and signing algorithm (HS256 vs RS256).
+3. ⏳ The **advisor profile API/source** to read identity from.
+4. ✅ **Service lines / specialty tags** — **NEW; not in Advisory.** Owned by this app's own tables;
+   the master profile is untouched. **`branch` = the firm/office** (→ Firm tier) and
+   **`country-address` → the Group/country tier**, so much of the hierarchy derives from existing
+   master fields.
+5. ⏳ The **role hierarchy** (Mentor→Global→Group→Firm→Advisor→Client) source of truth.
+
+> **Future / optional — promote `service_line` to the master profile.** A *service line* (Tax,
+> Audit, Corporate Finance…) is a core professional attribute other apps may also want, so it is a
+> candidate to add to the Advisory.com master profile later. If promoted, this app would *consume*
+> it read-only (like title/bio/branch) and retire its local `service_line` storage. The free-form
+> *interest/specialty tags* stay app-owned regardless — they are not master data. Not required now.
 
 ---
 
