@@ -126,7 +126,10 @@ The connection points are built and isolated. Each is a small, well-marked seam.
 - UI + theme: Home, **Profile** (incl. email/phone from Advisory), **Discover** (two-sided
   search, people/groups), **Groups** (detail, create, request-to-join), **Messages** (two-pane
   chat, replies). Section colour-coding; history-based back navigation.
-- **Connections** (1:1 connect → mutual accept; status-aware Discover buttons; Connections page).
+- **Connections** (1:1 connect → mutual accept; status-aware Discover buttons; Connections page
+  showing individuals **and** your groups with their members).
+- **Marketplace** (group-owned IP listings; **record-only** purchases — no Advisory fee;
+  unlimited-client licence + ongoing updates; "list a tool" form).
 - Cross-cutting: **multi-language** (i18n + on-demand translation), **in-chat translation**
   (any language → the reader's language), and **voice input**.
 - Integration seams: **auth middleware** (verified), **DB schema + probe + fallback**, and a
@@ -136,8 +139,8 @@ The connection points are built and isolated. Each is a small, well-marked seam.
 join requests are recorded in memory only.
 
 **Not yet built (in the plan, not in code):** **RBAC / role hierarchy** enforcement
-(Mentor→Global→Group→Firm→Advisor); **cross-org engagement policy** enforcement;
-**marketplace/licensing**; manager **bulk-invite**; **audit logging**.
+(Mentor→Global→Group→Firm→Advisor); **cross-org engagement policy** enforcement; manager
+**bulk-invite**; **audit logging**.
 
 ---
 

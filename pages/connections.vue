@@ -31,6 +31,19 @@
                 span.tag.is-success.is-light.ml-2 ✓ {{ $t('common.connected') }}
               p.has-text-grey.is-size-7 {{ (c.advisor.strengths || []).join(', ') }}
 
+        template(v-if="data.groups && data.groups.length")
+          p.heading.mt-5 {{ $t('connections.myGroups') }}
+          .box(v-for="g in data.groups" :key="g.id")
+            .is-flex.is-align-items-center.is-justify-content-space-between.mb-3
+              nuxt-link.group-head.is-flex.is-align-items-center(:to="'/groups/' + g.id")
+                span.group-badge {{ g.icon }}
+                p.is-size-5.has-text-weight-semibold.has-text-dark {{ g.name }}
+              nuxt-link.button.is-small.is-light(:to="'/groups/' + g.id") {{ $t('common.view') }}
+            .members
+              .member(v-for="m in g.members" :key="m.id")
+                .avatar(:style="avatarStyle(m)") {{ initials(m.name) }}
+                span {{ m.name }}
+
         template(v-if="data.outgoing.length")
           p.heading.mt-5 {{ $t('connections.pending') }}
           .box(v-for="c in data.outgoing" :key="c.id")
@@ -45,7 +58,7 @@
 export default {
   name: 'ConnectionsPage',
   data () {
-    return { data: { incoming: [], outgoing: [], connected: [] }, loading: true }
+    return { data: { incoming: [], outgoing: [], connected: [], groups: [] }, loading: true }
   },
   async mounted () {
     await this.load()

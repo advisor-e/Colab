@@ -95,3 +95,30 @@ CREATE TABLE IF NOT EXISTS message (
   created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_thread (thread_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Marketplace — a group lists its own (Tier-4) IP; transactions are RECORD-ONLY
+-- (Advisory takes no fee and is not party to the payment). The purchase row is the
+-- analytics record; the buyer gains an unlimited-client usage licence + updates.
+CREATE TABLE IF NOT EXISTS marketplace_listing (
+  id          VARCHAR(80)  NOT NULL PRIMARY KEY,
+  title       VARCHAR(200) NOT NULL,
+  summary     TEXT         NULL,
+  group_id    VARCHAR(80)  NULL,
+  created_by  VARCHAR(64)  NOT NULL,
+  price       VARCHAR(40)  NULL,
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS marketplace_listing_tag (
+  listing_id VARCHAR(80)  NOT NULL,
+  value      VARCHAR(120) NOT NULL,
+  PRIMARY KEY (listing_id, value)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS marketplace_purchase (
+  id          BIGINT      NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  listing_id  VARCHAR(80) NOT NULL,
+  buyer_id    VARCHAR(64) NOT NULL,
+  created_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_purchase (listing_id, buyer_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

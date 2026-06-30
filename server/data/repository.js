@@ -59,7 +59,7 @@ const groups = [
     visibility: 'listed', joinPolicy: 'request-approval',
     tags: ['seafood', 'valuation', 'capital raising'],
     summary: 'Building a shared valuation + capital-raising model for seafood processors. We would love capital-raising experience.',
-    members: [{ id: 'anna-r', name: 'Anna Richter' }, { id: 'sara-okafor', name: 'Sara Okafor' }, { id: 'bob-lindt', name: 'Bob Lindt' }]
+    members: [{ id: 'me', name: 'Mike Barnes' }, { id: 'anna-r', name: 'Anna Richter' }, { id: 'sara-okafor', name: 'Sara Okafor' }, { id: 'bob-lindt', name: 'Bob Lindt' }]
   },
   {
     id: 'hospitality-turnaround', name: 'Hospitality Turnaround Toolkit', icon: '🍽️',
@@ -83,6 +83,13 @@ const connections = [
   { id: 'c-sara', requesterId: 'me', addresseeId: 'sara-okafor', status: 'accepted' } // me <-> Sara (connected)
 ]
 let connSeq = 1
+
+const listings = [
+  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)' },
+  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor' }
+]
+const purchases = []
+let listingSeq = 1
 
 function connectionStatusFor (myId, otherId) {
   const c = connections.find(x => (x.requesterId === myId && x.addresseeId === otherId) || (x.requesterId === otherId && x.addresseeId === myId))
@@ -227,10 +234,16 @@ async function listConnections (myId) {
     return { id: c.id, status: c.status, advisor: advisors.find(x => x.id === otherId) || { id: otherId, name: otherId } }
   }
   const mine = connections.filter(c => c.requesterId === myId || c.addresseeId === myId)
+  // Groups the user belongs to, each with its OTHER members (so they can see who
+  // else is in a group they've joined). 1:1 connections are separate (above).
+  const myGroups = groups
+    .filter(g => (g.members || []).some(m => m.id === myId))
+    .map(g => ({ id: g.id, name: g.name, icon: g.icon, members: (g.members || []).filter(m => m.id !== myId) }))
   return {
     incoming: mine.filter(c => c.status === 'pending' && c.addresseeId === myId).map(enrich),
     outgoing: mine.filter(c => c.status === 'pending' && c.requesterId === myId).map(enrich),
-    connected: mine.filter(c => c.status === 'accepted').map(enrich)
+    connected: mine.filter(c => c.status === 'accepted').map(enrich),
+    groups: myGroups
   }
 }
 
@@ -242,9 +255,52 @@ async function respondConnection (connId, myId, accept) {
   return c
 }
 
+// ── Marketplace (group-owned IP; record-only transactions, no Advisory fee) ───
+
+async function listListings (myId) {
+  // SQL SEAM: SELECT listing (+ tags) ; owned = EXISTS(purchase by myId)
+  return listings.map(l => Object.assign({}, l, { owned: purchases.some(p => p.listingId === l.id && p.buyerId === myId) }))
+}
+
+async function getListing (id, myId) {
+  // SQL SEAM: SELECT listing WHERE id=? (+ owned flag)
+  const l = listings.find(x => x.id === id)
+  if (!l) { return null }
+  return Object.assign({}, l, { owned: purchases.some(p => p.listingId === l.id && p.buyerId === myId) })
+}
+
+async function createListing (input, creator) {
+  // SQL SEAM: INSERT INTO marketplace_listing (…); INSERT marketplace_listing_tag rows
+  const title = (input.title || '').trim()
+  if (!title) { return null }
+  const l = {
+    id: 'm-' + (listingSeq++), title: title, summary: (input.summary || '').trim(),
+    groupId: input.groupId || null, groupName: input.groupName || '',
+    tags: Array.isArray(input.tags) ? input.tags : [],
+    price: ((input.price || '').trim()) || 'Free',
+    createdBy: creator.name + ' (' + creator.firm + ')'
+  }
+  listings.unshift(l)
+  return l
+}
+
+async function recordPurchase (listingId, buyerId) {
+  // SQL SEAM: INSERT INTO marketplace_purchase (listing_id, buyer_id) ON DUPLICATE KEY UPDATE …
+  //   Record-only: Advisory takes no fee and is not party to the transaction — this row is the
+  //   analytics record. The buyer gains an unlimited-client usage licence + ongoing updates;
+  //   ownership stays with the group (plan §3d).
+  const l = listings.find(x => x.id === listingId)
+  if (!l) { return null }
+  if (!purchases.some(p => p.listingId === listingId && p.buyerId === buyerId)) {
+    purchases.push({ id: 'p-' + (purchases.length + 1), listingId: listingId, buyerId: buyerId })
+  }
+  return { success: true, owned: true }
+}
+
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
-  requestConnection, listConnections, respondConnection
+  requestConnection, listConnections, respondConnection,
+  listListings, getListing, createListing, recordPurchase
 }

@@ -80,6 +80,10 @@ server.get('/api/people/connections', auth, people.listConnections)
 server.post('/api/people/advisors/:id/connect', auth, people.connect)
 server.post('/api/people/connections/:id/accept', auth, people.acceptConnection)
 server.post('/api/people/connections/:id/decline', auth, people.declineConnection)
+server.get('/api/people/marketplace', auth, people.listMarketplace)
+server.post('/api/people/marketplace', auth, people.createListing)
+server.get('/api/people/marketplace/:id', auth, people.getListing)
+server.post('/api/people/marketplace/:id/purchase', auth, people.purchaseListing)
 
 server.listen(PORT, () => {
   console.error('[restify] advisor-collaborate-api listening on port ' + PORT)

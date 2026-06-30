@@ -137,9 +137,36 @@ async function declineConnection (req, res) {
   ok(res, { success: true, status: c.status })
 }
 
+async function listMarketplace (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listListings(me.id))
+}
+
+async function getListing (req, res) {
+  const me = await currentAdvisor(req)
+  const l = await repo.getListing(req.params.id, me.id)
+  if (!l) { fail(res, 404, 'NOT_FOUND', 'Listing not found'); return }
+  ok(res, l)
+}
+
+async function createListing (req, res) {
+  const body = req.body || {}
+  if (!(body.title || '').trim()) { fail(res, 400, 'MISSING_TITLE', 'A listing needs a title.'); return }
+  const me = await currentAdvisor(req)
+  ok(res, await repo.createListing(body, me))
+}
+
+async function purchaseListing (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.recordPurchase(req.params.id, me.id)
+  if (!r) { fail(res, 404, 'NOT_FOUND', 'Listing not found'); return }
+  ok(res, r)
+}
+
 module.exports = {
   getMe, updateMe, listAdvisors, getAdvisor,
   listGroups, getGroup, createGroup, joinGroup, messageGroup,
   sendOutreach, listMessages, getThread, replyThread,
-  listConnections, connect, acceptConnection, declineConnection
+  listConnections, connect, acceptConnection, declineConnection,
+  listMarketplace, getListing, createListing, purchaseListing
 }

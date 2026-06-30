@@ -70,6 +70,8 @@ a { color: var(--brand); }
 .navbar.is-light a.nav--messages:hover, .navbar.is-light a.nav--messages.nuxt-link-active { background: var(--pink)  !important; color:#fff !important; }
 .navbar.is-light .nav--connections { color: var(--teal) !important; }
 .navbar.is-light a.nav--connections:hover, .navbar.is-light a.nav--connections.nuxt-link-active { background: var(--teal) !important; color:#fff !important; }
+.navbar.is-light .nav--market { color: var(--coral) !important; }
+.navbar.is-light a.nav--market:hover, .navbar.is-light a.nav--market.nuxt-link-active { background: var(--coral) !important; color:#fff !important; }
 
 /* ===== Buttons ===== */
 .button {
@@ -199,6 +201,7 @@ a { color: var(--brand); }
 .section-banner--groups   { background: linear-gradient(120deg, var(--amber), #ffc24f); }
 .section-banner--groups h1 { color: #4a3200; }
 .section-banner--connections { background: linear-gradient(120deg, var(--teal), #1ad3b2); }
+.section-banner--market { background: linear-gradient(120deg, var(--coral), #ff9b80); }
 
 /* ===== Group detail ===== */
 .back-link { display: inline-block; color: var(--muted); font-weight: 600; margin-bottom: 1rem; cursor: pointer; }

@@ -5,6 +5,7 @@
   "nav": {
     "discover": "Discover",
     "connections": "Connections",
+    "marketplace": "Marketplace",
     "profile": "My Profile",
     "messages": "Messages"
   },
@@ -106,6 +107,23 @@
     "noConnections": "No connections yet — find people in Discover.",
     "requestedLabel": "Awaiting their response",
     "acceptedToast": "Connected!",
-    "declinedToast": "Request declined."
+    "declinedToast": "Request declined.",
+    "myGroups": "Your groups"
+  },
+  "market": {
+    "title": "Marketplace",
+    "intro": "Tools and models built by groups — get them for your own clients.",
+    "list": "List a tool",
+    "get": "Get it",
+    "owned": "Owned",
+    "by": "By",
+    "licence": "Unlimited-client licence · ongoing updates · owned by the group",
+    "gotIt": "Added — you now have an unlimited-client licence.",
+    "listed": "Listed on the marketplace.",
+    "fTitle": "Title",
+    "fSummary": "What is it?",
+    "fTags": "Tags",
+    "fPrice": "Price",
+    "priceHint": "Members transact directly — Advisory takes no fee. Use 'Free' or any amount."
   }
 }
