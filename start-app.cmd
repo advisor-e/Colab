@@ -19,7 +19,9 @@ echo   A separate window will run the app - keep it open while you work.
 echo.
 
 REM Launch the app in its own window so it keeps running after this one closes.
-start "Advisor-e Collaborate (server) - KEEP OPEN" cmd /k "nvm use 14.15.0 && npm run dev:all"
+REM nvm switches Node to 14.15 where nvm is set up; on machines using a direct
+REM Node 14.15 install instead, nvm is skipped and the one on PATH is used.
+start "Advisor-e Collaborate (server) - KEEP OPEN" cmd /k "nvm use 14.15.0 & npm run dev:all"
 
 echo   Waiting for the app to be ready (the first start can take a minute)...
 
