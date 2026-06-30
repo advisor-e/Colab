@@ -7,6 +7,13 @@
     "profile": "My Profile",
     "messages": "Messages"
   },
+  "home": {
+    "title": "Find your people. Build together.",
+    "subtitle": "The collaboration network for advisers — discover specialists, form specialty groups, and co-create the tools you use with clients.",
+    "profileDesc": "Advertise your strengths and what you're open to.",
+    "discoverDesc": "Find advisers and specialty groups across the network.",
+    "messagesDesc": "Reach out, get replies, and start collaborating."
+  },
   "common": {
     "search": "Search",
     "save": "Save",

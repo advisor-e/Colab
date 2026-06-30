@@ -38,12 +38,13 @@ export default {
     link: [
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: true },
-      { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800&display=swap' }
+      { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap' }
     ]
   },
 
   css: [
-    'buefy/dist/buefy.css'
+    'buefy/dist/buefy.css',
+    '~/assets/css/theme.css'
   ],
 
   plugins: [

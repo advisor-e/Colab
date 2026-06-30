@@ -1,7 +1,7 @@
 <template lang="pug">
   section.section
     .container
-      h1.title {{ $t('discover.title') }}
+      h1.title.page-title {{ $t('discover.title') }}
 
       b-tabs(v-model="tab")
         b-tab-item(:label="$t('discover.people')" value="people")
@@ -25,6 +25,7 @@
         .box(v-for="p in people" :key="p.id")
           .level.is-mobile
             .level-left
+              .avatar(:style="avatarStyle(p)") {{ initials(p.name) }}
               div
                 p.is-size-5.has-text-weight-semibold
                   | {{ p.name }} · {{ p.title }} · {{ p.city }}, {{ p.country }}
@@ -36,10 +37,15 @@
       template(v-else)
         p.has-text-grey(v-if="!groups.length") {{ $t('discover.noResults') }}
         .box(v-for="g in groups" :key="g.id")
-          p.is-size-5 {{ g.icon }} {{ g.name }} · {{ g.firms }} {{ $t('discover.firms') }} · {{ g.memberCount }} {{ $t('discover.members') }}
+          .is-flex.is-align-items-center.mb-2
+            span.group-badge {{ g.icon }}
+            div
+              p.is-size-5.has-text-weight-semibold {{ g.name }}
+              p.has-text-grey.is-size-7 {{ g.firms }} {{ $t('discover.firms') }} · {{ g.memberCount }} {{ $t('discover.members') }}
           p {{ g.summary }}
-          p.has-text-grey {{ (g.tags || []).join(' · ') }}
-          button.button.is-small.mt-2 {{ $t('common.requestToJoin') }}
+          .tags.mt-2
+            span.tag(v-for="t in (g.tags || [])" :key="t") {{ t }}
+          button.button.is-info.is-small.mt-2 {{ $t('common.requestToJoin') }}
 
       b-modal(v-model="outreachOpen" has-modal-card)
         .modal-card
@@ -84,6 +90,17 @@ export default {
     this.search()
   },
   methods: {
+    initials (name) {
+      return (name || '').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+    },
+    avatarStyle (p) {
+      const colors = ['#6C5CE7', '#00C2A8', '#FF6B9D', '#14B8D8', '#FFB020', '#FF7A59']
+      let h = 0
+      const id = p.id || ''
+      for (let i = 0; i < id.length; i++) { h = (h * 31 + id.charCodeAt(i)) >>> 0 }
+      const c = colors[h % colors.length]
+      return { background: 'linear-gradient(135deg, ' + c + ', ' + c + 'cc)' }
+    },
     async search () {
       this.loading = true
       try {
