@@ -1,7 +1,9 @@
 <template lang="pug">
   section.section
     .container
-      h1.title.page-title {{ $t('discover.title') }}
+      .section-banner.section-banner--discover
+        span.ico 🔎
+        h1 {{ $t('discover.title') }}
 
       b-tabs(v-model="tab")
         b-tab-item(:label="$t('discover.people')" value="people")

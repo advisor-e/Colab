@@ -1,7 +1,9 @@
 <template lang="pug">
   section.section
     .container
-      h1.title {{ $t('profile.title') }}
+      .section-banner.section-banner--profile
+        span.ico 👤
+        h1 {{ $t('profile.title') }}
       b-message(v-if="loading" type="is-info") Loading…
       template(v-else)
         .box

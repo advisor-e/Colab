@@ -4,9 +4,9 @@
       nuxt-link.navbar-item.has-text-weight-bold(to="/") {{ $t('app.name') }}
     .navbar-menu.is-active
       .navbar-start
-        nuxt-link.navbar-item(to="/discover") {{ $t('nav.discover') }}
-        nuxt-link.navbar-item(to="/profile") {{ $t('nav.profile') }}
-        nuxt-link.navbar-item(to="/messages") {{ $t('nav.messages') }}
+        nuxt-link.navbar-item.nav-link.nav--discover(to="/discover") {{ $t('nav.discover') }}
+        nuxt-link.navbar-item.nav-link.nav--profile(to="/profile") {{ $t('nav.profile') }}
+        nuxt-link.navbar-item.nav-link.nav--messages(to="/messages") {{ $t('nav.messages') }}
       .navbar-end
         .navbar-item
           .lang-picker(ref="langPicker")

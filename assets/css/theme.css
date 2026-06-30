@@ -45,26 +45,29 @@ a { color: var(--brand); }
   box-shadow: 0 2px 8px rgba(108,92,231,.4);
 }
 
-/* ===== Navbar ===== */
+/* ===== Navbar — white with section-coloured nav pills ===== */
 .navbar.is-light {
-  background: linear-gradient(120deg, var(--brand) 0%, #7d6df0 55%, var(--cyan) 150%) !important;
+  background: #ffffff !important;
   box-shadow: var(--shadow-sm);
-}
-.navbar.is-light .navbar-item {
-  color: rgba(255,255,255,0.92) !important;
-  font-weight: 600;
-  border-radius: 10px;
-  margin: 0 .1rem;
-}
-.navbar.is-light a.navbar-item:hover,
-.navbar.is-light a.navbar-item.nuxt-link-active,
-.navbar.is-light a.navbar-item.nuxt-link-exact-active {
-  background: rgba(255,255,255,0.20) !important;
-  color: #fff !important;
+  border-bottom: 1px solid rgba(108, 92, 231, 0.08);
 }
 .navbar.is-light .navbar-brand .navbar-item.has-text-weight-bold {
-  font-family: 'Poppins'; font-size: 1.2rem; color: #fff !important;
+  font-family: 'Poppins'; font-size: 1.2rem;
+  background: linear-gradient(120deg, var(--brand), var(--pink));
+  -webkit-background-clip: text; background-clip: text; color: transparent !important;
 }
+.navbar.is-light .nav-link {
+  font-weight: 600; border-radius: 10px; margin: 0 .15rem;
+  transition: background .15s ease, color .15s ease;
+}
+/* idle colour = the section's colour */
+.navbar.is-light .nav--discover { color: var(--cyan)  !important; }
+.navbar.is-light .nav--profile  { color: var(--brand) !important; }
+.navbar.is-light .nav--messages { color: var(--pink)  !important; }
+/* hover / active = filled with the section's colour */
+.navbar.is-light a.nav--discover:hover, .navbar.is-light a.nav--discover.nuxt-link-active { background: var(--cyan)  !important; color:#fff !important; }
+.navbar.is-light a.nav--profile:hover,  .navbar.is-light a.nav--profile.nuxt-link-active  { background: var(--brand) !important; color:#fff !important; }
+.navbar.is-light a.nav--messages:hover, .navbar.is-light a.nav--messages.nuxt-link-active { background: var(--pink)  !important; color:#fff !important; }
 
 /* ===== Buttons ===== */
 .button {
@@ -176,3 +179,18 @@ a { color: var(--brand); }
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 1.5rem; background: #f0eefe;
 }
+
+/* ===== Section banners (match the nav pill colour of each page) ===== */
+.section-banner {
+  display: flex; align-items: center; gap: .85rem;
+  border-radius: 20px; padding: 1.4rem 1.75rem; margin-bottom: 1.75rem;
+  color: #fff; box-shadow: var(--shadow);
+}
+.section-banner .ico { font-size: 1.8rem; line-height: 1; }
+.section-banner h1 {
+  color: #fff; margin: 0; font-family: 'Poppins';
+  font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+}
+.section-banner--profile  { background: linear-gradient(120deg, var(--brand), var(--brand-2)); }
+.section-banner--discover { background: linear-gradient(120deg, var(--cyan),  #34cbe8); }
+.section-banner--messages { background: linear-gradient(120deg, var(--pink),  #ff8bb0); }

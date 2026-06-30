@@ -1,7 +1,9 @@
 <template lang="pug">
   section.section
     .container
-      h1.title {{ $t('messages.title') }}
+      .section-banner.section-banner--messages
+        span.ico 💬
+        h1 {{ $t('messages.title') }}
       .columns
         .column.is-one-third
           p.heading {{ $t('messages.requests') }}
