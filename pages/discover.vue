@@ -37,17 +37,21 @@
               button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
 
       template(v-else)
+        .buttons.is-right.mb-2
+          nuxt-link.button.is-warning(to="/groups/new") ＋ {{ $t('group.create') }}
         p.has-text-grey(v-if="!groups.length") {{ $t('discover.noResults') }}
         .box(v-for="g in groups" :key="g.id")
-          .is-flex.is-align-items-center.mb-2
+          nuxt-link.group-head.is-flex.is-align-items-center.mb-2(:to="'/groups/' + g.id")
             span.group-badge {{ g.icon }}
             div
-              p.is-size-5.has-text-weight-semibold {{ g.name }}
+              p.is-size-5.has-text-weight-semibold.has-text-dark {{ g.name }}
               p.has-text-grey.is-size-7 {{ g.firms }} {{ $t('discover.firms') }} · {{ g.memberCount }} {{ $t('discover.members') }}
           p {{ g.summary }}
           .tags.mt-2
             span.tag(v-for="t in (g.tags || [])" :key="t") {{ t }}
-          button.button.is-info.is-small.mt-2 {{ $t('common.requestToJoin') }}
+          .buttons.mt-2
+            nuxt-link.button.is-small.is-light(:to="'/groups/' + g.id") {{ $t('common.view') }}
+            button.button.is-warning.is-small(@click="requestJoin(g)") {{ $t('common.requestToJoin') }}
 
       b-modal(v-model="outreachOpen" has-modal-card)
         .modal-card
@@ -102,6 +106,17 @@ export default {
       for (let i = 0; i < id.length; i++) { h = (h * 31 + id.charCodeAt(i)) >>> 0 }
       const c = colors[h % colors.length]
       return { background: 'linear-gradient(135deg, ' + c + ', ' + c + 'cc)' }
+    },
+    async requestJoin (g) {
+      try {
+        const res = await fetch('/api/people/groups/' + g.id + '/join', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+        })
+        const data = await res.json()
+        if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
+      }
     },
     async search () {
       this.loading = true

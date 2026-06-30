@@ -85,8 +85,14 @@ const groups = [
     firms: 5,
     memberCount: 12,
     visibility: 'listed',
+    joinPolicy: 'request-approval',
     tags: ['seafood', 'valuation', 'capital raising'],
-    summary: 'Building a shared valuation + capital-raising model for seafood processors. We would love capital-raising experience.'
+    summary: 'Building a shared valuation + capital-raising model for seafood processors. We would love capital-raising experience.',
+    members: [
+      { id: 'anna-r', name: 'Anna Richter' },
+      { id: 'sara-okafor', name: 'Sara Okafor' },
+      { id: 'bob-lindt', name: 'Bob Lindt' }
+    ]
   },
   {
     id: 'hospitality-turnaround',
@@ -96,8 +102,12 @@ const groups = [
     firms: 3,
     memberCount: 7,
     visibility: 'listed',
+    joinPolicy: 'request-approval',
     tags: ['hospitality', 'turnaround', 'cashflow'],
-    summary: 'Templates and playbooks for rescuing struggling hospitality businesses.'
+    summary: 'Templates and playbooks for rescuing struggling hospitality businesses.',
+    members: [
+      { id: 'sara-okafor', name: 'Sara Okafor' }
+    ]
   }
 ]
 
@@ -175,6 +185,41 @@ function getGroup (req, res, next) {
   return next()
 }
 
+function createGroup (req, res, next) {
+  const body = req.body || {}
+  const name = (body.name || '').trim()
+  if (!name) {
+    res.send(400, { success: false, error: { code: 'MISSING_NAME', message: 'A group needs a name.' } })
+    return next()
+  }
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+  const group = {
+    id: slug + '-' + (groups.length + 1),
+    name: name,
+    icon: body.icon || '✨',
+    createdBy: currentUser.name + ' (' + currentUser.firm + ')',
+    firms: 1,
+    memberCount: 1,
+    visibility: body.visibility || 'listed',
+    joinPolicy: body.joinPolicy || 'request-approval',
+    tags: Array.isArray(body.tags) ? body.tags : [],
+    summary: (body.summary || '').trim(),
+    members: [{ id: currentUser.id, name: currentUser.name }]
+  }
+  groups.unshift(group)
+  ok(res, group)
+  return next()
+}
+
+function joinGroup (req, res, next) {
+  const g = groups.find(x => x.id === req.params.id)
+  if (!g) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Group not found' } }); return next() }
+  // DEV: record a join request only. Real impl = pending request -> manager/owner
+  // approval (consent-based membership; no auto-join), per the engagement model.
+  ok(res, { success: true, status: 'requested', groupId: g.id, joinPolicy: g.joinPolicy })
+  return next()
+}
+
 function sendOutreach (req, res, next) {
   const body = req.body || {}
   // Purposeful cold-outreach: a reason ("context") is required by design.
@@ -199,6 +244,8 @@ module.exports = {
   getAdvisor,
   listGroups,
   getGroup,
+  createGroup,
+  joinGroup,
   sendOutreach,
   listMessages
 }

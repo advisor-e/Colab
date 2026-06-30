@@ -1,0 +1,65 @@
+<template lang="pug">
+  section.section
+    .container
+      nuxt-link.back-link(to="/discover") ‹ {{ $t('common.back') }}
+      .section-banner.section-banner--groups
+        span.ico ✨
+        h1 {{ $t('group.createTitle') }}
+      .box
+        b-field(:label="$t('group.name')")
+          b-input(v-model="form.name" :placeholder="$t('group.namePlaceholder')")
+        b-field(:label="$t('group.icon')" :message="$t('group.iconHint')")
+          b-input.icon-input(v-model="form.icon" maxlength="2")
+        b-field(:label="$t('group.summaryLabel')")
+          b-input(type="textarea" v-model="form.summary" :placeholder="$t('group.summaryPlaceholder')")
+        b-field(:label="$t('group.tags')")
+          b-taginput(v-model="form.tags" ellipsis :placeholder="$t('profile.addTag')")
+        b-field(:label="$t('group.visibility')")
+          b-select(v-model="form.visibility" expanded)
+            option(value="listed") {{ $t('group.listed') }}
+            option(value="unlisted") {{ $t('group.unlisted') }}
+        .buttons.mt-4
+          b-button(type="is-warning" :loading="saving" @click="create") {{ $t('group.create') }}
+          nuxt-link.button(to="/discover") {{ $t('common.cancel') }}
+</template>
+
+<script>
+export default {
+  name: 'CreateGroupPage',
+  data () {
+    return {
+      form: { name: '', icon: '✨', summary: '', tags: [], visibility: 'listed' },
+      saving: false
+    }
+  },
+  methods: {
+    async create () {
+      if (!this.form.name.trim()) {
+        this.$buefy.toast.open({ message: this.$t('group.name') + '?', type: 'is-warning' })
+        return
+      }
+      this.saving = true
+      try {
+        const res = await fetch('/api/people/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.form)
+        })
+        const g = await res.json()
+        if (g && g.id) {
+          this.$buefy.toast.open({ message: 'Group created', type: 'is-success' })
+          this.$router.push('/groups/' + g.id)
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Could not create group', type: 'is-danger' })
+      } finally {
+        this.saving = false
+      }
+    }
+  }
+}
+</script>
+
+<style scoped>
+.icon-input { max-width: 6rem; }
+</style>

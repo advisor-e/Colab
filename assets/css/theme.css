@@ -194,3 +194,18 @@ a { color: var(--brand); }
 .section-banner--profile  { background: linear-gradient(120deg, var(--brand), var(--brand-2)); }
 .section-banner--discover { background: linear-gradient(120deg, var(--cyan),  #34cbe8); }
 .section-banner--messages { background: linear-gradient(120deg, var(--pink),  #ff8bb0); }
+.section-banner--groups   { background: linear-gradient(120deg, var(--amber), #ffc24f); }
+.section-banner--groups h1 { color: #4a3200; }
+
+/* ===== Group detail ===== */
+.back-link { display: inline-block; color: var(--muted); font-weight: 600; margin-bottom: 1rem; }
+.back-link:hover { color: var(--brand); }
+.members { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
+.member {
+  display: flex; align-items: center; gap: .55rem;
+  background: #faf9ff; border: 1px solid rgba(108,92,231,.08);
+  border-radius: 999px; padding: .3rem .9rem .3rem .3rem; font-weight: 500;
+}
+.member .avatar { width: 34px; height: 34px; border-radius: 10px; margin: 0; font-size: .8rem; }
+.group-head { color: inherit; }
+.group-head:hover .has-text-dark { color: var(--brand) !important; }

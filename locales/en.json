@@ -65,5 +65,25 @@
     "accept": "Accept",
     "skip": "Skip",
     "empty": "Select a conversation."
+  },
+  "group": {
+    "createTitle": "Create a group",
+    "create": "Create group",
+    "createdBy": "Created by",
+    "about": "What we're doing",
+    "members": "Members",
+    "message": "Message the group",
+    "name": "Group name",
+    "namePlaceholder": "e.g. Seafood Financial Modelling",
+    "icon": "Icon",
+    "iconHint": "Pick one emoji to represent the group.",
+    "summaryLabel": "What's it about?",
+    "summaryPlaceholder": "Describe the project and who you're looking for…",
+    "tags": "Specialty tags",
+    "visibility": "Visibility",
+    "listed": "Listed — anyone can find it",
+    "unlisted": "Unlisted — invite only",
+    "requested": "Request sent — the group owner will review it.",
+    "notFound": "Group not found."
   }
 }
