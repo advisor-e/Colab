@@ -10,9 +10,10 @@
       "name": "Start Advisor-e Collaborate",
       "type": "node-terminal",
       "request": "launch",
-      // cmd /c "..." makes nvm + && work regardless of the default shell
-      // (PowerShell or cmd). Starts Nuxt :3000 + Restify :4000 together.
-      "command": "cmd /c \"nvm use 14.15.0 && npm run dev:all\"",
+      // cmd /c "..." runs regardless of the default shell (PowerShell or cmd).
+      // Single "&" (not "&&") so that on machines without nvm it still falls
+      // through to the Node 14.15 already on PATH. Starts Nuxt :3000 + Restify :4000.
+      "command": "cmd /c \"nvm use 14.15.0 & npm run dev:all\"",
       // When the dev server prints its URL, open it in the default browser.
       "serverReadyAction": {
         "pattern": "https?://localhost:([0-9]+)",
