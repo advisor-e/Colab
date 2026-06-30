@@ -157,18 +157,24 @@ function ok (res, data) { res.send(200, data); return }
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+function currentAdvisor (req) {
+  const id = (req.identity && req.identity.advisorId) || currentUser.id
+  return advisors.find(x => x.id === id) || currentUser
+}
+
 function getMe (req, res, next) {
-  ok(res, currentUser)
+  ok(res, currentAdvisor(req))
   return next()
 }
 
 function updateMe (req, res, next) {
+  const target = currentAdvisor(req)
   const body = req.body || {}
   const editable = ['available', 'strengths', 'industries', 'topics', 'about']
   editable.forEach((k) => {
-    if (Object.prototype.hasOwnProperty.call(body, k)) { currentUser[k] = body[k] }
+    if (Object.prototype.hasOwnProperty.call(body, k)) { target[k] = body[k] }
   })
-  ok(res, currentUser)
+  ok(res, target)
   return next()
 }
 
