@@ -126,16 +126,18 @@ The connection points are built and isolated. Each is a small, well-marked seam.
 - UI + theme: Home, **Profile** (incl. email/phone from Advisory), **Discover** (two-sided
   search, people/groups), **Groups** (detail, create, request-to-join), **Messages** (two-pane
   chat, replies). Section colour-coding; history-based back navigation.
-- Cross-cutting: **multi-language** (i18n + on-demand translation) and **voice input**.
-- Integration seams: **auth middleware** (verified), **DB schema + probe + fallback**.
+- **Connections** (1:1 connect → mutual accept; status-aware Discover buttons; Connections page).
+- Cross-cutting: **multi-language** (i18n + on-demand translation), **in-chat translation**
+  (any language → the reader's language), and **voice input**.
+- Integration seams: **auth middleware** (verified), **DB schema + probe + fallback**, and a
+  **single data-layer seam** (`server/data/repository.js`).
 
 **Mocked (in-memory, resets on restart):** all advisors, groups, threads/messages; outreach &
 join requests are recorded in memory only.
 
-**Not yet built (in the plan, not in code):** 1:1 **connections** flow; **RBAC / role
-hierarchy** enforcement (Mentor→Global→Group→Firm→Advisor); **cross-org engagement policy**
-enforcement; **marketplace/licensing**; manager **bulk-invite**; real **chat translation**
-(infra is present, not wired into the message view); **audit logging**.
+**Not yet built (in the plan, not in code):** **RBAC / role hierarchy** enforcement
+(Mentor→Global→Group→Firm→Advisor); **cross-org engagement policy** enforcement;
+**marketplace/licensing**; manager **bulk-invite**; **audit logging**.
 
 ---
 
