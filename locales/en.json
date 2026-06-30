@@ -67,7 +67,8 @@
     "empty": "Select a conversation.",
     "sendBtn": "Send",
     "noMessages": "No messages yet — say hello.",
-    "groupTag": "Group"
+    "groupTag": "Group",
+    "translate": "Translate"
   },
   "group": {
     "createTitle": "Create a group",

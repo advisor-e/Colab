@@ -44,7 +44,11 @@ function httpsGet (urlString) {
 }
 
 async function post (req, res) {
-  const { texts, langCode } = req.body || {}
+  const { texts, langCode, from } = req.body || {}
+  // Source language defaults to English (the bundled base locale). Chat
+  // translation passes `from` = the message's own language so any language can
+  // be translated into the reader's language.
+  const sourceLang = from || 'en'
 
   if (!texts || !langCode) {
     res.send(400, { success: false, error: { code: 'PARAMS_REQUIRED', message: 'texts and langCode are required' } })
@@ -80,7 +84,7 @@ async function post (req, res) {
   // dropping strings or failing the whole request.
   for (const chunkKeys of chunks) {
     const combined = chunkKeys.map(k => String(texts[k] || '')).join(SEPARATOR)
-    const params = new URLSearchParams({ q: combined, langpair: `en|${langCode}` })
+    const params = new URLSearchParams({ q: combined, langpair: `${sourceLang}|${langCode}` })
     if (email) { params.set('de', email) }
 
     let mmRes
