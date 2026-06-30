@@ -15,12 +15,12 @@
 const repo = require('../data/repository')
 
 function ok (res, data) { res.send(200, data) }
-function fail (res, status, code, message) { res.send(status, { success: false, error: { code: code, message: message } }) }
+function fail (res, status, code, message) { res.send(status, { success: false, error: { code, message } }) }
 
 // Resolve the logged-in advisor (dev identity = 'me' under ALLOW_DEV_AUTH).
 async function currentAdvisor (req) {
   const id = (req.identity && req.identity.advisorId) || 'me'
-  return (await repo.getAdvisorById(id)) || { id: id, name: 'You', firm: 'Advisor-e' }
+  return (await repo.getAdvisorById(id)) || { id, name: 'You', firm: 'Advisor-e' }
 }
 
 async function getMe (req, res) {
@@ -37,7 +37,7 @@ async function listAdvisors (req, res) {
   const q = (req.query && req.query.q) || ''
   const availableOnly = req.query && (req.query.available === 'true' || req.query.available === '1')
   const me = await currentAdvisor(req)
-  ok(res, await repo.listAdvisors({ q: q, availableOnly: availableOnly, excludeId: me.id, myId: me.id }))
+  ok(res, await repo.listAdvisors({ q, availableOnly, excludeId: me.id, myId: me.id }))
 }
 
 async function getAdvisor (req, res) {
@@ -77,7 +77,7 @@ async function messageGroup (req, res) {
   const text = ((req.body || {}).text || '').trim()
   if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
   const t = await repo.findOrCreateGroupThread(g)
-  await repo.appendMessage(t.id, { from: 'Me', text: text })
+  await repo.appendMessage(t.id, { from: 'Me', text })
   ok(res, { success: true, threadId: t.id })
 }
 
@@ -87,7 +87,7 @@ async function sendOutreach (req, res) {
   if (!body.toId || !body.context) { fail(res, 400, 'MISSING_REASON', 'An outreach must name a recipient and explain why you are reaching out.'); return }
   const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
-  const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text: text })
+  const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text })
   ok(res, { success: true, sent: true, threadId: t.id })
 }
 
@@ -105,7 +105,7 @@ async function getThread (req, res) {
 async function replyThread (req, res) {
   const text = ((req.body || {}).text || '').trim()
   if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
-  const t = await repo.appendMessage(req.params.id, { from: 'Me', text: text })
+  const t = await repo.appendMessage(req.params.id, { from: 'Me', text })
   if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)
 }
@@ -164,9 +164,25 @@ async function purchaseListing (req, res) {
 }
 
 module.exports = {
-  getMe, updateMe, listAdvisors, getAdvisor,
-  listGroups, getGroup, createGroup, joinGroup, messageGroup,
-  sendOutreach, listMessages, getThread, replyThread,
-  listConnections, connect, acceptConnection, declineConnection,
-  listMarketplace, getListing, createListing, purchaseListing
+  getMe,
+  updateMe,
+  listAdvisors,
+  getAdvisor,
+  listGroups,
+  getGroup,
+  createGroup,
+  joinGroup,
+  messageGroup,
+  sendOutreach,
+  listMessages,
+  getThread,
+  replyThread,
+  listConnections,
+  connect,
+  acceptConnection,
+  declineConnection,
+  listMarketplace,
+  getListing,
+  createListing,
+  purchaseListing
 }

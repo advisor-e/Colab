@@ -52,8 +52,18 @@ export default {
   data () {
     return {
       advisorProfile: {
-        name: '', title: '', firm: '', city: '', country: '', timezone: '',
-        linkedin: '', available: false, strengths: [], industries: [], topics: [], about: ''
+        name: '',
+        title: '',
+        firm: '',
+        city: '',
+        country: '',
+        timezone: '',
+        linkedin: '',
+        available: false,
+        strengths: [],
+        industries: [],
+        topics: [],
+        about: ''
       },
       loading: true,
       saving: false,

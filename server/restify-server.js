@@ -28,12 +28,12 @@
 }())
 
 const restify = require('restify')
+const { DB } = require('../config/integration')
 const health = require('./routes/health')
 const translate = require('./routes/translate')
 const people = require('./routes/people')
 const { auth } = require('./middleware/auth')
 const pool = require('./utils/db')
-const { DB } = require('../config/integration')
 
 const PORT = process.env.BACKEND_PORT || 4000
 
@@ -90,5 +90,5 @@ server.listen(PORT, () => {
   // Non-fatal DB probe: confirm MySQL, or fall back to the in-memory dev store.
   pool.query('SELECT 1')
     .then(() => console.error('[db] MySQL connected (' + DB.database + ')'))
-    .catch((e) => console.error('[db] MySQL unavailable — using in-memory dev store (' + (e && e.code ? e.code : e.message) + ')'))
+    .catch(e => console.error('[db] MySQL unavailable — using in-memory dev store (' + (e && e.code ? e.code : e.message) + ')'))
 })
