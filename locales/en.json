@@ -64,7 +64,10 @@
     "autoTranslate": "Auto-translate",
     "accept": "Accept",
     "skip": "Skip",
-    "empty": "Select a conversation."
+    "empty": "Select a conversation.",
+    "sendBtn": "Send",
+    "noMessages": "No messages yet — say hello.",
+    "groupTag": "Group"
   },
   "group": {
     "createTitle": "Create a group",

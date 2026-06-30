@@ -111,15 +111,33 @@ const groups = [
   }
 ]
 
-// Mock message threads + incoming requests for the current user.
-const messages = {
-  requests: [
-    { id: 'req-1', fromId: 'bob-lindt', fromName: 'Bob Lindt', preview: 'Gerne! Wann passt es Ihnen?', lang: 'de' },
-    { id: 'req-2', fromId: 'anna-r', fromName: 'Anna Richter', preview: 'Would you join the seafood group?', lang: 'en' }
-  ],
-  chats: [
-    { id: 'chat-seafood', name: 'Seafood Financial Modelling', kind: 'group' }
-  ]
+// Mock conversation threads — incoming requests + active chats.
+const threads = [
+  {
+    id: 't-bob', kind: 'outreach', withId: 'bob-lindt', withName: 'Bob Lindt',
+    status: 'request', direction: 'incoming',
+    messages: [{ from: 'Bob Lindt', text: 'Gerne! Wann passt es Ihnen?', lang: 'de' }]
+  },
+  {
+    id: 't-anna', kind: 'outreach', withId: 'anna-r', withName: 'Anna Richter',
+    status: 'request', direction: 'incoming',
+    messages: [{ from: 'Anna Richter', text: 'Would you be open to joining the seafood modelling group?', lang: 'en' }]
+  },
+  {
+    id: 't-seafood-grp', kind: 'group', withId: 'seafood-modelling', withName: 'Seafood Financial Modelling',
+    status: 'active', direction: 'outgoing',
+    messages: [{ from: 'Anna Richter', text: 'Welcome — glad to have you looking at this!', lang: 'en' }]
+  }
+]
+let threadSeq = 1
+
+function threadSummary (t) {
+  const last = t.messages[t.messages.length - 1] || null
+  return {
+    id: t.id, kind: t.kind, withId: t.withId, withName: t.withName,
+    status: t.status, direction: t.direction,
+    lastText: last ? last.text : '', lastFrom: last ? last.from : ''
+  }
 }
 
 let currentUser = advisors[0]
@@ -220,6 +238,21 @@ function joinGroup (req, res, next) {
   return next()
 }
 
+function messageGroup (req, res, next) {
+  const g = groups.find(x => x.id === req.params.id)
+  if (!g) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Group not found' } }); return next() }
+  const text = ((req.body || {}).text || '').trim()
+  if (!text) { res.send(400, { success: false, error: { code: 'EMPTY', message: 'Message is empty.' } }); return next() }
+  let t = threads.find(x => x.kind === 'group' && x.withId === g.id)
+  if (!t) {
+    t = { id: 't-grp-' + (threadSeq++), kind: 'group', withId: g.id, withName: g.name, status: 'active', direction: 'outgoing', messages: [] }
+    threads.unshift(t)
+  }
+  t.messages.push({ from: 'Me', text: text, lang: 'en' })
+  ok(res, { success: true, threadId: t.id })
+  return next()
+}
+
 function sendOutreach (req, res, next) {
   const body = req.body || {}
   // Purposeful cold-outreach: a reason ("context") is required by design.
@@ -227,13 +260,39 @@ function sendOutreach (req, res, next) {
     res.send(400, { success: false, error: { code: 'MISSING_REASON', message: 'An outreach must name a recipient and explain why you are reaching out.' } })
     return next()
   }
-  // DEV: record only. Real impl enforces one-pending-per-recipient + rate limits.
-  ok(res, { success: true, sent: true, toId: body.toId })
+  // Create an outgoing conversation thread so the outreach appears in Messages.
+  const advisor = advisors.find(a => a.id === body.toId)
+  const text = body.context + (body.ask ? '\n\n' + body.ask : '')
+  const t = {
+    id: 't-out-' + (threadSeq++), kind: 'outreach', withId: body.toId,
+    withName: advisor ? advisor.name : body.toId, status: 'active', direction: 'outgoing',
+    messages: [{ from: 'Me', text: text, lang: 'en' }]
+  }
+  threads.unshift(t)
+  ok(res, { success: true, sent: true, threadId: t.id })
   return next()
 }
 
 function listMessages (req, res, next) {
-  ok(res, messages)
+  ok(res, { threads: threads.map(threadSummary) })
+  return next()
+}
+
+function getThread (req, res, next) {
+  const t = threads.find(x => x.id === req.params.id)
+  if (!t) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }); return next() }
+  ok(res, t)
+  return next()
+}
+
+function replyThread (req, res, next) {
+  const t = threads.find(x => x.id === req.params.id)
+  if (!t) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }); return next() }
+  const text = ((req.body || {}).text || '').trim()
+  if (!text) { res.send(400, { success: false, error: { code: 'EMPTY', message: 'Message is empty.' } }); return next() }
+  t.messages.push({ from: 'Me', text: text, lang: 'en' })
+  if (t.status === 'request') { t.status = 'active' }
+  ok(res, t)
   return next()
 }
 
@@ -246,6 +305,9 @@ module.exports = {
   getGroup,
   createGroup,
   joinGroup,
+  messageGroup,
   sendOutreach,
-  listMessages
+  listMessages,
+  getThread,
+  replyThread
 }

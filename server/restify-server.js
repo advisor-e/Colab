@@ -66,8 +66,11 @@ server.get('/api/people/groups', people.listGroups)
 server.post('/api/people/groups', people.createGroup)
 server.get('/api/people/groups/:id', people.getGroup)
 server.post('/api/people/groups/:id/join', people.joinGroup)
+server.post('/api/people/groups/:id/message', people.messageGroup)
 server.post('/api/people/outreach', people.sendOutreach)
 server.get('/api/people/messages', people.listMessages)
+server.get('/api/people/messages/:id', people.getThread)
+server.post('/api/people/messages/:id/reply', people.replyThread)
 
 server.listen(PORT, () => {
   console.error('[restify] advisor-collaborate-api listening on port ' + PORT)

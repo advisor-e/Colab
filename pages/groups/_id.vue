@@ -22,13 +22,23 @@
           .buttons.mt-5
             b-button(type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
             b-button(@click="messageGroup") {{ $t('group.message') }}
+
+        b-modal(v-model="msgOpen" has-modal-card)
+          .modal-card
+            header.modal-card-head
+              p.modal-card-title {{ $t('group.message') }} · {{ group.name }}
+            section.modal-card-body
+              b-input(type="textarea" v-model="msgText" :placeholder="$t('messages.type')")
+            footer.modal-card-foot
+              b-button(type="is-warning" @click="sendGroupMessage") {{ $t('messages.sendBtn') }}
+              b-button(@click="msgOpen = false") {{ $t('common.cancel') }}
 </template>
 
 <script>
 export default {
   name: 'GroupDetailPage',
   data () {
-    return { group: null, loading: true, joining: false }
+    return { group: null, loading: true, joining: false, msgOpen: false, msgText: '' }
   },
   async mounted () {
     try {
@@ -67,7 +77,23 @@ export default {
       }
     },
     messageGroup () {
-      this.$buefy.toast.open({ message: this.$t('group.message') + ' — coming soon', type: 'is-info' })
+      this.msgOpen = true
+    },
+    async sendGroupMessage () {
+      const text = (this.msgText || '').trim()
+      if (!text) { return }
+      try {
+        const res = await fetch('/api/people/groups/' + this.group.id + '/message', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.msgOpen = false
+          this.$router.push('/messages?thread=' + data.threadId)
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
+      }
     }
   }
 }

@@ -163,6 +163,7 @@ export default {
         if (data.success) {
           this.outreachOpen = false
           this.$buefy.toast.open({ message: this.$t('outreach.sent'), type: 'is-success' })
+          this.$router.push('/messages?thread=' + data.threadId)
         }
       } catch (e) {
         this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
