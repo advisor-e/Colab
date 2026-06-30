@@ -10,7 +10,14 @@
           p.heading {{ $t('profile.fromAdvisory') }}
           p.is-size-5.has-text-weight-semibold {{ advisorProfile.name }} · {{ advisorProfile.title }} · {{ advisorProfile.firm }}
           p {{ advisorProfile.city }}, {{ advisorProfile.country }} · {{ advisorProfile.timezone }}
+          p(v-if="advisorProfile.email")
+            span.contact-ico ✉️
+            a(:href="'mailto:' + advisorProfile.email") {{ advisorProfile.email }}
+          p(v-if="advisorProfile.phone")
+            span.contact-ico ☎️
+            a(:href="'tel:' + advisorProfile.phone") {{ advisorProfile.phone }}
           p(v-if="advisorProfile.linkedin")
+            span.contact-ico 🔗
             a(:href="advisorProfile.linkedin" target="_blank" rel="noopener") {{ advisorProfile.linkedin }}
 
         b-field(:label="$t('profile.availability')")
@@ -96,4 +103,5 @@ export default {
 .about-row { display: flex; align-items: flex-start; gap: 0.5rem; width: 100%; }
 .about-input { flex: 1; }
 .mic { font-size: 1.1rem; }
+.contact-ico { display: inline-block; width: 1.5rem; }
 </style>

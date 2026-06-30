@@ -21,6 +21,8 @@ const advisors = [
     country: 'DE',
     timezone: 'CET',
     linkedin: 'https://linkedin.com/in/mikebarnes',
+    email: 'mike@advisor-e.com',
+    phone: '+49 89 5550 1234',
     available: true,
     strengths: ['capital raising', 'tax'],
     industries: ['seafood', 'hospitality'],
