@@ -15,6 +15,9 @@
   Sync tools fight with Git, can corrupt `.git`, and — worst of all — make a stale
   copy *look* up to date when it isn't. (The old `...\Dropbox\...\Colab` copy is
   retired; don't commit from it.)
+  - **Automatic guard:** `npm run dev` / `dev:all` / `backend` / `start` refuse to
+    start if the project sits in a sync folder (see `scripts/check-run-location.js`),
+    pointing you to the C: copy. Override only if you must: `ALLOW_SYNC_FOLDER=true`.
 - One machine, one clone. If you must work on another machine, clone fresh from
   GitHub there — never copy the folder around by hand.
 
