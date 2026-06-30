@@ -32,7 +32,8 @@
     "connect": "Connect",
     "connected": "Connected",
     "requested": "Requested",
-    "respond": "Respond"
+    "respond": "Respond",
+    "inviteToGroup": "Invite to group"
   },
   "profile": {
     "title": "My Profile",
@@ -79,6 +80,19 @@
     "noMessages": "No messages yet — say hello.",
     "groupTag": "Group",
     "translate": "Translate"
+  },
+  "invite": {
+    "title": "Invite to group",
+    "whichGroup": "Which group?",
+    "note": "Add a note (why you'd like them to join)",
+    "send": "Send invite",
+    "sent": "Invitation sent",
+    "noGroups": "You don't manage any groups yet — create one first.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "joined": "You've joined the group",
+    "declined": "Invitation declined",
+    "handled": "This invitation has been handled."
   },
   "group": {
     "createTitle": "Create a group",
