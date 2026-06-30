@@ -1,0 +1,41 @@
+name: CI
+
+# Quality gate for the Advisor-e Collaborate repo. Runs on every push to main and
+# every pull request targeting main. The job mirrors the local pre-commit gate
+# (lint + tests) and additionally proves the production build, on the LOCKED
+# runtime Node 14.15 (CLAUDE.md Stack Constitution, req. 9).
+#
+# Branch protection on `main` should REQUIRE the "verify" job below before merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Lint, test & build (Node 14.15)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 14.15 (locked runtime)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '14.15.0'
+          cache: npm
+
+      - name: Install dependencies (clean, from lockfile)
+        run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Unit tests (Jest)
+        run: npm test
+
+      - name: Production build (nuxt build)
+        run: npm run build
