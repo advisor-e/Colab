@@ -78,7 +78,7 @@ export default {
   mixins: [speechMixin],
   data () {
     return {
-      tab: 'people',
+      tab: this.$route.query.tab === 'groups' ? 'groups' : 'people',
       inputText: '',
       availableOnly: false,
       people: [],
@@ -90,7 +90,14 @@ export default {
     }
   },
   watch: {
-    tab () { this.search() }
+    tab (val) {
+      // Keep the active tab in the URL so "back" from a group returns here
+      // on the same tab, instead of resetting to People.
+      if (this.$route.query.tab !== val) {
+        this.$router.replace({ query: { ...this.$route.query, tab: val } }).catch(() => {})
+      }
+      this.search()
+    }
   },
   mounted () {
     this.search()

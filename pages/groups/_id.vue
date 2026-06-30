@@ -1,7 +1,7 @@
 <template lang="pug">
   section.section
     .container
-      nuxt-link.back-link(to="/discover") ‹ {{ $t('common.back') }}
+      a.back-link(@click="$router.back()") ‹ {{ $t('common.back') }}
       b-message(v-if="loading" type="is-info") Loading…
       b-message(v-else-if="!group" type="is-danger") {{ $t('group.notFound') }}
       template(v-else)

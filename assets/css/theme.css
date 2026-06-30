@@ -198,7 +198,7 @@ a { color: var(--brand); }
 .section-banner--groups h1 { color: #4a3200; }
 
 /* ===== Group detail ===== */
-.back-link { display: inline-block; color: var(--muted); font-weight: 600; margin-bottom: 1rem; }
+.back-link { display: inline-block; color: var(--muted); font-weight: 600; margin-bottom: 1rem; cursor: pointer; }
 .back-link:hover { color: var(--brand); }
 .members { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
 .member {

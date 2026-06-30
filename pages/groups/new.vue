@@ -1,7 +1,7 @@
 <template lang="pug">
   section.section
     .container
-      nuxt-link.back-link(to="/discover") ‹ {{ $t('common.back') }}
+      a.back-link(@click="$router.back()") ‹ {{ $t('common.back') }}
       .section-banner.section-banner--groups
         span.ico ✨
         h1 {{ $t('group.createTitle') }}
