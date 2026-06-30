@@ -1,0 +1,24 @@
+{
+  // Adds entries to VS Code's "Run and Debug" panel (the play ▷ menu, top-left).
+  // Pick "Start Advisor-e Collaborate" and press the green arrow (or F5):
+  // it runs the full app on Node 14.15 in the integrated terminal and opens it
+  // in your default browser (Chrome) automatically once it's ready.
+  // Press the red square (Stop) to shut it down.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Start Advisor-e Collaborate",
+      "type": "node-terminal",
+      "request": "launch",
+      // cmd /c "..." makes nvm + && work regardless of the default shell
+      // (PowerShell or cmd). Starts Nuxt :3000 + Restify :4000 together.
+      "command": "cmd /c \"nvm use 14.15.0 && npm run dev:all\"",
+      // When the dev server prints its URL, open it in the default browser.
+      "serverReadyAction": {
+        "pattern": "https?://localhost:([0-9]+)",
+        "uriFormat": "http://localhost:3000",
+        "action": "openExternally"
+      }
+    }
+  ]
+}
