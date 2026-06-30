@@ -4,6 +4,7 @@
   },
   "nav": {
     "discover": "Discover",
+    "connections": "Connections",
     "profile": "My Profile",
     "messages": "Messages"
   },
@@ -22,7 +23,11 @@
     "view": "View",
     "reachOut": "Reach out",
     "requestToJoin": "Request to join",
-    "back": "Back"
+    "back": "Back",
+    "connect": "Connect",
+    "connected": "Connected",
+    "requested": "Requested",
+    "respond": "Respond"
   },
   "profile": {
     "title": "My Profile",
@@ -89,5 +94,18 @@
     "unlisted": "Unlisted — invite only",
     "requested": "Request sent — the group owner will review it.",
     "notFound": "Group not found."
+  },
+  "connections": {
+    "title": "Connections",
+    "incoming": "Requests to connect",
+    "yourConnections": "Your connections",
+    "pending": "Requests you've sent",
+    "accept": "Accept",
+    "decline": "Decline",
+    "noIncoming": "No pending requests.",
+    "noConnections": "No connections yet — find people in Discover.",
+    "requestedLabel": "Awaiting their response",
+    "acceptedToast": "Connected!",
+    "declinedToast": "Request declined."
   }
 }

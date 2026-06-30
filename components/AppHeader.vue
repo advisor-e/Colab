@@ -5,6 +5,7 @@
     .navbar-menu.is-active
       .navbar-start
         nuxt-link.navbar-item.nav-link.nav--discover(to="/discover") {{ $t('nav.discover') }}
+        nuxt-link.navbar-item.nav-link.nav--connections(to="/connections") {{ $t('nav.connections') }}
         nuxt-link.navbar-item.nav-link.nav--profile(to="/profile") {{ $t('nav.profile') }}
         nuxt-link.navbar-item.nav-link.nav--messages(to="/messages") {{ $t('nav.messages') }}
       .navbar-end

@@ -78,6 +78,20 @@ const threads = [
 ]
 let threadSeq = 1
 
+const connections = [
+  { id: 'c-anna', requesterId: 'anna-r', addresseeId: 'me', status: 'pending' },     // Anna -> me (incoming request)
+  { id: 'c-sara', requesterId: 'me', addresseeId: 'sara-okafor', status: 'accepted' } // me <-> Sara (connected)
+]
+let connSeq = 1
+
+function connectionStatusFor (myId, otherId) {
+  const c = connections.find(x => (x.requesterId === myId && x.addresseeId === otherId) || (x.requesterId === otherId && x.addresseeId === myId))
+  if (!c) { return 'none' }
+  if (c.status === 'accepted') { return 'connected' }
+  if (c.status === 'pending') { return c.requesterId === myId ? 'pending_out' : 'pending_in' }
+  return 'none'
+}
+
 function matchesQuery (a, q) {
   if (!q) { return true }
   const hay = [a.name, a.firm, a.city, a.about].concat(a.strengths || [], a.industries || [], a.topics || [], a.tags || []).join(' ').toLowerCase()
@@ -97,12 +111,15 @@ async function getAdvisorById (id) {
 }
 
 async function listAdvisors (opts) {
-  // SQL SEAM: SELECT … WHERE id<>? AND (search match) AND (available=1 if filtered) — joined w/ Advisory identity
+  // SQL SEAM: SELECT … WHERE id<>? AND (search match) AND (available=1 if filtered) — joined w/ Advisory
+  //           identity; LEFT JOIN connection to derive each advisor's status vs the viewer.
   const o = opts || {}
+  const viewer = o.myId || o.excludeId
   return advisors
     .filter(a => a.id !== o.excludeId)
     .filter(a => matchesQuery(a, o.q))
     .filter(a => (o.availableOnly ? a.available : true))
+    .map(a => Object.assign({}, a, { connectionStatus: connectionStatusFor(viewer, a.id) }))
 }
 
 async function updateAdvisorInterest (id, fields) {
@@ -190,8 +207,44 @@ async function findOrCreateGroupThread (group) {
   return t
 }
 
+// ── Connections (1:1, mutual accept) ─────────────────────────────────────────
+
+async function requestConnection (fromId, toId) {
+  // SQL SEAM: INSERT INTO connection (requester_id, addressee_id, 'pending') ON DUPLICATE KEY UPDATE …
+  if (fromId === toId) { return null }
+  let c = connections.find(x => (x.requesterId === fromId && x.addresseeId === toId) || (x.requesterId === toId && x.addresseeId === fromId))
+  if (!c) {
+    c = { id: 'c-' + (connSeq++), requesterId: fromId, addresseeId: toId, status: 'pending' }
+    connections.push(c)
+  }
+  return c
+}
+
+async function listConnections (myId) {
+  // SQL SEAM: SELECT * FROM connection WHERE requester_id=? OR addressee_id=? (join Advisory identity)
+  const enrich = (c) => {
+    const otherId = c.requesterId === myId ? c.addresseeId : c.requesterId
+    return { id: c.id, status: c.status, advisor: advisors.find(x => x.id === otherId) || { id: otherId, name: otherId } }
+  }
+  const mine = connections.filter(c => c.requesterId === myId || c.addresseeId === myId)
+  return {
+    incoming: mine.filter(c => c.status === 'pending' && c.addresseeId === myId).map(enrich),
+    outgoing: mine.filter(c => c.status === 'pending' && c.requesterId === myId).map(enrich),
+    connected: mine.filter(c => c.status === 'accepted').map(enrich)
+  }
+}
+
+async function respondConnection (connId, myId, accept) {
+  // SQL SEAM: UPDATE connection SET status=? WHERE id=? AND addressee_id=? AND status='pending'
+  const c = connections.find(x => x.id === connId)
+  if (!c || c.addresseeId !== myId || c.status !== 'pending') { return null }
+  c.status = accept ? 'accepted' : 'declined'
+  return c
+}
+
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup,
-  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread
+  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
+  requestConnection, listConnections, respondConnection
 }

@@ -76,6 +76,10 @@ server.post('/api/people/outreach', auth, people.sendOutreach)
 server.get('/api/people/messages', auth, people.listMessages)
 server.get('/api/people/messages/:id', auth, people.getThread)
 server.post('/api/people/messages/:id/reply', auth, people.replyThread)
+server.get('/api/people/connections', auth, people.listConnections)
+server.post('/api/people/advisors/:id/connect', auth, people.connect)
+server.post('/api/people/connections/:id/accept', auth, people.acceptConnection)
+server.post('/api/people/connections/:id/decline', auth, people.declineConnection)
 
 server.listen(PORT, () => {
   console.error('[restify] advisor-collaborate-api listening on port ' + PORT)

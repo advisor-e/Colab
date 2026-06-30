@@ -37,7 +37,7 @@ async function listAdvisors (req, res) {
   const q = (req.query && req.query.q) || ''
   const availableOnly = req.query && (req.query.available === 'true' || req.query.available === '1')
   const me = await currentAdvisor(req)
-  ok(res, await repo.listAdvisors({ q: q, availableOnly: availableOnly, excludeId: me.id }))
+  ok(res, await repo.listAdvisors({ q: q, availableOnly: availableOnly, excludeId: me.id, myId: me.id }))
 }
 
 async function getAdvisor (req, res) {
@@ -110,8 +110,36 @@ async function replyThread (req, res) {
   ok(res, t)
 }
 
+async function listConnections (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listConnections(me.id))
+}
+
+async function connect (req, res) {
+  const me = await currentAdvisor(req)
+  if (req.params.id === me.id) { fail(res, 400, 'SELF', 'You cannot connect with yourself.'); return }
+  const c = await repo.requestConnection(me.id, req.params.id)
+  if (!c) { fail(res, 400, 'BAD_REQUEST', 'Could not create the request.'); return }
+  ok(res, { success: true, status: c.status })
+}
+
+async function acceptConnection (req, res) {
+  const me = await currentAdvisor(req)
+  const c = await repo.respondConnection(req.params.id, me.id, true)
+  if (!c) { fail(res, 404, 'NOT_FOUND', 'Request not found.'); return }
+  ok(res, { success: true, status: c.status })
+}
+
+async function declineConnection (req, res) {
+  const me = await currentAdvisor(req)
+  const c = await repo.respondConnection(req.params.id, me.id, false)
+  if (!c) { fail(res, 404, 'NOT_FOUND', 'Request not found.'); return }
+  ok(res, { success: true, status: c.status })
+}
+
 module.exports = {
   getMe, updateMe, listAdvisors, getAdvisor,
   listGroups, getGroup, createGroup, joinGroup, messageGroup,
-  sendOutreach, listMessages, getThread, replyThread
+  sendOutreach, listMessages, getThread, replyThread,
+  listConnections, connect, acceptConnection, declineConnection
 }

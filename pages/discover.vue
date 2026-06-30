@@ -34,7 +34,12 @@
                   b-tag.ml-2(v-if="p.available" type="is-success") {{ $t('common.available') }}
                 p.has-text-grey Strengths: {{ (p.strengths || []).join(', ') }}
             .level-right
-              button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
+              .buttons
+                button.button.is-small(v-if="!p.connectionStatus || p.connectionStatus === 'none'" @click="connect(p)") ＋ {{ $t('common.connect') }}
+                span.button.is-small.is-static(v-else-if="p.connectionStatus === 'pending_out'") ⏳ {{ $t('common.requested') }}
+                nuxt-link.button.is-small.is-light(v-else-if="p.connectionStatus === 'pending_in'" to="/connections") {{ $t('common.respond') }}
+                span.button.is-small.is-success.is-light(v-else-if="p.connectionStatus === 'connected'") ✓ {{ $t('common.connected') }}
+                button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
 
       template(v-else)
         .buttons.is-right.mb-2
@@ -121,6 +126,20 @@ export default {
         })
         const data = await res.json()
         if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
+      } catch (e) {
+        this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
+      }
+    },
+    async connect (p) {
+      try {
+        const res = await fetch('/api/people/advisors/' + p.id + '/connect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+        })
+        const data = await res.json()
+        if (data.success) {
+          p.connectionStatus = 'pending_out'
+          this.$buefy.toast.open({ message: this.$t('common.requested'), type: 'is-success' })
+        }
       } catch (e) {
         this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
       }
