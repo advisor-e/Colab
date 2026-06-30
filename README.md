@@ -7,6 +7,10 @@ sibling of the Virt Advisor app, built to the same Stack Constitution (see [`CLA
 Planning docs live in [`design/`](design/) — start with
 [`design/advisor-collaboration-platform-plan.md`](design/advisor-collaboration-platform-plan.md).
 
+> **Integrating this into Advisory.com? → read [`HANDOVER.md`](HANDOVER.md) first.** It covers
+> how to run the app, the login + MySQL connection seams, required env vars, and what's
+> built vs mocked vs to-do.
+
 ## Stack (locked — see CLAUDE.md)
 
 - **Frontend:** Nuxt 2 / Vue 2 (Options API, Pug, Buefy + Bulma), vue-i18n — port 3000.
