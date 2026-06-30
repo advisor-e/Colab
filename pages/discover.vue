@@ -30,9 +30,10 @@
               .avatar(:style="avatarStyle(p)") {{ initials(p.name) }}
               div
                 p.is-size-5.has-text-weight-semibold
-                  | {{ p.name }} · {{ p.title }} · {{ p.city }}, {{ p.country }}
+                  | {{ p.name }}
                   b-tag.ml-2(v-if="p.available" type="is-success") {{ $t('common.available') }}
-                p.has-text-grey Strengths: {{ (p.strengths || []).join(', ') }}
+                p.has-text-grey.is-size-7 {{ p.title }} · {{ p.firm }} · {{ p.city }}, {{ p.country }}
+                p.has-text-grey.is-size-7 {{ (p.strengths || []).join(', ') }}
             .level-right
               .buttons
                 button.button.is-small(v-if="!p.connectionStatus || p.connectionStatus === 'none'" @click="connect(p)") ＋ {{ $t('common.connect') }}

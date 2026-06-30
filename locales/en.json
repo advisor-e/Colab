@@ -14,7 +14,11 @@
     "subtitle": "The collaboration network for advisers — discover specialists, form specialty groups, and co-create the tools you use with clients.",
     "profileDesc": "Advertise your strengths and what you're open to.",
     "discoverDesc": "Find advisers and specialty groups across the network.",
-    "messagesDesc": "Reach out, get replies, and start collaborating."
+    "messagesDesc": "Reach out, get replies, and start collaborating.",
+    "connectionsDesc": "Your network and the groups you're in.",
+    "groups": "Groups",
+    "groupsDesc": "Form and join specialty groups.",
+    "marketDesc": "Buy and license tools other groups have built."
   },
   "common": {
     "search": "Search",
