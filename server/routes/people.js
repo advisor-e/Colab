@@ -1,319 +1,117 @@
 'use strict'
 
 /**
- * People-layer routes — DEV mock implementation.
+ * People-layer routes — thin HTTP handlers over server/data/repository.js.
  *
- * Serves in-memory mock advisors, groups, and messages so the UI can be built
- * and clicked through before MySQL + Advisory profile/auth integration lands.
- * Replace the in-memory stores with raw-SQL queries (mysql2) once the schema +
- * Advisory identity are wired — the handler shapes stay the same.
+ * Identity comes from req.identity (set by server/middleware/auth.js), never the
+ * request body. All data access goes through the repository, which is the single
+ * seam for connecting MySQL (see server/data/repository.js).
+ *
+ * NOTE: these are async handlers. Restify 9 requires async handlers to take
+ * (req, res) only — it advances the chain when the promise resolves. Do NOT add
+ * a `next` argument here (that triggers a startup assertion).
  */
 
-// ── Mock data ──────────────────────────────────────────────────────────────
+const repo = require('../data/repository')
 
-const advisors = [
-  {
-    id: 'me',
-    name: 'Mike Barnes',
-    title: 'Partner',
-    firm: 'Advisor-e',
-    city: 'Munich',
-    country: 'DE',
-    timezone: 'CET',
-    linkedin: 'https://linkedin.com/in/mikebarnes',
-    email: 'mike@advisor-e.com',
-    phone: '+49 89 5550 1234',
-    available: true,
-    strengths: ['capital raising', 'tax'],
-    industries: ['seafood', 'hospitality'],
-    topics: ['M&A', 'valuations'],
-    about: '20 yrs helping owner-managed firms with growth and exit.'
-  },
-  {
-    id: 'bob-lindt',
-    name: 'Bob Lindt',
-    title: 'Partner',
-    firm: 'Lindt & Co',
-    city: 'Zürich',
-    country: 'CH',
-    timezone: 'CET',
-    linkedin: '',
-    available: true,
-    strengths: ['capital raising', 'debt structuring'],
-    industries: ['manufacturing'],
-    topics: ['funding rounds'],
-    about: 'Corporate finance specialist focused on growth funding.'
-  },
-  {
-    id: 'anna-r',
-    name: 'Anna Richter',
-    title: 'Director',
-    firm: 'BDO Germany',
-    city: 'Hamburg',
-    country: 'DE',
-    timezone: 'CET',
-    linkedin: '',
-    available: false,
-    strengths: ['financial modelling', 'valuation'],
-    industries: ['seafood', 'food production'],
-    topics: ['forecasting'],
-    about: 'Builds valuation models for food-production businesses.'
-  },
-  {
-    id: 'sara-okafor',
-    name: 'Sara Okafor',
-    title: 'Senior Adviser',
-    firm: 'Okafor Advisory',
-    city: 'Dublin',
-    country: 'IE',
-    timezone: 'GMT',
-    linkedin: '',
-    available: true,
-    strengths: ['business coaching', 'succession'],
-    industries: ['hospitality', 'retail'],
-    topics: ['exit planning'],
-    about: 'Coaches owner-managers through scale-up and succession.'
-  }
-]
+function ok (res, data) { res.send(200, data) }
+function fail (res, status, code, message) { res.send(status, { success: false, error: { code: code, message: message } }) }
 
-const groups = [
-  {
-    id: 'seafood-modelling',
-    name: 'Seafood Financial Modelling',
-    icon: '🐟',
-    createdBy: 'Anna Richter (BDO DE)',
-    firms: 5,
-    memberCount: 12,
-    visibility: 'listed',
-    joinPolicy: 'request-approval',
-    tags: ['seafood', 'valuation', 'capital raising'],
-    summary: 'Building a shared valuation + capital-raising model for seafood processors. We would love capital-raising experience.',
-    members: [
-      { id: 'anna-r', name: 'Anna Richter' },
-      { id: 'sara-okafor', name: 'Sara Okafor' },
-      { id: 'bob-lindt', name: 'Bob Lindt' }
-    ]
-  },
-  {
-    id: 'hospitality-turnaround',
-    name: 'Hospitality Turnaround Toolkit',
-    icon: '🍽️',
-    createdBy: 'Sara Okafor (Okafor Advisory)',
-    firms: 3,
-    memberCount: 7,
-    visibility: 'listed',
-    joinPolicy: 'request-approval',
-    tags: ['hospitality', 'turnaround', 'cashflow'],
-    summary: 'Templates and playbooks for rescuing struggling hospitality businesses.',
-    members: [
-      { id: 'sara-okafor', name: 'Sara Okafor' }
-    ]
-  }
-]
-
-// Mock conversation threads — incoming requests + active chats.
-const threads = [
-  {
-    id: 't-bob', kind: 'outreach', withId: 'bob-lindt', withName: 'Bob Lindt',
-    status: 'request', direction: 'incoming',
-    messages: [{ from: 'Bob Lindt', text: 'Gerne! Wann passt es Ihnen?', lang: 'de' }]
-  },
-  {
-    id: 't-anna', kind: 'outreach', withId: 'anna-r', withName: 'Anna Richter',
-    status: 'request', direction: 'incoming',
-    messages: [{ from: 'Anna Richter', text: 'Would you be open to joining the seafood modelling group?', lang: 'en' }]
-  },
-  {
-    id: 't-seafood-grp', kind: 'group', withId: 'seafood-modelling', withName: 'Seafood Financial Modelling',
-    status: 'active', direction: 'outgoing',
-    messages: [{ from: 'Anna Richter', text: 'Welcome — glad to have you looking at this!', lang: 'en' }]
-  }
-]
-let threadSeq = 1
-
-function threadSummary (t) {
-  const last = t.messages[t.messages.length - 1] || null
-  return {
-    id: t.id, kind: t.kind, withId: t.withId, withName: t.withName,
-    status: t.status, direction: t.direction,
-    lastText: last ? last.text : '', lastFrom: last ? last.from : ''
-  }
+// Resolve the logged-in advisor (dev identity = 'me' under ALLOW_DEV_AUTH).
+async function currentAdvisor (req) {
+  const id = (req.identity && req.identity.advisorId) || 'me'
+  return (await repo.getAdvisorById(id)) || { id: id, name: 'You', firm: 'Advisor-e' }
 }
 
-let currentUser = advisors[0]
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function matchesQuery (a, q) {
-  if (!q) { return true }
-  const hay = [a.name, a.firm, a.city, a.about]
-    .concat(a.strengths || [], a.industries || [], a.topics || [], a.tags || [])
-    .join(' ')
-    .toLowerCase()
-  return q.toLowerCase().split(/\s+/).every(term => hay.includes(term))
+async function getMe (req, res) {
+  ok(res, await currentAdvisor(req))
 }
 
-function ok (res, data) { res.send(200, data); return }
-
-// ── Handlers ───────────────────────────────────────────────────────────────
-
-function currentAdvisor (req) {
-  const id = (req.identity && req.identity.advisorId) || currentUser.id
-  return advisors.find(x => x.id === id) || currentUser
+async function updateMe (req, res) {
+  const me = await currentAdvisor(req)
+  const updated = await repo.updateAdvisorInterest(me.id, req.body || {})
+  ok(res, updated || me)
 }
 
-function getMe (req, res, next) {
-  ok(res, currentAdvisor(req))
-  return next()
-}
-
-function updateMe (req, res, next) {
-  const target = currentAdvisor(req)
-  const body = req.body || {}
-  const editable = ['available', 'strengths', 'industries', 'topics', 'about']
-  editable.forEach((k) => {
-    if (Object.prototype.hasOwnProperty.call(body, k)) { target[k] = body[k] }
-  })
-  ok(res, target)
-  return next()
-}
-
-function listAdvisors (req, res, next) {
+async function listAdvisors (req, res) {
   const q = (req.query && req.query.q) || ''
   const availableOnly = req.query && (req.query.available === 'true' || req.query.available === '1')
-  const results = advisors
-    .filter(a => a.id !== 'me')
-    .filter(a => matchesQuery(a, q))
-    .filter(a => (availableOnly ? a.available : true))
-  ok(res, results)
-  return next()
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listAdvisors({ q: q, availableOnly: availableOnly, excludeId: me.id }))
 }
 
-function getAdvisor (req, res, next) {
-  const a = advisors.find(x => x.id === req.params.id)
-  if (!a) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Advisor not found' } }); return next() }
+async function getAdvisor (req, res) {
+  const a = await repo.getAdvisorById(req.params.id)
+  if (!a) { fail(res, 404, 'NOT_FOUND', 'Advisor not found'); return }
   ok(res, a)
-  return next()
 }
 
-function listGroups (req, res, next) {
-  const q = (req.query && req.query.q) || ''
-  ok(res, groups.filter(g => matchesQuery(g, q)))
-  return next()
+async function listGroups (req, res) {
+  ok(res, await repo.listGroups({ q: (req.query && req.query.q) || '' }))
 }
 
-function getGroup (req, res, next) {
-  const g = groups.find(x => x.id === req.params.id)
-  if (!g) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Group not found' } }); return next() }
+async function getGroup (req, res) {
+  const g = await repo.getGroupById(req.params.id)
+  if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
   ok(res, g)
-  return next()
 }
 
-function createGroup (req, res, next) {
+async function createGroup (req, res) {
   const body = req.body || {}
-  const name = (body.name || '').trim()
-  if (!name) {
-    res.send(400, { success: false, error: { code: 'MISSING_NAME', message: 'A group needs a name.' } })
-    return next()
-  }
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
-  const group = {
-    id: slug + '-' + (groups.length + 1),
-    name: name,
-    icon: body.icon || '✨',
-    createdBy: currentUser.name + ' (' + currentUser.firm + ')',
-    firms: 1,
-    memberCount: 1,
-    visibility: body.visibility || 'listed',
-    joinPolicy: body.joinPolicy || 'request-approval',
-    tags: Array.isArray(body.tags) ? body.tags : [],
-    summary: (body.summary || '').trim(),
-    members: [{ id: currentUser.id, name: currentUser.name }]
-  }
-  groups.unshift(group)
-  ok(res, group)
-  return next()
+  if (!(body.name || '').trim()) { fail(res, 400, 'MISSING_NAME', 'A group needs a name.'); return }
+  const me = await currentAdvisor(req)
+  ok(res, await repo.createGroup(body, me))
 }
 
-function joinGroup (req, res, next) {
-  const g = groups.find(x => x.id === req.params.id)
-  if (!g) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Group not found' } }); return next() }
-  // DEV: record a join request only. Real impl = pending request -> manager/owner
-  // approval (consent-based membership; no auto-join), per the engagement model.
-  ok(res, { success: true, status: 'requested', groupId: g.id, joinPolicy: g.joinPolicy })
-  return next()
+async function joinGroup (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.requestJoinGroup(req.params.id, me.id)
+  if (!r) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
+  // Consent-based: a request is recorded; no auto-join. Owner/manager approves.
+  ok(res, Object.assign({ success: true }, r))
 }
 
-function messageGroup (req, res, next) {
-  const g = groups.find(x => x.id === req.params.id)
-  if (!g) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Group not found' } }); return next() }
+async function messageGroup (req, res) {
+  const g = await repo.getGroupById(req.params.id)
+  if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
   const text = ((req.body || {}).text || '').trim()
-  if (!text) { res.send(400, { success: false, error: { code: 'EMPTY', message: 'Message is empty.' } }); return next() }
-  let t = threads.find(x => x.kind === 'group' && x.withId === g.id)
-  if (!t) {
-    t = { id: 't-grp-' + (threadSeq++), kind: 'group', withId: g.id, withName: g.name, status: 'active', direction: 'outgoing', messages: [] }
-    threads.unshift(t)
-  }
-  t.messages.push({ from: 'Me', text: text, lang: 'en' })
+  if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
+  const t = await repo.findOrCreateGroupThread(g)
+  await repo.appendMessage(t.id, { from: 'Me', text: text })
   ok(res, { success: true, threadId: t.id })
-  return next()
 }
 
-function sendOutreach (req, res, next) {
+async function sendOutreach (req, res) {
   const body = req.body || {}
   // Purposeful cold-outreach: a reason ("context") is required by design.
-  if (!body.toId || !body.context) {
-    res.send(400, { success: false, error: { code: 'MISSING_REASON', message: 'An outreach must name a recipient and explain why you are reaching out.' } })
-    return next()
-  }
-  // Create an outgoing conversation thread so the outreach appears in Messages.
-  const advisor = advisors.find(a => a.id === body.toId)
+  if (!body.toId || !body.context) { fail(res, 400, 'MISSING_REASON', 'An outreach must name a recipient and explain why you are reaching out.'); return }
+  const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
-  const t = {
-    id: 't-out-' + (threadSeq++), kind: 'outreach', withId: body.toId,
-    withName: advisor ? advisor.name : body.toId, status: 'active', direction: 'outgoing',
-    messages: [{ from: 'Me', text: text, lang: 'en' }]
-  }
-  threads.unshift(t)
+  const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text: text })
   ok(res, { success: true, sent: true, threadId: t.id })
-  return next()
 }
 
-function listMessages (req, res, next) {
-  ok(res, { threads: threads.map(threadSummary) })
-  return next()
+async function listMessages (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, { threads: await repo.listThreads(me.id) })
 }
 
-function getThread (req, res, next) {
-  const t = threads.find(x => x.id === req.params.id)
-  if (!t) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }); return next() }
+async function getThread (req, res) {
+  const t = await repo.getThreadById(req.params.id)
+  if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)
-  return next()
 }
 
-function replyThread (req, res, next) {
-  const t = threads.find(x => x.id === req.params.id)
-  if (!t) { res.send(404, { success: false, error: { code: 'NOT_FOUND', message: 'Conversation not found' } }); return next() }
+async function replyThread (req, res) {
   const text = ((req.body || {}).text || '').trim()
-  if (!text) { res.send(400, { success: false, error: { code: 'EMPTY', message: 'Message is empty.' } }); return next() }
-  t.messages.push({ from: 'Me', text: text, lang: 'en' })
-  if (t.status === 'request') { t.status = 'active' }
+  if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
+  const t = await repo.appendMessage(req.params.id, { from: 'Me', text: text })
+  if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)
-  return next()
 }
 
 module.exports = {
-  getMe,
-  updateMe,
-  listAdvisors,
-  getAdvisor,
-  listGroups,
-  getGroup,
-  createGroup,
-  joinGroup,
-  messageGroup,
-  sendOutreach,
-  listMessages,
-  getThread,
-  replyThread
+  getMe, updateMe, listAdvisors, getAdvisor,
+  listGroups, getGroup, createGroup, joinGroup, messageGroup,
+  sendOutreach, listMessages, getThread, replyThread
 }

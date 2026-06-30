@@ -47,7 +47,8 @@ local servers — the committed config defaults to **:3000 / :4000**.
 
 ```
 Browser ──HTTP──> Nuxt 2 (frontend, :3000) ──/api/* thin proxy──> Restify (backend, :4000)
-                  pages/, components/, mixins/           server/routes/people.js (+ health, translate)
+                  pages/, components/, mixins/           server/routes/people.js   (thin HTTP handlers)
+                                                         server/data/repository.js (DATA LAYER — the MySQL seam)
                                                          server/middleware/auth.js  (Advisory login)
                                                          server/utils/db.js          (MySQL pool)
                                                          config/integration.js       (AUTH + DB config)
@@ -91,11 +92,12 @@ The connection points are built and isolated. Each is a small, well-marked seam.
   (`pool.execute(sql, params)`).
 - On boot the backend **probes** MySQL and logs `MySQL connected` or
   `MySQL unavailable — using in-memory dev store` (non-fatal).
-- ⚠ **The data layer is still in-memory.** `server/routes/people.js` holds the data as arrays
-  (`advisors`, `groups`, `threads`). **Each handler is the seam to convert** — replace the array
-  operations with SQL against the schema. The handler request/response shapes should stay the
-  same so the frontend is unaffected. *(Recommended next step: extract these into a
-  `server/data/` repository module so the swap is localised to one file — happy to do this.)*
+- ⚠ **The data layer is in-memory, isolated to ONE file: `server/data/repository.js`.** This is
+  the single file to change to connect MySQL. Every data operation is an `async` function with a
+  `// SQL SEAM:` note showing the query to run (against `config/db-schema.sql`, via the
+  `server/utils/db.js` pool). Keep the function names, parameters, and return shapes — the routes
+  (`server/routes/people.js`) and the frontend then need no changes. Wrap the SQL in try/catch and
+  return safe errors (CLAUDE.md error rule).
 
 ### 4c. Advisor identity & profiles  ·  `server/routes/people.js` (`advisors[]`)
 - Advisor **identity** (name, title, firm, email, phone, location) is **Advisory's system of
