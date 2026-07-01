@@ -48,6 +48,11 @@ npm run dev:all          # Nuxt :3000 + Restify backend :4000
 
 ## What to do next (suggested priorities)
 
+> **First — the design-triage review.** Go through the new **"Backlog — design items to triage"**
+> table in [`ACTIONS.md`](ACTIONS.md) (T1–T6) and decide **keep / delete / do** for each, plus the
+> already-tracked unbuilt scope it references (HANDOVER §6; plan §12 D1/D2, Q5/Q6). Then the
+> integration priorities below.
+
 1. **Connect real MySQL** — provision `config/db-schema.sql`, then fill the SQL into the single
    seam file `server/data/repository.js` (each function has a `// SQL SEAM:` note). Needs DB creds.
 2. **Wire real Advisory login** — set `JWT_SECRET`, confirm claim names in `config/integration.js`,
