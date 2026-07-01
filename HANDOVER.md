@@ -8,7 +8,7 @@
 >
 > **Status:** working UI prototype on a dev fallback. **No real persistence or real auth yet** —
 > all data is in-memory and resets on restart. The integration *seams* are built and tested
-> (see §4). **Last updated:** 2026-06-30.
+> (see §4). **Last updated:** 2026-07-01.
 
 ---
 
@@ -27,8 +27,11 @@ accounts, clone-down, translation, lock/override, archive). This app does **not*
 ## 2. Where it lives & how to run it
 
 - **Repo:** `https://github.com/advisor-e/Colab` (private).
-- **Local path:** `C:\Users\Mike Barnes\Projects\Advisor Collaborate` (on the **C:** drive — see
-  gotcha G5).
+- **Local path:** must be on the **C: drive, never inside a sync folder** — Dropbox/OneDrive/
+  Google Drive are refused at startup (gotcha G7). The master team's expected path is
+  `C:\Users\Mike Barnes\Projects\Advisor Collaborate`; the product owner's current working copy is
+  `C:\Users\mb\Projects\Advisor Collaborate` (moved here off Dropbox on 2026-07-01 —
+  `design/ACTIONS.md` P1-CANON).
 
 **Run (development):**
 ```bash
@@ -38,8 +41,11 @@ npm run dev:all                 # Nuxt (:3000) + Restify backend (:4000) togethe
 # open http://localhost:3000
 ```
 The backend reads `ALLOW_DEV_AUTH=true` in dev (already in the `dev:all`/`backend` scripts) to
-bypass real auth. During development I ran on **:3010 / :4100** to avoid clashing with other
-local servers — the committed config defaults to **:3000 / :4000**.
+bypass real auth. The committed config defaults to **:3000 / :4000**.
+
+**One-click option (Windows):** double-click **`start-app.cmd`** (or the "Advisor-e Collaborate"
+desktop shortcut) — it runs `npm run dev:all` in its own window and opens the browser once the app
+is ready. A VS Code Run-and-Debug entry does the same from the editor.
 
 ---
 
@@ -132,6 +138,9 @@ The connection points are built and isolated. Each is a small, well-marked seam.
   unlimited-client licence + ongoing updates; "list a tool" form).
 - Cross-cutting: **multi-language** (i18n + on-demand translation), **in-chat translation**
   (any language → the reader's language), and **voice input**.
+- **Per-page help:** a "How to use this page" button in each page banner opens a pop-up of
+  page-specific guidance (copy drawn from the design docs; `components/base/PageHelp.vue`, strings
+  in `locales/en.json` under `help.*`).
 - Integration seams: **auth middleware** (verified), **DB schema + probe + fallback**, and a
   **single data-layer seam** (`server/data/repository.js`).
 
@@ -157,6 +166,10 @@ join requests are recorded in memory only.
 - **G5 · Don't run from a slow drive.** Installing/running off a slow external disk made
   `npm install` take hours; keep the project (and `node_modules`) on a fast local disk.
 - **G6 · Dev data resets** on every backend restart (in-memory). This is expected until §4b.
+- **G7 · Don't run from a sync folder.** The app **refuses to start** from Dropbox/OneDrive/Google
+  Drive (`scripts/check-run-location.js`, wired as a `pre` hook on the run scripts) — background
+  sync can corrupt `.git` and mask a stale copy. Keep the repo on a plain C: path. Override (not
+  recommended): `ALLOW_SYNC_FOLDER=true`. See `design/ACTIONS.md` P1-CANON.
 
 ---
 
@@ -187,6 +200,12 @@ product owner) and what remains:
 ## 9. How changes have been tracked
 
 - **Git history** — every change is a descriptive commit (the primary change log).
+- **CI** — `.github/workflows/ci.yml` runs `npm ci` + lint + test + `nuxt build` on Node 14.15 for
+  every push/PR to `main`. A **Husky pre-commit hook** (`.husky/pre-commit`) runs lint + test
+  locally before each commit (the audit portion is deferred — see `ACTIONS.md` P1-AUDIT-GATE).
+- **`design/ACTIONS.md`** — reconcile/remediation tracker: every Stack-Constitution deviation and
+  governance gap, logged as a P1 and only ever reconciled *toward* the spec.
+- **`design/SECURITY-AUDIT-NOTES.md`** — the accepted `npm audit` risk register.
 - **`design/advisor-collaboration-platform-plan.md`** — the product/design decisions, with a
   dated **decision log** (§13).
 - **This document** — kept updated as integration-relevant changes land.

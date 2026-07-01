@@ -3,7 +3,7 @@
 > Quick-start for the next working session. Deeper detail in
 > [`HANDOVER.md`](../HANDOVER.md) and
 > [`advisor-collaboration-platform-plan.md`](advisor-collaboration-platform-plan.md).
-> **Snapshot date:** 2026-06-30 · **Last commit:** `369aa08`.
+> **Snapshot date:** 2026-07-01 · **Last commit:** `92cba68`.
 
 ---
 
@@ -26,7 +26,10 @@ Plus: bright themed UI with section colour-coding; history-based back nav; the *
 probe) — both built and waiting on real Advisory credentials.
 
 ## Where it lives
-- **Repo:** `https://github.com/advisor-e/Colab` (private). **Local:** `C:\Users\Mike Barnes\Projects\Advisor Collaborate` (on **C:** — never the slow E: drive).
+- **Repo:** `https://github.com/advisor-e/Colab` (private). **Local:** on **C:**, never a sync
+  folder (Dropbox/OneDrive are refused at startup). Master team's expected path
+  `C:\Users\Mike Barnes\Projects\Advisor Collaborate`; the current working copy is
+  `C:\Users\mb\Projects\Advisor Collaborate` (moved off Dropbox 2026-07-01 — `ACTIONS.md` P1-CANON).
 
 ## How to run it (dev)
 ```bash
@@ -34,10 +37,11 @@ nvm use 14.15.0          # the machine default is Node 20, which does NOT work
 npm install              # only if node_modules is missing (needs the corp TLS cert — see HANDOVER G2)
 npm run dev:all          # Nuxt :3000 + Restify backend :4000
 ```
-> This session ran on **:3010 / :4100** (to dodge port clashes) by launching the two processes
-> manually with the Node-14 binary on PATH + `NODE_EXTRA_CA_CERTS=./certs/digicert-bundle.pem`
-> (the cert makes the in-chat translation's outbound call work). `npm run dev:all` is the normal
-> path. Dev backend needs `ALLOW_DEV_AUTH=true` (already in the scripts).
+> Defaults to **:3000 / :4000**. On Windows you can also just double-click **`start-app.cmd`** (or
+> the "Advisor-e Collaborate" desktop shortcut), which runs `npm run dev:all` and opens the browser.
+> The in-chat translation's outbound call needs the corp cert
+> (`NODE_EXTRA_CA_CERTS=./certs/digicert-bundle.pem`). Dev backend needs `ALLOW_DEV_AUTH=true`
+> (already in the scripts).
 
 ## What to do next (suggested priorities)
 1. **Connect real MySQL** — provision `config/db-schema.sql`, then fill the SQL into the single
@@ -49,7 +53,13 @@ npm run dev:all          # Nuxt :3000 + Restify backend :4000
 4. **Cross-org engagement policy** enforcement; **manager bulk-invite**; **audit logging**.
 5. Smaller: real advisor profiles from Advisory (replace the mock `advisors[]`).
 
+> **Live task tracker:** `design/ACTIONS.md` holds the current P1 backlog — incl. **P1-AUDIT-GATE**
+> (wire the audit half of the pre-commit gate without blocking commits), **P1-SEC-UTILS**
+> (`sanitiseInput` / `validateAIResponse` + tests), **P1-PROD-GUARD** (production startup guard),
+> **P1-PROTECT** (branch protection), and **P1-TEST** (grow coverage to the CLAUDE.md targets).
+
 ## Gotchas (the short list — full version in HANDOVER §7)
 - Node **14.15** only (nvm). · npm install needs the **corp cert**. ·
-  `@nuxt/friendly-errors-webpack-plugin` pinned to **2.5.2** (Node-14). · Keep off the **E:** drive. ·
-  Dev data **resets** on backend restart (in-memory).
+  `@nuxt/friendly-errors-webpack-plugin` pinned to **2.5.2** (Node-14). · Keep off the **E:** drive
+  **and out of Dropbox/OneDrive** (refused at startup). · Dev data **resets** on backend restart
+  (in-memory).
