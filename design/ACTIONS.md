@@ -26,7 +26,6 @@
 | ID | P | Title | Notes |
 |----|---|-------|-------|
 | P1-CANON | P1 | Single source of truth = GitHub | Decision 2026-07-01: the fast **C: clone is canonical**; this Dropbox copy is **retired** after the current clean-up. **Move executed 2026-07-01** — `C:\Users\mb\Projects\Advisor Collaborate` is now the live copy: deps installed, app runs (blocked in Dropbox by the run-location guard), desktop launcher repointed, commits pushed from here. Remaining: physically delete / Dropbox-exclude the old copy once the owner is confident. |
-| P1-NODE-ENV | P1 | Local dev on Node 20 — reconciling to locked 14.15 | **Found & started 2026-07-02.** Dev machine runs **Node 20.20.2 / npm 10.8.2**; `.nvmrc` had pinned **`20`** since the first commit `7e705b7` (never 14.15) — drift from Stack Constitution req. 9. **Done 2026-07-02:** `.nvmrc` → **`14.15.0`** (matches CI's pin); stale npm-6/Node-14 claims corrected in `SECURITY-AUDIT-NOTES.md`. **Blocker (machine, needs owner/dev):** no `nvm` on PATH, so Node 14.15.0 can't be selected here yet; and the local `node_modules` is a **partial install** — `markdownlint-cli` + `husky` are missing, so `npm run lint:md` fails **and the Husky pre-commit hook is not wired → local commits currently bypass the gate** (CI still enforces). **Remaining:** install nvm-windows + Node 14.15.0 → `nvm use` → `npm ci` (safe: installs the v1 lockfile as-is, restores `markdownlint-cli` + `husky`, wires the hook) → re-run `lint` / `lint:md` / `test` / `build` to confirm parity. One-directional; CI already proves the tree builds on 14.15. |
 
 ## Done
 
@@ -39,6 +38,7 @@
 | P1-JEST-CONFIG | P1 | Broken jest coverage config | 2026-07-01 — removed `coverageThreshold` entries pointing at non-existent files (would error under `--coverage`). Strict gates restored by P1-SEC-UTILS. |
 | P1-MD-LINT | P1 | Markdown standard unenforced | 2026-07-01 — added `.markdownlint.jsonc` + `lint:md`; wired into the pre-commit hook and CI so docs cannot regress. `markdownlint-cli@0.28.1` (Node-14-safe) added as a devDep (logged in `SECURITY-AUDIT-NOTES.md`). |
 | P1-TRACKER | P1 | This tracker did not exist | 2026-07-01 — created `design/ACTIONS.md` (had been mandated by CLAUDE.md but never created). |
+| P1-NODE-ENV | P1 | Local dev on Node 20 → reconciled to locked 14.15 | 2026-07-02 — `.nvmrc` `20`→`14.15.0`; installed **nvm-windows** on the dev machine and selected **Node 14.15.0 / npm 6.14.8**; `npm ci` restored the full toolchain (incl. the previously-missing `markdownlint-cli` + `husky`) and **re-wired the pre-commit hook** (was not firing locally). Local gate now green on 14.15: `lint` (0 errors), `lint:md` (clean), `test` (76 passing, 10 suites); `package-lock.json` unchanged. Stale "npm 6.14.8 / Node 14.15 local" claims corrected in `SECURITY-AUDIT-NOTES.md`. Invalidated the npm-6 premise in P1-AUDIT-GATE (still open). |
 
 ---
 
