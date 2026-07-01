@@ -8,6 +8,7 @@
         .section-banner.section-banner--groups
           span.ico {{ group.icon }}
           h1 {{ group.name }}
+          page-help(help-key="groupDetail")
         .box
           p.has-text-grey.mb-4 {{ $t('group.createdBy') }} {{ group.createdBy }} · {{ group.firms }} {{ $t('discover.firms') }} · {{ group.memberCount }} {{ $t('discover.members') }}
           p.label {{ $t('group.about') }}

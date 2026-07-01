@@ -143,5 +143,73 @@
     "fTags": "Tags",
     "fPrice": "Price",
     "priceHint": "Members transact directly — Advisory takes no fee. Use 'Free' or any amount."
+  },
+  "help": {
+    "button": "How to use this page",
+    "modalTitle": "How to use this page",
+    "close": "Got it",
+    "discover": {
+      "title": "Search the network two ways — find people and groups, and let them find you.",
+      "body": [
+        "Discovery is two-sided: you advertise your strengths on your Profile so others find you, and you search outward here.",
+        "Switch between People and Groups with the tabs, and narrow results by country, service line, specialty, or ‘Available only’.",
+        "Type a specialty, industry, or name and press Search — or tap 🎤 to speak instead of type.",
+        "On a group: View it or Request to join. On a person: Reach out with a purposeful first message (say why you're contacting them and what you're asking)."
+      ]
+    },
+    "connections": {
+      "title": "Your 1:1 connections and group memberships, all in one place.",
+      "body": [
+        "Connecting is mutual — a request becomes a connection only once both people accept.",
+        "‘Requests to connect’ — people who want to connect with you; Accept or Decline.",
+        "‘Your connections’ — advisers you're already linked with. ‘Requests you've sent’ — awaiting their reply.",
+        "‘Your groups’ — the specialty groups you belong to."
+      ]
+    },
+    "marketplace": {
+      "title": "License tools and models other groups have built — deal direct, no Advisory fee.",
+      "body": [
+        "Browse tools groups have created; ‘Get it’ to license one for use with your own clients.",
+        "Your licence is unlimited-client usage — use it with as many of your own clients as you like, but you can't resell or redistribute it.",
+        "Ownership stays with the group that built it: you're buying usage, not ownership.",
+        "Purchases include ongoing updates — when the group improves a tool, you get the new version.",
+        "Members pay each other directly; Advisory takes no fee and only records that a deal happened."
+      ]
+    },
+    "profile": {
+      "title": "Your advertised identity — this is what makes you findable on the network.",
+      "body": [
+        "Your name, title, firm and contact details come from Advisory and are read-only here.",
+        "Everything else is what you advertise — turn on ‘Open to collaborate’ so groups may approach you.",
+        "Add your strengths, the industries you know, and your topics/projects; these power the searches that find you.",
+        "Write a short ‘About me’, then Save profile. Tap 🎤 to dictate any field instead of typing."
+      ]
+    },
+    "messages": {
+      "title": "Requests and chats — with built-in translation across languages.",
+      "body": [
+        "New purposeful outreaches land under ‘Requests’ — Accept to open a thread, or Skip to dismiss.",
+        "‘Chats’ are your ongoing conversations with people and groups.",
+        "You stay in control — accept, ignore, or block; a sender gets just one outreach until you reply.",
+        "Each message keeps its original language; turn on Auto-translate to read and reply in yours."
+      ]
+    },
+    "groupNew": {
+      "title": "Create a specialty group — your advert to recruit collaborators.",
+      "body": [
+        "A group advertises itself and recruits members; the actual work happens in its space once it's formed.",
+        "Give it a clear name, pick one emoji icon, and describe what you're doing and who you're looking for.",
+        "Add specialty tags so the right people can find it in Discover.",
+        "Choose Listed (anyone can find it) or Unlisted (invite only), then Create group. Anyone except clients can create one."
+      ]
+    },
+    "groupDetail": {
+      "title": "A group's advert — what it's doing and how to join.",
+      "body": [
+        "See who created it, its firms and members, what they're building, and its specialty tags.",
+        "‘Request to join’ — membership is always opt-in, so the group owner reviews your request.",
+        "‘Message the group’ to start a conversation with its members."
+      ]
+    }
   }
 }

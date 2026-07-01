@@ -4,6 +4,7 @@
       .section-banner.section-banner--connections
         span.ico 🤝
         h1 {{ $t('connections.title') }}
+        page-help(help-key="connections")
       b-message(v-if="loading" type="is-info") Loading…
       template(v-else)
         p.heading {{ $t('connections.incoming') }}

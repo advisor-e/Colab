@@ -4,6 +4,7 @@
       .section-banner.section-banner--messages
         span.ico 💬
         h1 {{ $t('messages.title') }}
+        page-help(help-key="messages")
       .columns
         .column.is-one-third
           p.heading {{ $t('messages.requests') }}

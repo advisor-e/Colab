@@ -4,6 +4,7 @@
       .section-banner.section-banner--profile
         span.ico 👤
         h1 {{ $t('profile.title') }}
+        page-help(help-key="profile")
       b-message(v-if="loading" type="is-info") Loading…
       template(v-else)
         .box

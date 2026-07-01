@@ -4,6 +4,7 @@
       .section-banner.section-banner--market
         span.ico 🛒
         h1 {{ $t('market.title') }}
+        page-help(help-key="marketplace")
       .level.is-mobile.mb-3
         .level-left
           p.has-text-grey {{ $t('market.intro') }}

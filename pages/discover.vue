@@ -4,6 +4,7 @@
       .section-banner.section-banner--discover
         span.ico 🔎
         h1 {{ $t('discover.title') }}
+        page-help(help-key="discover")
 
       b-tabs(v-model="tab")
         b-tab-item(:label="$t('discover.people')" value="people")

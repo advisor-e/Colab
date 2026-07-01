@@ -5,6 +5,7 @@
       .section-banner.section-banner--groups
         span.ico ✨
         h1 {{ $t('group.createTitle') }}
+        page-help(help-key="groupNew")
       .box
         b-field(:label="$t('group.name')")
           b-input(v-model="form.name" :placeholder="$t('group.namePlaceholder')")
