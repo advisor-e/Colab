@@ -33,6 +33,7 @@ const { productionStartupViolations } = require('./utils/productionGuard')
 const health = require('./routes/health')
 const translate = require('./routes/translate')
 const people = require('./routes/people')
+const templates = require('./routes/templates')
 const { auth } = require('./middleware/auth')
 const pool = require('./utils/db')
 
@@ -74,6 +75,10 @@ server.opts('/*', (req, res, next) => { res.send(204); return next() })
 // ── Routes ──
 server.get('/api/health', health.get)
 server.post('/api/translate/locale', translate.post)
+
+// Advisor-e template catalogue (read-only master data) — feeds the marketplace
+// "Choose the Advisor-e tool" picker. See server/data/advisoryTemplates.js.
+server.get('/api/templates', auth, templates.list)
 
 // People layer — identity comes from the Advisory session (auth middleware).
 // In dev (ALLOW_DEV_AUTH=true) auth falls back to a dev identity; data is still
