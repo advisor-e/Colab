@@ -27,7 +27,7 @@ npm install
 npm run dev:all     # Nuxt (3000) + Restify backend (4000) together
 ```
 
-Then open http://localhost:3000.
+Then open <http://localhost:3000>.
 
 > The people-layer data is currently **in-memory mock data** and the routes are
 > unauthenticated. MySQL persistence and Advisory login/profile integration wire in later

@@ -34,12 +34,14 @@ accounts, clone-down, translation, lock/override, archive). This app does **not*
   `design/ACTIONS.md` P1-CANON).
 
 **Run (development):**
+
 ```bash
 nvm use 14.15.0                 # see G1 — machine default is Node 20, which will NOT work
 npm install                     # see G2 — corporate TLS cert needed on this network
 npm run dev:all                 # Nuxt (:3000) + Restify backend (:4000) together
 # open http://localhost:3000
 ```
+
 The backend reads `ALLOW_DEV_AUTH=true` in dev (already in the `dev:all`/`backend` scripts) to
 bypass real auth. The committed config defaults to **:3000 / :4000**.
 
@@ -51,7 +53,7 @@ is ready. A VS Code Run-and-Debug entry does the same from the editor.
 
 ## 3. Architecture (as built)
 
-```
+```text
 Browser ──HTTP──> Nuxt 2 (frontend, :3000) ──/api/* thin proxy──> Restify (backend, :4000)
                   pages/, components/, mixins/           server/routes/people.js   (thin HTTP handlers)
                                                          server/data/repository.js (DATA LAYER — the MySQL seam)
@@ -60,6 +62,7 @@ Browser ──HTTP──> Nuxt 2 (frontend, :3000) ──/api/* thin proxy──
                                                          config/integration.js       (AUTH + DB config)
                                                          config/db-schema.sql         (schema to provision)
 ```
+
 - **Frontend (Nuxt 2 / Vue 2 / Pug / Buefy):** pages `index, profile, discover, messages,
   groups/_id, groups/new`; `components/AppHeader.vue`; `mixins/localeMixin.js` (i18n + on-demand
   translation), `mixins/speechMixin.js` (voice). All `/api/*` calls go through
@@ -75,6 +78,7 @@ Browser ──HTTP──> Nuxt 2 (frontend, :3000) ──/api/* thin proxy──
 The connection points are built and isolated. Each is a small, well-marked seam.
 
 ### 4a. Advisory login (auth)  ·  `server/middleware/auth.js` + `config/integration.js`
+
 - The middleware verifies an Advisory JWT from the **`Authorization: Bearer` header or a `token`
   cookie**, using the claim names + secret in `config/integration.js → AUTH`.
 - **To go live:**
@@ -92,6 +96,7 @@ The connection points are built and isolated. Each is a small, well-marked seam.
   `restify-server.js` — copy it).
 
 ### 4b. MySQL persistence  ·  `config/db-schema.sql` + `server/utils/db.js`
+
 - **Provision** `config/db-schema.sql` into the Advisor-e MySQL instance.
 - **Configure** the connection via env (`MYSQL_HOST/PORT/DATABASE/USER/PASSWORD`) or
   `config/integration.js → DB`. `server/utils/db.js` is a ready `mysql2/promise` pool
@@ -106,6 +111,7 @@ The connection points are built and isolated. Each is a small, well-marked seam.
   return safe errors (CLAUDE.md error rule).
 
 ### 4c. Advisor identity & profiles  ·  `server/routes/people.js` (`advisors[]`)
+
 - Advisor **identity** (name, title, firm, email, phone, location) is **Advisory's system of
   record** — do not store it here. The mock `advisors[]` stands in for it.
 - Replace `getMe / getAdvisor / listAdvisors` to read identity from Advisory's profile API/store,
@@ -129,6 +135,7 @@ The connection points are built and isolated. Each is a small, well-marked seam.
 ## 6. Status — done / mocked / to-do
 
 **Built & working (on dev fallback):**
+
 - UI + theme: Home, **Profile** (incl. email/phone from Advisory), **Discover** (two-sided
   search, people/groups), **Groups** (detail, create, request-to-join), **Messages** (two-pane
   chat, replies). Section colour-coding; history-based back navigation.

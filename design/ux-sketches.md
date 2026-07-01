@@ -5,6 +5,7 @@
 > **Last updated:** 2026-06-30
 
 **Two cross-cutting features appear on every relevant screen:**
+
 - **🎤 Voice input** — talk instead of type, on any text field (reuse Virt Advisor `speechMixin`).
 - **🌐 Language / translate** — multi-language UI + live chat translation (reuse Virt Advisor
   vue-i18n + the Node-14-safe translate route).
@@ -13,7 +14,7 @@
 
 ## 1 · My Profile (the "identifier") — what makes you findable
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │  Advisor-e Collaborate            🌐 EN ▾    🔔 3    ◍ Mike ▾  │
 ├───────────────────────────────────────────────────────────────┤
@@ -35,6 +36,7 @@
 │                                            [ Save profile ]     │
 └───────────────────────────────────────────────────────────────┘
 ```
+
 *Separates Advisory's read-only profile data from the editable "advertised" identity (interests,
 industries, strengths, availability) that powers discovery.*
 
@@ -42,7 +44,7 @@ industries, strengths, availability) that powers discovery.*
 
 ## 2 · Discover — two-sided search (people AND groups)
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │  Discover                 ( People )   ( Groups )      🌐 EN ▾ │
 ├───────────────────────────────────────────────────────────────┤
@@ -67,7 +69,7 @@ industries, strengths, availability) that powers discovery.*
 
 ## 3 · Group page (the "advert") — how a group recruits
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │  ‹ Back to Discover                                   🌐 EN ▾ │
 ├───────────────────────────────────────────────────────────────┤
@@ -89,7 +91,7 @@ industries, strengths, availability) that powers discovery.*
 
 ## 4 · Reach out — the *purposeful* cold-outreach composer
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │  Reach out to Bob Lindt                                    ✕   │
 ├───────────────────────────────────────────────────────────────┤
@@ -109,6 +111,7 @@ industries, strengths, availability) that powers discovery.*
 │  ⚠ One outreach per person — make it genuine.   [ Send ▸ ]     │
 └───────────────────────────────────────────────────────────────┘
 ```
+
 *Enforces "purpose, not permission" — a reason is prompted; the group context (e.g. the seafood
 project) can be attached so the recipient has something concrete to consider.*
 
@@ -116,7 +119,7 @@ project) can be attached so the recipient has something concrete to consider.*
 
 ## 5 · Messages — requests + chat with live translation
 
-```
+```text
 ┌───────────────────────────────────────────────────────────────┐
 │  Messages                                             🌐 EN ▾ │
 ├───────────────┬───────────────────────────────────────────────┤
@@ -131,15 +134,18 @@ project) can be attached so the recipient has something concrete to consider.*
 │ [Accept][Skip]│                                               │
 └───────────────┴───────────────────────────────────────────────┘
 ```
+
 *Incoming cold outreach lands under **Requests** (Accept opens a thread; Skip dismisses).
 Messages store their original language; each reader can auto-translate to their own.*
 
 ---
 
 ## Screens still to sketch (next pass)
+
 - Home / dashboard (what a user is greeted with — feeds the deferred "open vs closed default").
 - Notifications panel.
 - Inside a group's collaboration space (chat + members + hand-off into Advisory's Google tooling).
 - Create-a-group flow.
 - Manager bulk-invite flow.
-```
+
+```text

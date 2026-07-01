@@ -61,6 +61,7 @@ nested in each other.
 title, professional bio, LinkedIn URL, phone, country, state, city/town, branch, time zone.
 
 **Integration implications:**
+
 - **Inherit auth** — advisors already log in to Advisory.com; this platform reuses that
   session. No new login is built.
 - **Consume, don't duplicate, the profile** (via API / SSO / shared user store — mechanism
@@ -92,6 +93,7 @@ title, professional bio, LinkedIn URL, phone, country, state, city/town, branch,
 groups and collaboration. Everything else is leverage.
 
 **Already done in Advisory — we REUSE / hand off to, never rebuild:**
+
 - Authentication & membership.
 - Advisor profiles (system of record).
 - The **entire Google document cascade** — per-level accounts, clone-down, translation,
@@ -120,6 +122,7 @@ happens**. A group owns a space once formed; a 1:1 connection also produces a sp
 primitive, two ways in.
 
 **Two-sided discovery.** Either side can initiate:
+
 - **Advisor advertises themselves** — records the topics, industries, and projects they're
   interested in, plus their strengths. If they set themselves **available**, groups can
   approach *them*.
@@ -138,6 +141,7 @@ We noticed your significant experience in capital raising, which many of our cli
 with. Would you be open to collaborating with us?"
 
 **How it works:**
+
 - **First contact = a purposeful outreach.** The composer **prompts for *why you* + *the ask*
   ** (guided by the example structure) so blank/spammy DMs aren't the norm.
 - **Recipient stays in control** — they can **respond** (opens an ongoing thread), **dismiss /
@@ -150,6 +154,7 @@ someone into a group without their acceptance; placing an unwilling member won't
 engage, so membership is *always* invite → accept.
 
 **Invitation / request types** (the first-contact carriers):
+
 - adviser → adviser (connect / collaborate)
 - group → adviser (invite to join)
 - adviser → group (request to join)
@@ -158,6 +163,7 @@ engage, so membership is *always* invite → accept.
   still apply).
 
 **Anti-spam guardrails (recommended defaults — confirm):**
+
 - **One pending outreach per recipient** — no repeat-messaging someone who hasn't replied; a
   dismiss / no-response means no further cold messages from that sender.
 - **Rate limits** on outbound cold outreach (no bulk blasting).
@@ -218,6 +224,7 @@ by the cross-org policy in §8.
 > rebuild, or modify it.** Recorded only as context the collaboration platform hands off into.
 
 How it already works in Advisory (for reference):
+
 - One central Advisory account holds the Mentor masters; documents cascade down into **per-level
   Google accounts** (group → firm → adviser → client), each with its own archived, recoverable set.
 - An upstream update **pushes down**; the lower level gets a **notification** and can **accept or
@@ -246,6 +253,7 @@ is exactly why the platform tracks provenance.
 | 4. **Group-owned (net-new / external-origin)** | Material built **from scratch**, or brought in from **outside Advisory** | **The group owns it.** Advisory holds a **hosting right only**; the group **may market/license** it (§7). |
 
 **System implications:**
+
 - Each **Asset** carries an **IP classification** derived from lineage + edit history.
 - **Protected frameworks (Tier 2) need an explicit "locked / non-derivable" flag** so editing
   can't quietly downgrade them into shared or group IP.
@@ -289,6 +297,7 @@ membership and carry the IP risk.
 - **Block** → members are sealed to their own organisation.
 
 **Design rules:**
+
 - **Both-sides consent** — a cross-org interaction needs **both** organisations to permit it; a
   block on either side wins (mirrors the mutual-accept connection model).
 - **Global sets the ceiling; Group can only tighten** — a country policy may be equal or more
@@ -338,6 +347,7 @@ This platform conforms to the existing Advisor-e / Virt Advisor **Stack Constitu
 inherited auth) are stable; only the named technologies are fixed by the Constitution.
 
 **Mandated two-part architecture (strict boundary):**
+
 - **Frontend — Nuxt 2 (port 3000):** Vue 2 Options API, Pug templates, Buefy + Bulma, vue-i18n
   ^8, JavaScript only. UI / routing / state display **only** — no business logic, DB, or
   third-party APIs.
@@ -347,6 +357,7 @@ inherited auth) are stable; only the named technologies are fixed by the Constit
 - Frontend ↔ backend **exclusively over HTTP** (`API_BASE_URL` only).
 
 **How the pillars map:**
+
 - **Identity:** inherit the Advisory.com session; firm/org stays a first-class permission scope.
 - **Data:** relationship / membership / permission tables in MySQL, raw SQL on the backend.
 - **Permissions:** RBAC scoped by org-hierarchy + group/space membership, enforced on the
@@ -401,11 +412,12 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 ## 12. Open questions & deferred decisions
 
 **Open — to resolve before/within Phase 1:**
+
 1. ~~Advisory.com integration mechanics~~ — **RESOLVED (2026-07-01).** Session inherited via a
    **shared cookie/token** across a common parent domain (reuse Virt Advisor's pattern). The
    cookie/token is **validated on this app's Restify backend**, never trusted on the frontend, then
    used to fetch the profile. *(Matches the implemented auth seam — `config/integration.js → AUTH`
-   + `server/middleware/auth.js`. Remaining detail — exact JWT claim names + HS256/RS256 — tracked
+   - `server/middleware/auth.js`. Remaining detail — exact JWT claim names + HS256/RS256 — tracked
    in `HANDOVER.md` §8; does not block.)*
 2. ~~Service lines & specialty tags~~ — **RESOLVED (2026-07-01).** **New — not in Advisory.com.**
    This app owns service lines + skills/specialty/interest tags in its own MySQL tables; the master
@@ -419,14 +431,15 @@ Each phase is independently valuable; the app is demoable from Phase 1.
    **lock-to-prevent-override**, and archive recovery **already exist and work in Advisory**.
    This app does not build any of it; it hands off into it (§5). No further questions for this
    build.
-6. **Net-new group IP from scratch** is covered as Tier 4 (group-owned) — confirm no edge cases
+5. **Net-new group IP from scratch** is covered as Tier 4 (group-owned) — confirm no edge cases
    (e.g. a member contributing pre-existing personal IP into a group).
-7. **What counts as "one organisation" for the cross-org policy (§8)?** Since `branch` =
+6. **What counts as "one organisation" for the cross-org policy (§8)?** Since `branch` =
    firm/office, a multi-office firm appears as several branches. Confirm whether the §8 toggle
    seals at the individual office (branch/Firm tier), the whole firm, or the country Group.
    *(Raised 2026-07-01; a "see-it-live" refinement, not blocking.)*
 
 **Deferred — decide once we can see the app in action:**
+
 - **D1 · Default cross-org posture (open vs closed).** A UX-feel call about what a user is first
   greeted with. Recommendation on record: lean **closed/opt-in** for a high-IP network. Build as
   a **config flip** (both paths switchable) — not a rebuild.
