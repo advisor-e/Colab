@@ -9,6 +9,11 @@
 > **Status:** working UI prototype on a dev fallback. **No real persistence or real auth yet** —
 > all data is in-memory and resets on restart. The integration *seams* are built and tested
 > (see §4). **Last updated:** 2026-07-01 (added the marketplace tool-catalogue seam, §4d).
+>
+> **Delivery standard.** This app is a *"show home with the plumbing and wiring clearly
+> labelled"* — built and runnable on mock data, with every real-system connection pre-built as a
+> labelled **seam** (§4) for the master team to connect to Advisor-e.com. See `CLAUDE.md` →
+> *Definition of Done & the Daily-Clean Rule*.
 
 ---
 
