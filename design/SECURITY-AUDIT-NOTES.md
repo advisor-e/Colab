@@ -56,6 +56,12 @@ the lock).
 > the deployed runtime, and are accepted under the same policy above. (`markdownlint-cli2` was
 > evaluated first and rejected: its ESM entrypoint crashes on Node 14.15.)
 >
+> **Dev-tooling delta (2026-07-02):** added the frontend component-test harness —
+> `@vue/test-utils@1.3.6` + `@vue/vue2-jest@27.0.0` (with `vue-template-compiler` pinned to
+> `2.7.16` to match the installed `vue@2.7.16`; both are Vue 2). Test tooling only — never in
+> the deployed runtime. The critical count is unchanged (still the two allow-listed `ejs`
+> findings), so the audit gate is unaffected. All Node-14.15-safe.
+>
 > **npm 6 caveat.** `npm audit --production` does **not** filter dev/build dependencies in
 > npm 6.14.8 (a known npm-6 limitation — fixed only in npm 7+). It still reports the same
 > build-tool findings, so it cannot be used to scope the gate to runtime deps on this stack.
