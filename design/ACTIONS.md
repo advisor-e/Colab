@@ -55,6 +55,7 @@
 | T4-ANTISPAM | P3 | Outreach anti-spam guardrails (plan §4) | one-pending-outreach, rate limits, respect-availability. First **verify** what (if any) `server/routes/*` already enforces, then log the real gap. |
 | T5-MARKET-SIGNALS | P3 | Marketplace "proven tools" signal + ratings (plan §7, marked optional) | Keep as a future nicety, or drop. |
 | T6-SKETCHES-DOC | P3 | Repair `design/ux-sketches.md` | File is **truncated** (unclosed code fence) and its "screens still to sketch" list is **stale** (create-a-group is built). Close/complete the file and refresh the backlog. |
+| T7-FONT-OPENSANS | P2 | Global font → **Open Sans Light** (app-wide) | **Confirmed owner requirement (2026-07-01)** — this one is a "do", not keep/delete. Use **Open Sans, Light (weight 300)** for **all** text across the whole app, replacing the current Inter (body) + Poppins (headings). Load the webfont in `nuxt.config.js` head (where Inter/Poppins load today) and set the base `font-family` in `assets/css/theme.css` so Buefy/Bulma inherit. At build time, confirm whether headings should also be Light or a slightly heavier Open Sans weight for legibility. |
 
 **Already-tracked unbuilt scope (bring to the same review, no duplication):** role hierarchy /
 RBAC, cross-org engagement policy, manager bulk-invite, and audit logging are in `HANDOVER.md`
