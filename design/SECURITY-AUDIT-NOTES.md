@@ -89,7 +89,7 @@ identified.
 
 ---
 
-## 3. ⚠️ Open conflict — the pre-commit audit gate now fails
+## 3. ✅ RESOLVED (2026-07-02) — the pre-commit audit gate (allow-listed criticals)
 
 `CLAUDE.md` §Enforcement defines the blocking pre-commit gate as
 `npm audit --audit-level=critical`. That threshold was chosen deliberately so the
@@ -102,11 +102,18 @@ does not help either — `nuxt` is a production dependency, so the `ejs` chain i
 by `npm audit --omit=dev` (verified 2026-07-02; the earlier "npm 6 cannot scope" wording is
 superseded — local is npm 10, see the §2 correction box and P1-NODE-ENV).
 
-This is **not** something to resolve by relaxing the spec. It needs a team decision on how to
-scope the gate (e.g. an explicit `ejs` allow-list entry, a runtime-only audit tool that works
-on npm 6, or upgrading the local npm used only for auditing). Logged in `design/ACTIONS.md`
-as **P1-AUDIT-GATE**. Until resolved, the audit portion of the pre-commit gate is **not**
-installed (installing it would lock the team out of committing).
+**Resolved without relaxing the spec (2026-07-02).** The gate is now implemented as
+`scripts/audit-gate.js`, wired into `.husky/pre-commit` and CI (`npm run audit:gate`). It blocks
+on any **critical** finding **except** a short, explicit **allow-list** of reviewed
+build-time-only advisories, and **reports every high for review without blocking** (unchanged
+policy). The allow-list currently holds exactly one entry — `ejs` / `GHSA-phwq-j96m-2c2q` (the
+build-time bundle-analyzer chain above). Matching requires **both** the GHSA id and the module,
+so a *different* future critical — even in the same package — still blocks until a human reviews
+it; the gate also warns if an allow-list entry stops matching, so it can't rot. The pure decision
+logic is unit-tested (`tests/auditGate.test.js`, 15 cases). Adding an allow-list entry is a
+deliberate, auditable act and must be mirrored in this file. This is the sanctioned `ejs`
+allow-list resolution — **not** a spec relaxation (the one-directional rule governs stack
+versions, not the audit threshold). See `design/ACTIONS.md` **P1-AUDIT-GATE** (closed).
 
 ---
 

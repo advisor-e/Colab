@@ -41,5 +41,8 @@ jobs:
       - name: Unit tests (Jest)
         run: npm test
 
+      - name: Dependency-audit gate (critical, allow-listed build-time risk)
+        run: npm run audit:gate
+
       - name: Production build (nuxt build)
         run: npm run build
