@@ -19,6 +19,7 @@
     "lint:fix": "eslint --ext .js,.vue . --fix",
     "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --config .markdownlint.jsonc",
     "test": "jest",
+    "audit:gate": "node scripts/audit-gate.js",
     "backend": "cross-env ALLOW_DEV_AUTH=true NODE_EXTRA_CA_CERTS=./certs/digicert-bundle.pem node server/restify-server.js",
     "dev:all": "concurrently --names \"nuxt,api\" --prefix-colors \"cyan,green\" \"npm run dev\" \"npm run backend\""
   },

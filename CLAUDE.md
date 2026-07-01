@@ -211,8 +211,9 @@ has a graceful fallback and logs model, prompt/completion tokens, latency, and r
 
 ### Enforcement
 
-Pre-commit (Husky): `npm run lint`, `npm test` (zero failures), and the audit gate (see
-Dependency and Version Governance below). ESLint base `@nuxtjs/eslint-config`, enforcing
+Pre-commit (Husky): `npm run lint`, `npm run lint:md`, `npm test` (zero failures), and
+`npm run audit:gate` — the dependency-audit gate (see Dependency and Version Governance
+below). ESLint base `@nuxtjs/eslint-config`, enforcing
 `no-unused-vars` (error), `no-console` (warn), `eqeqeq` (error), `prefer-const` (error).
 CI additionally requires `nuxt build` to succeed with zero errors and warns if the
 first-load JS bundle exceeds 300 KB gzipped.
@@ -356,10 +357,15 @@ watchpack, the template compiler. They run during `npm run dev` and `npm run bui
 developer machines; they are not present in or reachable from the deployed runtime. The risk
 is formally accepted in `design/SECURITY-AUDIT-NOTES.md`.
 
-- **The pre-commit blocking gate is `--audit-level=critical`** — set deliberately, because a
-  strict `high` gate would block every commit on the unavoidable Nuxt 2 build-tool warnings
-  above. This is the looser of the two thresholds and is an intentional trade-off, not a
-  quality compromise.
+- **The pre-commit blocking gate is critical-level**, implemented as `npm run audit:gate`
+  (`scripts/audit-gate.js`) — set deliberately at `critical` (not `high`) because a strict
+  `high` gate would block every commit on the unavoidable Nuxt 2 build-tool warnings above.
+  The gate blocks on any critical **except** a short, documented, unit-tested **allow-list** of
+  reviewed build-time-only advisories (currently one: `ejs` / `GHSA-phwq-j96m-2c2q`); matching
+  needs the GHSA **and** the module, so a new critical — even in an allow-listed package — still
+  blocks. This is an intentional trade-off, not a quality compromise, and **not** a spec
+  relaxation (the one-directional rule governs stack versions, not the audit threshold). See
+  `design/SECURITY-AUDIT-NOTES.md` §3.
 - **Mandatory counterweight:** `npm audit` is still run, and **every high-severity finding is
   logged as a task and reviewed** — never silently swallowed. Quality is protected by review,
   not by jamming the commit gate.
