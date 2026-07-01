@@ -1,0 +1,4 @@
+# Husky git hooks must keep LF line endings, or /bin/sh cannot execute them on
+# Windows (core.autocrlf=true would otherwise rewrite them to CRLF). See
+# design/ACTIONS.md P1-HOOKS.
+.husky/pre-commit text eol=lf

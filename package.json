@@ -5,6 +5,7 @@
     "node": "14.15.x"
   },
   "scripts": {
+    "prepare": "husky install",
     "check:location": "node scripts/check-run-location.js",
     "predev": "node scripts/check-run-location.js",
     "predev:all": "node scripts/check-run-location.js",
@@ -42,6 +43,7 @@
     "cross-env": "7.0.3",
     "cssnano": "4.1.11",
     "eslint": "7.32.0",
+    "husky": "^8.0.3",
     "jest": "^27.5.1",
     "pug": "^2.0.4",
     "pug-plain-loader": "^1.1.0"

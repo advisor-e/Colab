@@ -15,7 +15,8 @@
 
 | ID | P | Title | Notes / next step |
 |----|---|-------|-------------------|
-| P1-HOOKS | P1 | Pre-commit hooks not installed | Husky + lint-staged must run `lint` + `test` + `npm audit --audit-level=critical` before commit (CLAUDE.md §Enforcement). **Cannot be added from the Dropbox copy** (no Node/`npm install` here, which would also regenerate the lockfile). Install on the canonical C: machine — see CONTRIBUTING.md "Activate pre-commit hooks". |
+| P1-HOOKS | P1 | Pre-commit hooks not installed | Husky must run `lint` + `test` (+ audit — see **P1-AUDIT-GATE**) before commit (CLAUDE.md §Enforcement). Now actionable: the canonical **C: clone is live** with Node/npm. Blocker: the **audit** portion cannot be wired as documented (P1-AUDIT-GATE) — `lint`+`test` portion is safe to install. Confirmed 2026-07-01 that no hook runs today (commits pass through ungated). |
+| P1-AUDIT-GATE | P1 | Documented audit gate blocks all commits | `CLAUDE.md` §Enforcement gate is `npm audit --audit-level=critical`. As of 2026-07-01 there are **2 build-time criticals** (`ejs` via `nuxt > @nuxt/webpack > webpack-bundle-analyzer`) → the gate now fails on every commit. Unfixable under the lock (semver-major = forbidden); npm 6.14.8 `--production` does **not** exclude dev deps. **Do NOT relax the spec.** Needs a team decision on scoping (explicit `ejs` allow-list / runtime-only audit tooling / newer npm used only for auditing). Full analysis in `design/SECURITY-AUDIT-NOTES.md`. |
 | P1-PROTECT | P1 | `main` is unprotected | Anyone can push straight to `main`; this enabled the June drift. Apply branch protection requiring the CI **verify** job + PR review, once CI is green. To be done via `gh` (Increment 3). |
 | P1-SEC-UTILS | P1 | Mandated security utils missing | `server/utils/sanitiseInput.js` and `server/utils/validateAIResponse.js` do not exist, yet `CLAUDE.md` (§Security, §Testing) requires them and `jest.config.js` referenced them. Implement both (pure functions, 100% test coverage) and wire input-sanitisation + external/LLM-output validation into the routes that handle outside data (start: `server/routes/translate.js`). Then restore strict coverage thresholds (see P1-TEST). |
 | P1-TEST | P1 | Test coverage far below targets | Suite started 2026-07-01 (auth, translate, sendError, health). Grow toward CLAUDE.md targets — Restify routes ≥90%, mixins/Vuex actions ≥80%, AI-validation 100% — then restore `coverageThreshold` gates in `jest.config.js` and add a `--coverage` step to CI. No frontend component tests yet (`@vue/test-utils` v1) or Playwright journeys. |
@@ -26,7 +27,7 @@
 
 | ID | P | Title | Notes |
 |----|---|-------|-------|
-| P1-CANON | P1 | Single source of truth = GitHub | Decision 2026-07-01: the fast **C: clone is canonical**; this Dropbox copy is **retired** after the current clean-up. Repo should not live inside Dropbox (sync can corrupt `.git` and masks staleness). Discipline documented in CONTRIBUTING.md. Remaining: physically stop using / Dropbox-exclude this copy. |
+| P1-CANON | P1 | Single source of truth = GitHub | Decision 2026-07-01: the fast **C: clone is canonical**; this Dropbox copy is **retired** after the current clean-up. **Move executed 2026-07-01** — `C:\Users\mb\Projects\Advisor Collaborate` is now the live copy: deps installed, app runs (blocked in Dropbox by the run-location guard), desktop launcher repointed, commits pushed from here. Remaining: physically delete / Dropbox-exclude the old copy once the owner is confident. |
 
 ## Done
 
