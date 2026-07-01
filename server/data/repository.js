@@ -333,11 +333,14 @@ async function getListing (id, myId) {
 }
 
 async function createListing (input, creator) {
-  // SQL SEAM: INSERT INTO marketplace_listing (…); INSERT marketplace_listing_tag rows
+  // SQL SEAM: INSERT INTO marketplace_listing (…, page_id); INSERT marketplace_listing_tag rows
   const title = (input.title || '').trim()
   if (!title) { return null }
   const l = {
     id: 'm-' + (listingSeq++), title: title, summary: (input.summary || '').trim(),
+    // Read-only link to the Advisor-e-hosted page (the `link`/page ID from the
+    // master catalogue). The route validates it exists before we get here.
+    pageId: (input.pageId || '').trim() || null,
     groupId: input.groupId || null, groupName: input.groupName || '',
     tags: Array.isArray(input.tags) ? input.tags : [],
     price: ((input.price || '').trim()) || 'Free',

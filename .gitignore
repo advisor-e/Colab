@@ -32,6 +32,9 @@ logs
 
 # Generated search exports (not for version control)
 search_content_*.json
+# …EXCEPT the one curated snapshot the marketplace tool-picker reads (read-only
+# master data, intentionally tracked — see design/reference/ and HANDOVER §4d).
+!design/reference/search_content_*.json
 
 # Dev-only firm distinctions (created locally when MySQL is unavailable)
 data/dev-firm-distinctions.json
