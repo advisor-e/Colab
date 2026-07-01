@@ -1,8 +1,18 @@
 'use strict'
 
 module.exports = {
+  // Backend + mixin tests default to node; component tests opt into jsdom with a
+  // `/** @jest-environment jsdom */` docblock so the node-based suites are unaffected.
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.js'],
+
+  // .vue single-file components (Options API + Pug templates) are compiled by
+  // @vue/vue2-jest; .js by babel-jest.
+  transform: {
+    '^.+\\.js$': 'babel-jest',
+    '^.+\\.vue$': '@vue/vue2-jest'
+  },
+  moduleFileExtensions: ['js', 'json', 'vue'],
 
   // Resolve Nuxt's '~' root alias so frontend mixins/components can be imported
   // in tests the same way the app imports them.
