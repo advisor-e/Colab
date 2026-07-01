@@ -248,6 +248,18 @@ Do not run commands, spiral into analysis, or touch files before completing step
 
 ## Definition of Done & the Daily-Clean Rule (binding)
 
+**The "show home" standard (handover-grade done).** A handover-grade deliverable is a
+**fully built show-home with the plumbing and wiring clearly labelled — ready for the
+utilities to be connected, not yet connected to the mains.** In practice: a runnable prototype
+on the locked stack where every connection to a real system (Advisory login/auth, MySQL,
+advisor identity/profiles, external feeds) is pre-built as an **isolated, clearly-labelled
+seam** and documented in `HANDOVER.md`, running on mock / in-memory data. The master coding
+team connects the seams to the live Advisor-e.com systems. This is the shared yardstick for
+"done": **never oversell mock-data work as production-ready** — always point to `HANDOVER.md`
+§4 (seams) + §8 (open questions) and `design/ACTIONS.md` as the authoritative remaining-work
+list. Real integration tests against live Advisory/MySQL are out of scope from this repo by
+design.
+
 **Nothing is ever parked as "small" and quietly left unfinished.** The moment an
 issue, deviation, or follow-up is identified it must be *either* fixed the same
 working day *or* logged in `design/ACTIONS.md` with a priority, an owner, and the
