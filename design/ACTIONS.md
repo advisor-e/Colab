@@ -41,6 +41,28 @@
 
 ---
 
+## Backlog — design items to triage (added 2026-07-01; review next session)
+
+> Surfaced by the "show home" audit (2026-07-01): design ideas that are **not built and were
+> not yet logged**. Priorities are **suggestions only** — next session we decide, per item,
+> **keep / delete / do**. This is candidate scope, not committed work.
+
+| ID | Suggested P | Item | Decision needed next session |
+|----|---|-------|------------------------------|
+| T1-SPACES | P2 | Collaboration "spaces" (plan pillar 4) | Plan describes a *room* per connection/group holding chat **+ shared content / Drive-asset references**. Chat exists; the space-with-content concept does not. Build it, fold it into Messaging, or defer to a later phase? |
+| T2-NOTIFICATIONS | P2 | Notifications | Sketches show a "🔔 3" and list a "Notifications panel"; nothing built. Decide which events + in-app vs. email, or defer. |
+| T3-IP-GOVERNANCE | P2 | IP classification & governance (plan §6) | 4-tier ownership, the "locked / non-derivable" flag, per-space terms-acceptance. Designed in detail; not built. High-IP network → decide an MVP vs. defer. |
+| T4-ANTISPAM | P3 | Outreach anti-spam guardrails (plan §4) | one-pending-outreach, rate limits, respect-availability. First **verify** what (if any) `server/routes/*` already enforces, then log the real gap. |
+| T5-MARKET-SIGNALS | P3 | Marketplace "proven tools" signal + ratings (plan §7, marked optional) | Keep as a future nicety, or drop. |
+| T6-SKETCHES-DOC | P3 | Repair `design/ux-sketches.md` | File is **truncated** (unclosed code fence) and its "screens still to sketch" list is **stale** (create-a-group is built). Close/complete the file and refresh the backlog. |
+
+**Already-tracked unbuilt scope (bring to the same review, no duplication):** role hierarchy /
+RBAC, cross-org engagement policy, manager bulk-invite, and audit logging are in `HANDOVER.md`
+§6; the deferred UX defaults **D1** (open-vs-closed) / **D2** (new-group visibility) and open
+questions **Q5** / **Q6** are in the plan §12. Review those alongside T1–T6.
+
+---
+
 ## How to use
 
 - Add a row to **Open** the moment a deviation or gap is found; never leave it implicit.
