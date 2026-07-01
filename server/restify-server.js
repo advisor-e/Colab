@@ -28,12 +28,27 @@
 }())
 
 const restify = require('restify')
-const { DB } = require('../config/integration')
+const { AUTH, DB } = require('../config/integration')
+const { productionStartupViolations } = require('./utils/productionGuard')
 const health = require('./routes/health')
 const translate = require('./routes/translate')
 const people = require('./routes/people')
 const { auth } = require('./middleware/auth')
 const pool = require('./utils/db')
+
+// Production startup guard (design/ACTIONS.md P1-PROD-GUARD): refuse to boot in
+// production while dev-auth is on or secrets are still placeholders. No-op in
+// dev/test. The check lives in a pure, tested util; here we act on its result.
+;(function checkProductionSafety () {
+  const violations = productionStartupViolations(process.env, { AUTH, DB })
+  if (violations.length) {
+    process.stderr.write(
+      '\n[STARTUP ERROR] Refusing to boot in production — insecure configuration:\n' +
+      violations.map(v => '  - ' + v).join('\n') + '\n\n'
+    )
+    process.exit(1)
+  }
+}())
 
 const PORT = process.env.BACKEND_PORT || 4000
 

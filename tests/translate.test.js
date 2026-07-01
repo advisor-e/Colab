@@ -81,4 +81,16 @@ describe('translate route', () => {
     const [, payload] = res.send.mock.calls[0]
     expect(payload.greeting).toBe('Hello')
   })
+
+  test('falls back when the JSON is valid but the shape is wrong', async () => {
+    // 200 + parseable JSON, but responseData.translatedText is missing — the
+    // shape validator must reject it rather than trust malformed output.
+    mockHttpsResponse(200, JSON.stringify({ responseStatus: 200, responseData: {} }))
+
+    const res = { send: jest.fn() }
+    await translate.post({ body: { texts: { greeting: 'Hello' }, langCode: 'de' } }, res)
+
+    const [, payload] = res.send.mock.calls[0]
+    expect(payload.greeting).toBe('Hello')
+  })
 })

@@ -4,20 +4,25 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.js'],
 
-  // Files whose coverage we care about as the suite grows. The self-listening
-  // server entrypoint is excluded (it binds a port on require).
+  // Coverage is collected on every run so the security thresholds below are
+  // enforced by the pre-commit gate and CI, not left to memory.
+  collectCoverage: true,
+  coverageReporters: ['text-summary'],
   collectCoverageFrom: [
     'server/**/*.js',
     'server-middleware/**/*.js',
     '!server/restify-server.js',
     '!node_modules/**'
-  ]
+  ],
 
-  // NOTE — coverageThreshold gates are intentionally NOT set yet.
-  // The suite is being built up from zero (see design/ACTIONS.md → P1-TEST).
-  // The previous config enforced 100% on server/utils/validateAIResponse.js and
-  // server/utils/sanitiseInput.js, which DO NOT EXIST — that broke
-  // `jest --coverage` with a "coverage data not found" error. Restore strict
-  // per-file thresholds (CLAUDE.md §Testing) once those security functions and
-  // their tests land (design/ACTIONS.md → P1-SEC-UTILS).
+  // Security-critical utilities are held at 100% (CLAUDE.md §Testing — input
+  // sanitisation + AI/third-party-response validation are must-test functions).
+  // These files now exist and are fully covered (design/ACTIONS.md P1-SEC-UTILS).
+  // Broader per-directory targets (routes ≥90%, mixins/actions ≥80%) are the
+  // remaining work tracked under design/ACTIONS.md P1-TEST.
+  coverageThreshold: {
+    './server/utils/sanitiseInput.js': { statements: 100, branches: 100, functions: 100, lines: 100 },
+    './server/utils/validateAIResponse.js': { statements: 100, branches: 100, functions: 100, lines: 100 },
+    './server/utils/productionGuard.js': { statements: 100, branches: 100, functions: 100, lines: 100 }
+  }
 }

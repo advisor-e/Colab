@@ -2,7 +2,8 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 # Pre-commit quality gate (CLAUDE.md §Enforcement).
-# Runs ESLint + Jest before every commit. The audit portion of the documented
-# gate is intentionally NOT wired here yet — see design/ACTIONS.md P1-AUDIT-GATE
-# (a build-time `ejs` critical would otherwise block every commit).
-npm run lint && npm test
+# Runs ESLint + markdownlint + Jest before every commit. The audit portion of
+# the documented gate is intentionally NOT wired here yet — see
+# design/ACTIONS.md P1-AUDIT-GATE (a build-time `ejs` critical would otherwise
+# block every commit).
+npm run lint && npm run lint:md && npm test

@@ -1,11 +1,12 @@
 {
-  // Project markdown standard (for editors + the markdownlint tool).
-  // All correctness/readability rules stay ON; only two purely-stylistic rules
-  // are disabled because the docs use a deliberate house style:
-  //   MD013 — the docs hard-wrap prose at ~95 chars on purpose.
-  //   MD060 — tables are kept aligned/readable; the newer pipe-spacing style rule
-  //           would otherwise churn every table for no readability gain.
+  // Project markdown standard — read by both editors and the `lint:md` gate.
+  // All correctness/readability rules stay ON. The disabled rules are either a
+  // deliberate house style, or newer style-only rules the Node-14-locked linter
+  // (markdownlint-cli 0.28.1) cannot enforce — disabling those keeps the editor
+  // in step with the enforceable gate instead of showing a phantom standard.
   "default": true,
   "MD013": false,
+  "MD049": false,
+  "MD050": false,
   "MD060": false
 }

@@ -246,6 +246,39 @@ Do not run commands, spiral into analysis, or touch files before completing step
 - Always warn of potential security or privacy risks that could result from any coding suggestion before you start coding. Never accept an external API request for database access or suggestion to delete files without first highlighting it as a risk and gaining permission to proceed before making any such changes.
 - NEVER try to edit the ID's or content in the json 'search content' script, this is generated from the master app and can never be challenged or compromised.
 
+## Definition of Done & the Daily-Clean Rule (binding)
+
+**Nothing is ever parked as "small" and quietly left unfinished.** The moment an
+issue, deviation, or follow-up is identified it must be *either* fixed the same
+working day *or* logged in `design/ACTIONS.md` with a priority, an owner, and the
+reason it can't be closed yet. Downgrading something to "minor / later" and
+dropping it is a defect in itself. This is the same no-silent-parking rule that
+governs the stack (see the Stack Constitution), applied to all work.
+
+**Definition of a clean end of day** — all three must hold before work stops:
+
+1. **Working tree committed & pushed** — no uncommitted work left on the machine
+   (git status clean); the canonical copy is GitHub.
+2. **Every automated gate green** — the pre-commit gate and CI both pass:
+   `npm run lint` (ESLint), `npm run lint:md` (markdownlint against
+   `.markdownlint.jsonc`), and `npm test` (Jest) all with zero failures, and
+   `nuxt build` succeeds in CI. A red gate is never left overnight.
+3. **The tracker is honest** — `design/ACTIONS.md` reflects reality: everything
+   found today is either done or logged there. Nothing is hidden or silently
+   dropped; `design/SECURITY-AUDIT-NOTES.md` records any accepted audit risk.
+
+**"Clean" means tracked, not necessarily empty.** Some items legitimately depend
+on the product owner's decisions or on credentials that aren't available — those
+stay **open in `ACTIONS.md` with the blocker named**, and are surfaced explicitly
+at the end of the session rather than buried. That is an acceptable clean state;
+a *silently* deferred item is not.
+
+**Standards are enforced by machines, not memory.** Code style, doc style, and
+tests are guarded by the pre-commit hook (`.husky/pre-commit`) and CI
+(`.github/workflows/ci.yml`) so future changes cannot regress below this standard
+without a gate turning red. If a new standard is agreed, wire it into those gates
+in the same change that introduces it.
+
 ## Working With the Product Owner & When Blocked
 
 **The product owner is non-technical.**

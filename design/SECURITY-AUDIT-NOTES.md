@@ -32,6 +32,12 @@ Full tree: **498 findings** — 2 critical, 27 high, 457 moderate, 12 low (2100 
 `npm audit` reports that ~489 require semver-major updates (i.e. unfixable without breaking
 the lock).
 
+> **Dev-tooling delta (2026-07-01):** adding `markdownlint-cli@0.28.1` — the Node-14-safe doc
+> linter now wired into the pre-commit hook and CI (`lint:md`) — raises the tree to ~507
+> findings. Its extra transitive high-severity items are **build/lint tooling only**, never in
+> the deployed runtime, and are accepted under the same policy above. (`markdownlint-cli2` was
+> evaluated first and rejected: its ESM entrypoint crashes on Node 14.15.)
+>
 > **npm 6 caveat.** `npm audit --production` does **not** filter dev/build dependencies in
 > npm 6.14.8 (a known npm-6 limitation — fixed only in npm 7+). It still reports the same
 > build-tool findings, so it cannot be used to scope the gate to runtime deps on this stack.

@@ -18,10 +18,27 @@
  */
 
 const https = require('https')
+const { sanitiseValues } = require('../utils/sanitiseInput')
+const { validateAIResponse } = require('../utils/validateAIResponse')
 
 const SEPARATOR = '\n\n---SPLIT---\n\n'
 const CHUNK_CHARS = 900
 const REQUEST_TIMEOUT_MS = 15000
+const MAX_INPUT_CHARS = 5000
+
+// Expected shape of a usable MyMemory response. Validated before we trust it —
+// third-party output is never assumed well-formed (CLAUDE.md §Security).
+const MYMEMORY_SCHEMA = {
+  type: 'object',
+  fields: {
+    responseStatus: { type: 'number', required: true },
+    responseData: {
+      type: 'object',
+      required: true,
+      fields: { translatedText: { type: 'string', required: true } }
+    }
+  }
+}
 
 /**
  * GET a URL with the Node-14 `https` module and resolve the raw response.
@@ -55,7 +72,10 @@ async function post (req, res) {
     return
   }
 
-  const keys = Object.keys(texts)
+  // Sanitise untrusted input before it leaves the backend for the third party
+  // (CLAUDE.md §Security). safeTexts is used everywhere below in place of texts.
+  const safeTexts = sanitiseValues(texts, { maxLength: MAX_INPUT_CHARS })
+  const keys = Object.keys(safeTexts)
   const email = process.env.MYMEMORY_EMAIL
 
   // Split keys into chunks that fit inside MyMemory's GET URL limit (~2 KB),
@@ -64,7 +84,7 @@ async function post (req, res) {
   let currentChunk = []
   let currentLen = 0
   for (const k of keys) {
-    const val = String(texts[k] || '')
+    const val = safeTexts[k]
     const addition = currentLen > 0 ? SEPARATOR.length + val.length : val.length
     if (addition > CHUNK_CHARS && currentChunk.length > 0) {
       chunks.push(currentChunk)
@@ -83,7 +103,7 @@ async function post (req, res) {
   // text for its keys, so a partial outage degrades gracefully rather than
   // dropping strings or failing the whole request.
   for (const chunkKeys of chunks) {
-    const combined = chunkKeys.map(k => String(texts[k] || '')).join(SEPARATOR)
+    const combined = chunkKeys.map(k => safeTexts[k]).join(SEPARATOR)
     const params = new URLSearchParams({ q: combined, langpair: `${sourceLang}|${langCode}` })
     if (email) { params.set('de', email) }
 
@@ -92,13 +112,13 @@ async function post (req, res) {
       mmRes = await httpsGet(`https://api.mymemory.translated.net/get?${params}`)
     } catch (netErr) {
       console.error('[translate] Network error:', netErr.message)
-      chunkKeys.forEach((k) => { translated[k] = texts[k] })
+      chunkKeys.forEach((k) => { translated[k] = safeTexts[k] })
       continue
     }
 
     if (mmRes.statusCode !== 200) {
       console.error('[translate] MyMemory HTTP error:', mmRes.statusCode)
-      chunkKeys.forEach((k) => { translated[k] = texts[k] })
+      chunkKeys.forEach((k) => { translated[k] = safeTexts[k] })
       continue
     }
 
@@ -107,19 +127,21 @@ async function post (req, res) {
       data = JSON.parse(mmRes.body)
     } catch (e) {
       console.error('[translate] MyMemory returned non-JSON')
-      chunkKeys.forEach((k) => { translated[k] = texts[k] })
+      chunkKeys.forEach((k) => { translated[k] = safeTexts[k] })
       continue
     }
 
-    if (!data || data.responseStatus !== 200 || !data.responseData || typeof data.responseData.translatedText !== 'string') {
-      console.error('[translate] MyMemory rejected:', data && data.responseDetails)
-      chunkKeys.forEach((k) => { translated[k] = texts[k] })
+    // Validate the third-party response shape before trusting it as data.
+    const shape = validateAIResponse(data, MYMEMORY_SCHEMA)
+    if (!shape.valid || data.responseStatus !== 200) {
+      console.error('[translate] MyMemory rejected:', shape.valid ? data.responseDetails : shape.errors)
+      chunkKeys.forEach((k) => { translated[k] = safeTexts[k] })
       continue
     }
 
     const parts = data.responseData.translatedText.split(/\n+---SPLIT---\n+/)
     chunkKeys.forEach((k, i) => {
-      translated[k] = parts[i] !== undefined ? parts[i] : texts[k]
+      translated[k] = parts[i] !== undefined ? parts[i] : safeTexts[k]
     })
   }
 
