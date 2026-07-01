@@ -26,13 +26,25 @@
 
 html, body { background: var(--bg); }
 body {
-  font-family: 'Inter', 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--ink);
 }
+/* Form controls don't inherit the body font by default — make them match. */
+button, input, optgroup, select, textarea { font-family: inherit; }
 h1, h2, h3, h4, h5, .title, .subtitle, .hero-title, .pillar h3 {
-  font-family: 'Poppins', 'Inter', sans-serif;
+  font-family: 'Open Sans', sans-serif;
 }
-.title { color: var(--ink); font-weight: 700; letter-spacing: -0.02em; }
+/* ── Global type: Open Sans Light everywhere (owner requirement, 2026-07-02) ──
+   Only the typeface + weight are unified to Light (300); font sizes and layout
+   are unchanged. !important is required to override Bulma/Buefy's own bold
+   utilities (.title, .has-text-weight-*, strong, table headers), which ship with
+   !important themselves. */
+h1, h2, h3, h4, h5, h6,
+.title, .subtitle, strong, b, th, label, .label,
+.has-text-weight-bold, .has-text-weight-semibold, .has-text-weight-medium {
+  font-weight: 300 !important;
+}
+.title { color: var(--ink); font-weight: 300; letter-spacing: -0.02em; }
 .subtitle { color: var(--muted); }
 .section { padding: 2.5rem 1.5rem; }
 a { color: var(--brand); }
@@ -52,12 +64,12 @@ a { color: var(--brand); }
   border-bottom: 1px solid rgba(108, 92, 231, 0.08);
 }
 .navbar.is-light .navbar-brand .navbar-item.has-text-weight-bold {
-  font-family: 'Poppins'; font-size: 1.2rem;
+  font-family: 'Open Sans'; font-size: 1.2rem;
   background: linear-gradient(120deg, var(--brand), var(--pink));
   -webkit-background-clip: text; background-clip: text; color: transparent !important;
 }
 .navbar.is-light .nav-link {
-  font-weight: 600; border-radius: 10px; margin: 0 .15rem;
+  font-weight: 300; border-radius: 10px; margin: 0 .15rem;
   transition: background .15s ease, color .15s ease;
 }
 /* idle colour = the section's colour */
@@ -76,7 +88,7 @@ a { color: var(--brand); }
 /* ===== Buttons ===== */
 .button {
   border-radius: var(--radius-sm);
-  font-weight: 600;
+  font-weight: 300;
   border-width: 1.5px;
   transition: transform .12s ease, box-shadow .15s ease, background .2s ease;
 }
@@ -107,7 +119,7 @@ a { color: var(--brand); }
 .box:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 
 /* ===== Tags ===== */
-.tag { border-radius: 999px !important; font-weight: 600; }
+.tag { border-radius: 999px !important; font-weight: 300; }
 .tag.is-success { background: #d7f7ef !important; color:#067a68 !important; }
 .taginput .tag { background:#efeefe !important; color: var(--brand-dark) !important; }
 
@@ -120,7 +132,7 @@ a { color: var(--brand); }
 }
 
 /* ===== Tabs ===== */
-.b-tabs .tabs li.is-active a { border-bottom-color: var(--brand); color: var(--brand); font-weight: 600; }
+.b-tabs .tabs li.is-active a { border-bottom-color: var(--brand); color: var(--brand); font-weight: 300; }
 .b-tabs .tabs a { border-bottom-width: 2px; }
 .b-tabs .tabs a:hover { border-bottom-color: var(--brand-2); color: var(--brand); }
 
@@ -143,7 +155,7 @@ a { color: var(--brand); }
   box-shadow: var(--shadow);
 }
 .hero-title {
-  font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 800;
+  font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 300;
   letter-spacing: -0.03em; line-height: 1.05; margin-bottom: .75rem;
   background: linear-gradient(120deg, var(--brand), var(--pink) 75%);
   -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -163,7 +175,7 @@ a { color: var(--brand); }
   width: 54px; height: 54px; border-radius: 15px; margin-bottom: .9rem;
   display: flex; align-items: center; justify-content: center; font-size: 1.7rem; background: #f0eefe;
 }
-.pillar h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: .35rem; }
+.pillar h3 { font-size: 1.25rem; font-weight: 300; margin-bottom: .35rem; }
 .pillar p  { color: var(--muted); font-size: .95rem; }
 .pillar--discover { border-top-color: var(--cyan); }
 .pillar--discover .pillar__icon { background: #e2f6fb; }
@@ -180,7 +192,7 @@ a { color: var(--brand); }
 .avatar {
   width: 48px; height: 48px; border-radius: 14px; flex: none; margin-right: .9rem;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Poppins'; font-weight: 700; color: #fff; font-size: 1rem;
+  font-family: 'Open Sans'; font-weight: 300; color: #fff; font-size: 1rem;
 }
 .group-badge {
   width: 48px; height: 48px; border-radius: 14px; flex: none; margin-right: .8rem;
@@ -196,8 +208,8 @@ a { color: var(--brand); }
 }
 .section-banner .ico { font-size: 1.8rem; line-height: 1; }
 .section-banner h1 {
-  color: #fff; margin: 0; font-family: 'Poppins';
-  font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em;
+  color: #fff; margin: 0; font-family: 'Open Sans';
+  font-size: 1.8rem; font-weight: 300; letter-spacing: -0.02em;
 }
 .section-banner--profile  { background: linear-gradient(120deg, var(--brand), var(--brand-2)); }
 .section-banner--discover { background: linear-gradient(120deg, var(--cyan),  #34cbe8); }
@@ -208,13 +220,13 @@ a { color: var(--brand); }
 .section-banner--market { background: linear-gradient(120deg, var(--coral), #ff9b80); }
 
 /* ===== Group detail ===== */
-.back-link { display: inline-block; color: var(--muted); font-weight: 600; margin-bottom: 1rem; cursor: pointer; }
+.back-link { display: inline-block; color: var(--muted); font-weight: 300; margin-bottom: 1rem; cursor: pointer; }
 .back-link:hover { color: var(--brand); }
 .members { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }
 .member {
   display: flex; align-items: center; gap: .55rem;
   background: #faf9ff; border: 1px solid rgba(108,92,231,.08);
-  border-radius: 999px; padding: .3rem .9rem .3rem .3rem; font-weight: 500;
+  border-radius: 999px; padding: .3rem .9rem .3rem .3rem; font-weight: 300;
 }
 .member .avatar { width: 34px; height: 34px; border-radius: 10px; margin: 0; font-size: .8rem; }
 .group-head { color: inherit; }

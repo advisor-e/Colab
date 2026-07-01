@@ -81,7 +81,7 @@ export default {
   background: rgba(255, 255, 255, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.55);
   color: #fff;
-  font-weight: 600;
+  font-weight: 300;
 }
 .page-help__btn:hover,
 .page-help__btn:focus { background: rgba(255, 255, 255, 0.32); color: #fff; }
