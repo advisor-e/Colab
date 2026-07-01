@@ -62,6 +62,12 @@ the lock).
 > the deployed runtime. The critical count is unchanged (still the two allow-listed `ejs`
 > findings), so the audit gate is unaffected. All Node-14.15-safe.
 >
+> **Dev-tooling delta (2026-07-02b):** added `@playwright/test@1.34.3` for the e2e critical
+> journeys — the **last Playwright line that supports the locked Node 14.15** (1.35+ requires
+> Node 16). Test tooling only; the Chromium binary is downloaded to the machine cache, not the
+> repo. Runs in a separate CI job on `ubuntu-22.04`. Critical count still unchanged → gate
+> unaffected.
+>
 > **npm 6 caveat.** `npm audit --production` does **not** filter dev/build dependencies in
 > npm 6.14.8 (a known npm-6 limitation — fixed only in npm 7+). It still reports the same
 > build-tool findings, so it cannot be used to scope the gate to runtime deps on this stack.
