@@ -195,5 +195,5 @@ export default {
 
 <style scoped>
 .listing { height: 100%; }
-.price { background: #fff0e8; color: #c0451f; font-weight: 700; }
+.price { background: #fff0e8; color: #c0451f; font-weight: 300; }
 </style>
