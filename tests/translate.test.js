@@ -33,6 +33,17 @@ function mockHttpsResponse (statusCode, body) {
   })
 }
 
+/**
+ * Make https.get reject at the transport level: the request object's 'error'
+ * handler fires (no response is ever delivered), so httpsGet rejects.
+ */
+function mockHttpsNetworkError () {
+  https.get.mockImplementation(() => ({
+    on (event, handler) { if (event === 'error') { handler(new Error('Network down')) } return this },
+    setTimeout: jest.fn()
+  }))
+}
+
 describe('translate route', () => {
   beforeEach(() => { https.get.mockReset() })
 
@@ -92,5 +103,35 @@ describe('translate route', () => {
 
     const [, payload] = res.send.mock.calls[0]
     expect(payload.greeting).toBe('Hello')
+  })
+
+  test('falls back to the original text on a transport/network error', async () => {
+    mockHttpsNetworkError()
+
+    const res = { send: jest.fn() }
+    await translate.post({ body: { texts: { greeting: 'Hello' }, langCode: 'de' } }, res)
+
+    const [status, payload] = res.send.mock.calls[0]
+    expect(status).toBe(200)
+    expect(payload.greeting).toBe('Hello') // nothing dropped despite the outage
+  })
+
+  test('splits a large payload into multiple chunked requests', async () => {
+    mockHttpsResponse(200, JSON.stringify({
+      responseStatus: 200,
+      responseData: { translatedText: 'Übersetzt' }
+    }))
+
+    // Three values each longer than CHUNK_CHARS (900) force one request per key.
+    const big = 'x'.repeat(950)
+    const texts = { a: big, b: big, c: big }
+
+    const res = { send: jest.fn() }
+    await translate.post({ body: { texts, langCode: 'de' } }, res)
+
+    const [status, payload] = res.send.mock.calls[0]
+    expect(status).toBe(200)
+    expect(https.get).toHaveBeenCalledTimes(3) // one request per oversized key
+    expect(payload).toEqual({ a: 'Übersetzt', b: 'Übersetzt', c: 'Übersetzt' })
   })
 })
