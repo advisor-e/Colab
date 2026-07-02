@@ -45,7 +45,11 @@
     "topics": "Topics / projects",
     "about": "About me (advertised to the network)",
     "save": "Save profile",
-    "addTag": "Add"
+    "addTag": "Add",
+    "crossOrg": "Cross-firm collaboration",
+    "crossOrgOpen": "Open — you can discover and collaborate with advisers at other firms",
+    "crossOrgClosed": "Closed — limited to advisers within your own firm",
+    "crossOrgNote": "Set by your firm manager."
   },
   "discover": {
     "title": "Discover",

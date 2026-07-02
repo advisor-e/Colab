@@ -22,6 +22,8 @@
 
 // const pool = require('../utils/db')   // <-- uncomment when wiring SQL
 
+const { CROSS_ORG } = require('../../config/integration')
+
 // ── In-memory dev store ──────────────────────────────────────────────────────
 
 const advisors = [
@@ -144,6 +146,35 @@ function pushNotification (userId, type, params, link) {
   pushNotification('me', 'purchase', { buyer: 'Sara Okafor', tool: 'Trucking Firm Valuation Model' }, '/marketplace')
 }())
 
+// ── Cross-org engagement postures (per office/firm) ──────────────────────────
+// Keyed by the advisor's `firm` (= office/branch, Q6). The default is CLOSED /
+// opt-in (config/integration.js → CROSS_ORG.defaultPosture, D1). The demo firms
+// below have OPTED IN so the show-home network is navigable; an unknown firm
+// falls back to the closed default.
+//
+// SQL SEAM: a per-org row (org_id, posture); the manager UI to flip it is
+// deferred with FEAT-RBAC (see design/ACTIONS.md). Group/space-level cross-org
+// gating (plan §8) is also future work — the wall here covers the person-to-person
+// surfaces (discovery, connection, outreach).
+const orgPostures = {
+  'Advisor-e': 'open',
+  'Lindt & Co': 'open',
+  'BDO Germany': 'open',
+  'Okafor Advisory': 'open'
+}
+
+function orgPostureFor (firm) {
+  return orgPostures[firm] || CROSS_ORG.defaultPosture
+}
+
+// Both-sides consent (plan §8): a cross-firm interaction needs BOTH firms open.
+// Same firm is always allowed.
+function canReachAcross (firmA, firmB) {
+  if (!firmA || !firmB) { return false }
+  if (firmA === firmB) { return true }
+  return orgPostureFor(firmA) === 'open' && orgPostureFor(firmB) === 'open'
+}
+
 function connectionStatusFor (myId, otherId) {
   const c = connections.find(x => (x.requesterId === myId && x.addresseeId === otherId) || (x.requesterId === otherId && x.addresseeId === myId))
   if (!c) { return 'none' }
@@ -175,8 +206,13 @@ async function listAdvisors (opts) {
   //           identity; LEFT JOIN connection to derive each advisor's status vs the viewer.
   const o = opts || {}
   const viewer = o.myId || o.excludeId
+  const viewerAdvisor = advisors.find(a => a.id === viewer)
+  const viewerFirm = viewerAdvisor ? viewerAdvisor.firm : null
   return advisors
     .filter(a => a.id !== o.excludeId)
+    // Cross-org wall (plan §8; D1/Q6): hide advisers your firm can't reach.
+    // A viewer with no known firm (e.g. an unresolved dev identity) is not filtered.
+    .filter(a => (viewerFirm ? canReachAcross(viewerFirm, a.firm) : true))
     .filter(a => matchesQuery(a, o.q))
     .filter(a => (o.availableOnly ? a.available : true))
     .map(a => Object.assign({}, a, { connectionStatus: connectionStatusFor(viewer, a.id) }))
@@ -330,9 +366,34 @@ async function findOrCreateGroupThread (group) {
 
 // ── Connections (1:1, mutual accept) ─────────────────────────────────────────
 
+// Can `fromId` initiate contact with `toId` under the cross-org policy? Same firm
+// is always allowed; an unknown recipient (e.g. an external id) is not blocked in
+// the mock. Used by the connection/outreach/profile guards.
+async function canReachAdvisor (fromId, toId) {
+  const from = advisors.find(a => a.id === fromId)
+  const to = advisors.find(a => a.id === toId)
+  if (!from || !to) { return true }
+  return canReachAcross(from.firm, to.firm)
+}
+
+async function getOrgPosture (firm) {
+  // SQL SEAM: SELECT posture FROM org_posture WHERE org_id = ? (default from config)
+  return orgPostureFor(firm)
+}
+
+async function setOrgPosture (firm, posture) {
+  // SQL SEAM: UPSERT org_posture(org_id, posture). GUARD (future): only a Firm/
+  // Global manager may call this — enforced once FEAT-RBAC lands (Q-ROLES).
+  if (posture !== 'open' && posture !== 'closed') { return { error: 'BAD_POSTURE' } }
+  orgPostures[firm] = posture
+  return { firm: firm, posture: posture }
+}
+
 async function requestConnection (fromId, toId) {
   // SQL SEAM: INSERT INTO connection (requester_id, addressee_id, 'pending') ON DUPLICATE KEY UPDATE …
   if (fromId === toId) { return null }
+  // Cross-org wall: refuse a new cross-firm request unless both firms have opted in.
+  if (!(await canReachAdvisor(fromId, toId))) { return { error: 'CROSS_ORG_BLOCKED' } }
   let c = connections.find(x => (x.requesterId === fromId && x.addresseeId === toId) || (x.requesterId === toId && x.addresseeId === fromId))
   if (!c) {
     c = { id: 'c-' + (connSeq++), requesterId: fromId, addresseeId: toId, status: 'pending' }
@@ -444,5 +505,6 @@ module.exports = {
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
   requestConnection, listConnections, respondConnection,
   listListings, getListing, createListing, recordPurchase,
-  listNotifications, markNotificationsRead
+  listNotifications, markNotificationsRead,
+  canReachAdvisor, getOrgPosture, setOrgPosture
 }

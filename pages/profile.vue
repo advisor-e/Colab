@@ -21,6 +21,13 @@
             span.contact-ico 🔗
             a(:href="advisorProfile.linkedin" target="_blank" rel="noopener") {{ advisorProfile.linkedin }}
 
+        .box.crossorg(v-if="advisorProfile.crossOrgPosture")
+          p.heading {{ $t('profile.crossOrg') }}
+          p
+            b-tag(:type="advisorProfile.crossOrgPosture === 'open' ? 'is-success' : 'is-warning'")
+              | {{ advisorProfile.crossOrgPosture === 'open' ? $t('profile.crossOrgOpen') : $t('profile.crossOrgClosed') }}
+          p.has-text-grey.is-size-7.mt-1 {{ $t('profile.crossOrgNote') }}
+
         b-field(:label="$t('profile.availability')")
           b-switch(v-model="advisorProfile.available") {{ $t('profile.availableToggle') }}
         b-field(:label="$t('profile.strengths')")
