@@ -122,3 +122,18 @@ CREATE TABLE IF NOT EXISTS marketplace_purchase (
   created_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_purchase (listing_id, buyer_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- In-app notifications (per recipient). The visible text is NOT stored — the
+-- frontend renders it from `type` + `params_json` via i18n locale keys, so
+-- notifications are language-agnostic. `params_json` holds the interpolation
+-- values (e.g. {"name":"Anna Richter"}); `link` is the in-app route to open.
+CREATE TABLE IF NOT EXISTS notification (
+  id           BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  user_id      VARCHAR(64)  NOT NULL,   -- recipient advisor_id
+  type         ENUM('connection_request','group_invitation','message','purchase') NOT NULL,
+  params_json  JSON         NULL,
+  link         VARCHAR(160) NULL,
+  is_read      TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_user_unread (user_id, is_read, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

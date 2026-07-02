@@ -151,6 +151,15 @@
     "fPrice": "Price",
     "priceHint": "Members transact directly — Advisory takes no fee. Use 'Free' or any amount."
   },
+  "notif": {
+    "title": "Notifications",
+    "empty": "You're all caught up",
+    "markAllRead": "Mark all as read",
+    "connection_request": "{name} wants to connect",
+    "group_invitation": "{inviter} invited you to {group}",
+    "message": "New message from {name}",
+    "purchase": "{buyer} bought {tool}"
+  },
   "help": {
     "button": "How to use this page",
     "modalTitle": "How to use this page",
