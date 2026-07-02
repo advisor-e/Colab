@@ -50,7 +50,7 @@
               .member(v-for="m in g.members" :key="m.id")
                 .avatar(:style="avatarStyle(m)") {{ initials(m.name) }}
                 span {{ m.name }}
-                b-button.ml-2(type="is-primary" size="is-small" outlined @click="message(m)") {{ $t('common.message') }}
+                b-button.ml-2(type="is-primary" size="is-small" @click="message(m)") {{ $t('common.message') }}
 
         template(v-if="data.outgoing.length")
           p.heading.mt-5 {{ $t('connections.pending') }}
