@@ -30,14 +30,23 @@
               p.modal-card-title {{ $t('group.message') }} · {{ group.name }}
             section.modal-card-body
               b-input(type="textarea" v-model="msgText" :placeholder="$t('messages.type')")
+              button.button.is-light.is-small.mt-2(
+                v-if="speechSupported"
+                @click="toggleVoiceInput('msgText')"
+                :class="{ 'is-danger': voiceField === 'msgText' }"
+                title="Voice input"
+              ) 🎤
             footer.modal-card-foot
               b-button(type="is-warning" @click="sendGroupMessage") {{ $t('messages.sendBtn') }}
               b-button(@click="msgOpen = false") {{ $t('common.cancel') }}
 </template>
 
 <script>
+import speechMixin from '~/mixins/speechMixin'
+
 export default {
   name: 'GroupDetailPage',
+  mixins: [speechMixin],
   data () {
     return { group: null, loading: true, joining: false, msgOpen: false, msgText: '' }
   },

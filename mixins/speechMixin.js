@@ -30,7 +30,8 @@ export default {
       speechSupported: false,
       recognition: null,
       profileRecordingField: null,
-      reviewRecordingField: null
+      reviewRecordingField: null,
+      voiceField: null
     }
   },
 
@@ -52,13 +53,16 @@ export default {
           this.$set(this.advisorProfile, this.profileRecordingField, transcript)
         } else if (this.reviewRecordingField) {
           this.$set(this.reviewDraft, this.reviewRecordingField, transcript)
+        } else if (this.voiceField) {
+          // Generic: dictate into a top-level data field (e.g. a message box).
+          this[this.voiceField] = transcript
         } else {
           this.inputText = transcript
         }
       }
       this.recognition.onend = () => {
         this._recognitionRunning = false
-        if (this.isListening || this.profileRecordingField || this.reviewRecordingField) {
+        if (this.isListening || this.profileRecordingField || this.reviewRecordingField || this.voiceField) {
           this._recognitionRunning = true
           try { this.recognition.start() } catch (e) {}
         }
@@ -106,6 +110,21 @@ export default {
         this.isListening = false
         this.reviewRecordingField = null
         this.profileRecordingField = field
+        this._startRecognition()
+      }
+    },
+
+    // Generic voice input for any top-level data field (message boxes, etc.).
+    toggleVoiceInput (field) {
+      if (!this.recognition) { return }
+      if (this.voiceField === field) {
+        this.recognition.stop()
+        this.voiceField = null
+      } else {
+        this.isListening = false
+        this.profileRecordingField = null
+        this.reviewRecordingField = null
+        this.voiceField = field
         this._startRecognition()
       }
     },
