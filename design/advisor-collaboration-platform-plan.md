@@ -433,18 +433,19 @@ Each phase is independently valuable; the app is demoable from Phase 1.
    build.
 5. **Net-new group IP from scratch** is covered as Tier 4 (group-owned) — confirm no edge cases
    (e.g. a member contributing pre-existing personal IP into a group).
-6. **What counts as "one organisation" for the cross-org policy (§8)?** Since `branch` =
-   firm/office, a multi-office firm appears as several branches. Confirm whether the §8 toggle
-   seals at the individual office (branch/Firm tier), the whole firm, or the country Group.
-   *(Raised 2026-07-01; a "see-it-live" refinement, not blocking.)*
+6. ~~What counts as "one organisation" for the cross-org policy (§8)?~~ — **RESOLVED
+   (2026-07-03, owner).** The §8 toggle seals at the **individual office (branch / Firm tier)** —
+   two offices of the same firm are treated as cross-org and each need opt-in. Maps directly onto
+   Advisory's existing `branch`, so no extra master data is required.
 
-**Deferred — decide once we can see the app in action:**
+**Deferred decisions — RESOLVED 2026-07-03 (owner, "see-it-live" review):**
 
-- **D1 · Default cross-org posture (open vs closed).** A UX-feel call about what a user is first
-  greeted with. Recommendation on record: lean **closed/opt-in** for a high-IP network. Build as
-  a **config flip** (both paths switchable) — not a rebuild.
-- **D2 · New-group approval/visibility default.** Whether a brand-new group is live immediately
-  (assumed) or unlisted/pending a manager's OK. Likely also a "see-it-live" feel call.
+- ~~**D1 · Default cross-org posture (open vs closed).**~~ — **RESOLVED: closed / opt-in.** New
+  members start sealed to their own organisation and opt in to reach across firms — the recommended
+  posture for a high-IP network. Remains built as a **config flip** (both paths switchable), so the
+  default can be revisited without a rebuild.
+- ~~**D2 · New-group approval/visibility default.**~~ — **RESOLVED: live immediately.** A brand-new
+  group is listed and can recruit the moment it is created; no manager pre-approval step.
 
 ---
 
@@ -459,6 +460,12 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 | 2026-06-30 | This is a **separate standalone repo**, sibling of Virt Advisor, not nested. |
 | 2026-06-30 | Conform to the Advisor-e Stack Constitution (Nuxt 2 / Restify / MySQL / Node 14.15). |
 | 2026-06-30 | Auth inherited from Advisory.com; Advisory.com is the profile system of record. |
+| 2026-07-03 | **D1** — default cross-org posture = **closed / opt-in** (config flip; both paths switchable). |
+| 2026-07-03 | **D2** — new-group visibility = **live immediately** (no manager pre-approval). |
+| 2026-07-03 | **Q6** — cross-org "organisation" seals at the **individual office (branch / Firm tier)**; maps to Advisory `branch`. |
+| 2026-07-03 | **T2** — notifications: build an **in-app-only MVP** for highest-value events (no email); event list TBD. |
+| 2026-07-03 | **T3** — IP governance: build an **MVP** (4-tier ownership labels + enforce locked flag); per-space terms-acceptance deferred (depends on spaces). |
+| 2026-07-03 | **T1** — collaboration "spaces" (chat + shared content) **deferred** to a later phase. |
 | 2026-06-30 | Group creation open to every role **except Client**; membership opt-in. |
 | 2026-06-30 | Marketplace: no Advisory fee; **off-platform, record-only**; buyer gets unlimited-client usage (no resale); **ongoing updates** included. |
 | 2026-06-30 | Cross-org engagement controlled at Global/Group level; both-sides consent; Global sets ceiling. Default posture **deferred** (D1). |
