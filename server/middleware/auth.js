@@ -19,6 +19,7 @@
 
 const jwt = require('jsonwebtoken')
 const { AUTH } = require('../../config/integration')
+const { sendApiError } = require('../utils/sendError')
 
 // Identity used in dev when ALLOW_DEV_AUTH=true and no valid token is present.
 const DEV_IDENTITY = {
@@ -56,7 +57,7 @@ function auth (req, res, next) {
       return next()
     } catch (e) {
       if (!devAllowed) {
-        res.send(401, { success: false, error: { code: 'INVALID_TOKEN', message: 'Authentication failed.' } })
+        sendApiError(res, 401, 'INVALID_TOKEN', 'Authentication failed.')
         return
       }
       // dev: fall through to the dev identity
@@ -68,7 +69,7 @@ function auth (req, res, next) {
     return next()
   }
 
-  res.send(401, { success: false, error: { code: 'NO_TOKEN', message: 'Authentication required.' } })
+  sendApiError(res, 401, 'NO_TOKEN', 'Authentication required.')
 }
 
 module.exports = { auth, DEV_IDENTITY }

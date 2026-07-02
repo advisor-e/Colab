@@ -74,8 +74,10 @@ export default {
   async mounted () {
     try {
       const res = await fetch('/api/people/me')
+      if (!res.ok) { throw new Error('HTTP ' + res.status) }
       this.advisorProfile = await res.json()
     } catch (e) {
+      // Keep the blank default profile so the form still renders on failure.
       this.$buefy.toast.open({ message: 'Could not load profile — is the backend running?', type: 'is-danger' })
     } finally {
       this.loading = false
@@ -98,6 +100,7 @@ export default {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         })
+        if (!res.ok) { throw new Error('HTTP ' + res.status) }
         this.advisorProfile = await res.json()
         this.saved = true
       } catch (e) {

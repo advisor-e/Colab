@@ -20,6 +20,7 @@
 const https = require('https')
 const { sanitiseValues } = require('../utils/sanitiseInput')
 const { validateAIResponse } = require('../utils/validateAIResponse')
+const { sendApiError } = require('../utils/sendError')
 
 const SEPARATOR = '\n\n---SPLIT---\n\n'
 const CHUNK_CHARS = 900
@@ -68,7 +69,7 @@ async function post (req, res) {
   const sourceLang = from || 'en'
 
   if (!texts || !langCode) {
-    res.send(400, { success: false, error: { code: 'PARAMS_REQUIRED', message: 'texts and langCode are required' } })
+    sendApiError(res, 400, 'PARAMS_REQUIRED', 'texts and langCode are required')
     return
   }
 

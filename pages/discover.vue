@@ -174,10 +174,12 @@ export default {
         if (this.tab === 'people') {
           const params = new URLSearchParams({ q: this.inputText, available: this.availableOnly ? 'true' : 'false' })
           const res = await fetch('/api/people/advisors?' + params.toString())
+          if (!res.ok) { throw new Error('HTTP ' + res.status) }
           this.people = await res.json()
         } else {
           const params = new URLSearchParams({ q: this.inputText })
           const res = await fetch('/api/people/groups?' + params.toString())
+          if (!res.ok) { throw new Error('HTTP ' + res.status) }
           this.groups = await res.json()
         }
       } catch (e) {

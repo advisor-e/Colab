@@ -16,6 +16,7 @@
 const http = require('http')
 const https = require('https')
 const { URL } = require('url')
+const { sendError } = require('../server/utils/sendError')
 
 const BACKEND = process.env.API_BASE_URL || 'http://localhost:4000'
 
@@ -24,8 +25,7 @@ module.exports = function apiProxy (req, res, next) {
   try {
     target = new URL('/api' + req.url, BACKEND)
   } catch (e) {
-    res.writeHead(500, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ success: false, error: { code: 'BAD_BACKEND_URL', message: 'Invalid backend URL' }, timestamp: new Date().toISOString() }))
+    sendError(res, 500, 'BAD_BACKEND_URL', 'Invalid backend URL')
     return
   }
 
@@ -45,12 +45,11 @@ module.exports = function apiProxy (req, res, next) {
 
   backendReq.on('error', function (err) {
     console.error('[api-proxy] backend error:', err.message)
-    if (!res.headersSent) {
-      res.writeHead(502, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ success: false, error: { code: 'BACKEND_UNAVAILABLE', message: 'API backend unavailable' }, timestamp: new Date().toISOString() }))
-    } else {
+    if (res.headersSent) {
       try { res.end() } catch (e) {}
+      return
     }
+    sendError(res, 502, 'BACKEND_UNAVAILABLE', 'API backend unavailable')
   })
 
   req.pipe(backendReq)

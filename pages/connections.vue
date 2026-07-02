@@ -80,9 +80,12 @@ export default {
       this.loading = true
       try {
         const res = await fetch('/api/people/connections')
+        if (!res.ok) { throw new Error('HTTP ' + res.status) }
         this.data = await res.json()
       } catch (e) {
-        // leave empty
+        // Keep the safe default shape (see data()) so the template never reads
+        // .length of undefined; tell the user rather than showing a blank page.
+        this.$buefy.toast.open({ message: 'Could not load your connections — is the backend running?', type: 'is-danger' })
       } finally {
         this.loading = false
       }

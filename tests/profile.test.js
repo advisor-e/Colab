@@ -65,6 +65,30 @@ describe('profile page', () => {
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
   })
 
+  test('a non-OK load keeps the blank profile and toasts', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ success: false }) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.loading).toBe(false)
+    expect(w.vm.advisorProfile.name).toBe('') // default preserved, form still renders
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
+  })
+
+  test('save() treats a non-OK response as failure (does not adopt an error body)', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ME) }))
+    const w = factory()
+    await flush()
+
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ success: false }) }))
+    await w.vm.save()
+    await flush()
+
+    expect(w.vm.saved).toBe(false)
+    expect(w.vm.saving).toBe(false)
+    expect(w.vm.advisorProfile.name).toBe('Mike Barnes') // kept the loaded identity
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
+  })
+
   test('save() PUTs only the advertised fields and marks saved', async () => {
     global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(ME) }))
     const w = factory()

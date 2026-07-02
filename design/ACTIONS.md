@@ -16,6 +16,7 @@
 | ID | P | Title | Notes / next step |
 |----|---|-------|-------------------|
 | P1-TOOLCHAIN | P1 | Dev-toolchain Node-floor drift | Per CLAUDE.md: `engine-strict` is `false` pending two transitive `overrides`; some build tools declare a Node floor above 14.15. Audit `.npmrc` overrides, document, and aim to re-enable `engine-strict`. |
+| P3-I18N-TOASTS | P3 | Frontend toast strings are hardcoded English | The pages raise error/success toasts as literal English (e.g. `'Save failed'`, `'Could not load your connections — is the backend running?'`) instead of going through `$t()` with locale keys. This drifts from CLAUDE.md §Internationalisation ("no hardcoded English"). Low priority (dev-facing failure states), but for full i18n move these into `locales/en.json` and swap to `$t('…')`. Logged 2026-07-02 during the pre-handover review (kept the hardcoded style then to match existing pages and keep the res.ok robustness fix minimal). |
 | P2-TEMPLATE-FEED | P2 | Marketplace tool links use a JSON snapshot, not the live Advisory feed | The "List a tool" picker + create-validation read a **read-only snapshot** (`design/reference/search_content_*.json`) via the seam `server/data/advisoryTemplates.js` (async `list`/`exists`). Before production: (a) swap the seam to Advisory's **live template API/DB** — drop-in, keep the return shapes (HANDOVER §4d); (b) **security:** ensure a shared tool link stays **gated by Advisory's own access control** — this app only stores the page ID and must never bypass Advisory auth. Added 2026-07-01. |
 
 ## In progress
