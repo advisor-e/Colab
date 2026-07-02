@@ -31,22 +31,23 @@
 | P2-TEMPLATE-FEED | P2 | Marketplace: swap JSON snapshot → live Advisory template feed (keep access-control) | Integration | Advisory template API · HANDOVER §4d |
 | P3-I18N-TOASTS | P3 | Move hardcoded toast strings into `$t()` / locale files | Tidy | — · "Open" below |
 | FEAT-RBAC | P2 | Role hierarchy / RBAC enforcement (Mentor→Global→Group→Firm→Advisor→Client) | Feature | Q-ROLES · HANDOVER §6 |
-| FEAT-CROSSORG | P2 | Cross-org engagement policy enforcement (plan §8) | Feature | Q6-ONEORG + D1-POSTURE · HANDOVER §6 |
+| FEAT-CROSSORG | P2 | Cross-org engagement policy enforcement (plan §8) — default **closed/opt-in** (D1), seal at **individual office / branch** (Q6) | Feature | **Unblocked 2026-07-03** (D1 + Q6 decided) · HANDOVER §6 |
 | FEAT-AUDITLOG | P2 | Audit logging | Feature | — · HANDOVER §6 |
 | FEAT-BULKINVITE | P3 | Manager bulk-invite | Feature | — · HANDOVER §6 |
-| T1-SPACES | P2 | Collaboration "spaces" (chat + shared-content references) | Triage | Owner decision · "Backlog" below |
-| T2-NOTIFICATIONS | P2 | Notifications (which events; in-app vs email) | Triage | Owner decision · "Backlog" below |
-| T3-IP-GOVERNANCE | P2 | IP classification & governance (4-tier, locked flag, per-space terms) | Triage | Owner decision · "Backlog" below |
+| T1-SPACES | P2 | Collaboration "spaces" (chat + shared-content references) | Feature | **Deferred 2026-07-03** (owner) to a later phase · "Backlog" below |
+| T2-NOTIFICATIONS | P2 | Notifications — **in-app-only MVP**, highest-value events (event list TBD) | Feature | **Decided build 2026-07-03** (owner) · "Backlog" below |
+| T3-IP-GOVERNANCE | P2 | IP governance **MVP** — 4-tier ownership labels + enforce locked flag (per-space terms deferred) | Feature | **Decided build 2026-07-03** (owner) · "Backlog" below |
 | T4-ANTISPAM | P3 | Outreach anti-spam guardrails (verify what routes already enforce first) | Triage | — · "Backlog" below |
 | T5-MARKET-SIGNALS | P3 | Marketplace "proven tools" signal + ratings (optional) | Triage | Owner decision · "Backlog" below |
 | T6-SKETCHES-DOC | P3 | Repair truncated `design/ux-sketches.md` | Tidy | — · "Backlog" below |
 | Q-JWTCLAIMS | P1 | Confirm JWT claim names + signing algorithm (HS256 vs RS256) | Decision | Advisory auth team · HANDOVER §8.2 |
 | Q-PROFILE | P1 | Advisor profile API/source to read identity from | Decision | Master team · HANDOVER §8.3 |
 | Q-ROLES | P2 | Role-hierarchy source of truth | Decision | Master team · HANDOVER §8.5 |
-| Q6-ONEORG | P2 | Define "one organisation" for the cross-org policy (branch / firm / country) | Decision | Owner · plan §12.6 |
-| D1-POSTURE | P2 | Default cross-org posture (open vs closed) — a config flip, not a rebuild | Decision | Owner · plan §12 (D1) |
-| D2-GROUPVIS | P2 | New-group approval/visibility default | Decision | Owner · plan §12 (D2) |
 | Q5-GROUPIP | P3 | Confirm net-new group-IP edge cases (member's pre-existing personal IP) | Decision | Owner · plan §12.5 |
+
+> **Resolved 2026-07-03 (owner decisions — now in the Done table + plan §13):** D1-POSTURE →
+> closed/opt-in · D2-GROUPVIS → live immediately · Q6-ONEORG → seal at individual office (branch).
+> These unblock FEAT-CROSSORG and turned T2/T3 into build tasks (T1 deferred).
 
 ---
 
@@ -80,6 +81,9 @@
 | P1-TEST | P1 | Test coverage below targets | 2026-07-02 — **complete.** Backend **~99% lines** (routes 100%, repository 99%, proxy/db/middleware/utils 100%); mixins **100%**; **every page + the `PageHelp` component** unit-tested (`@vue/test-utils@1.3.6` + `@vue/vue2-jest@27.0.0`, Pug + jsdom); **Playwright e2e** — 8 critical journeys driving the real app (`@playwright/test@1.34.3`, the last Node-14-safe line). **240 tests total** (232 Jest + 8 Playwright). Gates: `coverageThreshold` (routes ≥90 / mixins ≥80 / security utils 100 / global floor) enforced in the pre-commit hook + CI; a separate CI **`e2e`** job (ubuntu-22.04, Node 14.15) runs the journeys via `npm run test:e2e`. All targets in CLAUDE.md §Testing met. |
 | T7-FONT-OPENSANS | P2 | Global font → Open Sans Light (app-wide) | 2026-07-02 — owner confirmed **all** text (including headings) is **Open Sans, Light (300)**. Replaced Inter + Poppins: `nuxt.config.js` now loads `Open+Sans:wght@300;400`; `assets/css/theme.css` sets Open Sans + weight 300 throughout, with a global `!important` block neutralising Bulma/Buefy bold utilities (`.title`, `.has-text-weight-*`, `strong`, `th`, labels); scoped weights in `PageHelp.vue` + `marketplace.vue` set to 300. Font sizes/layout unchanged; `nuxt build` passes. |
 | P1-AUDIT-GATE | P1 | Documented audit gate blocked all commits | 2026-07-02 — resolved **without relaxing the spec**. Implemented `scripts/audit-gate.js` (wired into `.husky/pre-commit` + CI as `npm run audit:gate`): blocks on any **critical** except a documented build-time **allow-list** (one entry — `ejs`/`GHSA-phwq-j96m-2c2q`, the bundle-analyzer chain), reports highs without blocking, requires GHSA **and** module to match (a new critical in the same package still blocks), and warns on a stale allow-list entry. Pure logic unit-tested (`tests/auditGate.test.js`, 15 cases). Live run: `1 critical (1 allow-listed, 0 un-accepted) · PASS`. Documented in `SECURITY-AUDIT-NOTES.md` §3. |
+| D1-POSTURE | P2 | Default cross-org posture (open vs closed) | 2026-07-03 — owner: **closed / opt-in**. New members start sealed to their own organisation and opt in to reach across firms — the recommended posture for a high-IP network. Remains a config flip (both paths switchable). Feeds FEAT-CROSSORG; recorded in plan §12/§13. |
+| D2-GROUPVIS | P2 | New-group approval/visibility default | 2026-07-03 — owner: **live immediately**. A new specialty group is listed and can recruit the moment it's created; no manager pre-approval step. Recorded in plan §12/§13. |
+| Q6-ONEORG | P2 | "One organisation" boundary for the cross-org policy | 2026-07-03 — owner: seal at the **individual office (branch / Firm tier)** — two offices of the same firm are treated as cross-org and need opt-in. Maps directly onto Advisory's existing `branch`; needs no extra master data. Feeds FEAT-CROSSORG; recorded in plan §12/§13. |
 | P1-NODE-ENV | P1 | Local dev on Node 20 → reconciled to locked 14.15 | 2026-07-02 — `.nvmrc` `20`→`14.15.0`; installed **nvm-windows** on the dev machine and selected **Node 14.15.0 / npm 6.14.8**; `npm ci` restored the full toolchain (incl. the previously-missing `markdownlint-cli` + `husky`) and **re-wired the pre-commit hook** (was not firing locally). Local gate now green on 14.15: `lint` (0 errors), `lint:md` (clean), `test` (76 passing, 10 suites); `package-lock.json` unchanged. Stale "npm 6.14.8 / Node 14.15 local" claims corrected in `SECURITY-AUDIT-NOTES.md`. Invalidated the npm-6 premise in P1-AUDIT-GATE (still open). |
 
 ---
@@ -92,9 +96,9 @@
 
 | ID | Suggested P | Item | Decision needed next session |
 |----|---|-------|------------------------------|
-| T1-SPACES | P2 | Collaboration "spaces" (plan pillar 4) | Plan describes a *room* per connection/group holding chat **+ shared content / Drive-asset references**. Chat exists; the space-with-content concept does not. Build it, fold it into Messaging, or defer to a later phase? |
-| T2-NOTIFICATIONS | P2 | Notifications | Sketches show a "🔔 3" and list a "Notifications panel"; nothing built. Decide which events + in-app vs. email, or defer. |
-| T3-IP-GOVERNANCE | P2 | IP classification & governance (plan §6) | 4-tier ownership, the "locked / non-derivable" flag, per-space terms-acceptance. Designed in detail; not built. High-IP network → decide an MVP vs. defer. |
+| T1-SPACES | P2 | Collaboration "spaces" (plan pillar 4) | ✅ **DECIDED 2026-07-03 — DEFER** (owner). Plan describes a *room* per connection/group holding chat **+ shared content / Drive-asset references**. Chat exists; the space-with-content concept does not. Parked to a later phase (overlaps T3 IP governance); stays logged, not dropped. |
+| T2-NOTIFICATIONS | P2 | Notifications | ✅ **DECIDED 2026-07-03 — BUILD in-app-only MVP** (owner). Minimal in-app bell for the highest-value events (e.g. new connection request, new message, group invite); **no email**. Next step: confirm the exact event list before build. |
+| T3-IP-GOVERNANCE | P2 | IP classification & governance (plan §6) | ✅ **DECIDED 2026-07-03 — BUILD MVP** (owner). MVP = tag every asset with one of the 4 ownership tiers + enforce the "locked / non-derivable" flag (edits refused on Tier 2). **Defer** per-space terms-acceptance (depends on T1 spaces). Protects the network's core IP without the full governance surface. |
 | T4-ANTISPAM | P3 | Outreach anti-spam guardrails (plan §4) | one-pending-outreach, rate limits, respect-availability. First **verify** what (if any) `server/routes/*` already enforces, then log the real gap. |
 | T5-MARKET-SIGNALS | P3 | Marketplace "proven tools" signal + ratings (plan §7, marked optional) | Keep as a future nicety, or drop. |
 | T6-SKETCHES-DOC | P3 | Repair `design/ux-sketches.md` | File is **truncated** (unclosed code fence) and its "screens still to sketch" list is **stale** (create-a-group is built). Close/complete the file and refresh the backlog. |
