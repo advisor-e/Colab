@@ -43,7 +43,8 @@ describe('data', () => {
       speechSupported: false,
       recognition: null,
       profileRecordingField: null,
-      reviewRecordingField: null
+      reviewRecordingField: null,
+      voiceField: null
     })
   })
 })
@@ -98,6 +99,22 @@ describe('toggle methods', () => {
   test('toggleReviewListening is a no-op without recognition', () => {
     const c = ctx({ recognition: null })
     expect(() => mixin.methods.toggleReviewListening.call(c, 'summary')).not.toThrow()
+  })
+
+  test('toggleVoiceInput starts for a field, then stops the same field', () => {
+    const c = ctx({ voiceField: null })
+    mixin.methods.toggleVoiceInput.call(c, 'reply')
+    expect(c.voiceField).toBe('reply')
+    expect(c.recognition.start).toHaveBeenCalled()
+
+    mixin.methods.toggleVoiceInput.call(c, 'reply')
+    expect(c.voiceField).toBeNull()
+    expect(c.recognition.stop).toHaveBeenCalled()
+  })
+
+  test('toggleVoiceInput is a no-op without recognition', () => {
+    const c = ctx({ recognition: null, voiceField: null })
+    expect(() => mixin.methods.toggleVoiceInput.call(c, 'reply')).not.toThrow()
   })
 })
 
@@ -158,6 +175,13 @@ isListening: false,
     c.reviewRecordingField = 'summary'
     c.recognition.onresult({ results: [[{ transcript: 'review note' }]] })
     expect(c.reviewDraft.summary).toBe('review note')
+
+    // Generic voice-field target (e.g. a message reply box).
+    c.reviewRecordingField = null
+    c.voiceField = 'reply'
+    c.reply = ''
+    c.recognition.onresult({ results: [[{ transcript: 'chat message' }]] })
+    expect(c.reply).toBe('chat message')
 
     // onerror: ignore 'no-speech', stop listening on anything else.
     c.isListening = true

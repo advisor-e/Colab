@@ -46,12 +46,21 @@
               span.has-text-grey.is-size-7(v-else) {{ $t('invite.handled') }}
             .conv-reply(v-else)
               input.input(v-model="reply" :placeholder="$t('messages.type')" @keyup.enter="send")
+              button.button.is-light.mic(
+                v-if="speechSupported"
+                @click="toggleVoiceInput('reply')"
+                :class="{ 'is-danger': voiceField === 'reply' }"
+                title="Voice input"
+              ) 🎤
               b-button(type="is-primary" @click="send") {{ $t('messages.sendBtn') }}
 </template>
 
 <script>
+import speechMixin from '~/mixins/speechMixin'
+
 export default {
   name: 'MessagesPage',
+  mixins: [speechMixin],
   data () {
     return { threads: [], selectedId: null, current: null, reply: '', autoTranslate: false, translations: {}, translating: {} }
   },
