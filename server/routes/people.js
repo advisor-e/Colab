@@ -15,6 +15,7 @@
 const repo = require('../data/repository')
 const templates = require('../data/advisoryTemplates')
 const ipClass = require('../data/ipClassification')
+const audit = require('../data/auditLog')
 const { sendApiError } = require('../utils/sendError')
 
 function ok (res, data) { res.send(200, data) }
@@ -38,6 +39,7 @@ async function updateMe (req, res) {
   const me = await currentAdvisor(req)
   const updated = await repo.updateAdvisorInterest(me.id, req.body || {})
   const result = updated || me
+  audit.record({ actorId: me.id, action: 'profile.update', targetType: 'advisor', targetId: me.id, meta: { fields: Object.keys(req.body || {}) } })
   ok(res, Object.assign({}, result, { crossOrgPosture: await repo.getOrgPosture(result.firm) }))
 }
 
@@ -74,7 +76,9 @@ async function createGroup (req, res) {
   const body = req.body || {}
   if (!(body.name || '').trim()) { fail(res, 400, 'MISSING_NAME', 'A group needs a name.'); return }
   const me = await currentAdvisor(req)
-  ok(res, await repo.createGroup(body, me))
+  const group = await repo.createGroup(body, me)
+  audit.record({ actorId: me.id, action: 'group.create', targetType: 'group', targetId: group.id, meta: { name: group.name } })
+  ok(res, group)
 }
 
 async function joinGroup (req, res) {
@@ -82,6 +86,7 @@ async function joinGroup (req, res) {
   const r = await repo.requestJoinGroup(req.params.id, me.id)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
   // Consent-based: a request is recorded; no auto-join. Owner/manager approves.
+  audit.record({ actorId: me.id, action: 'group.join_request', targetType: 'group', targetId: req.params.id })
   ok(res, Object.assign({ success: true }, r))
 }
 
@@ -101,6 +106,7 @@ async function inviteToGroup (req, res) {
   if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
   if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'You can only invite into a group you manage.'); return }
   if (r.error === 'ALREADY_MEMBER') { fail(res, 409, 'ALREADY_MEMBER', 'They are already in this group.'); return }
+  audit.record({ actorId: me.id, action: 'group.invite', targetType: 'group', targetId: req.params.id, meta: { invitee: inviteeId } })
   ok(res, r)
 }
 
@@ -109,6 +115,7 @@ async function acceptInvitation (req, res) {
   const me = await currentAdvisor(req)
   const r = await repo.respondInvitation(req.params.id, me.id, true)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Invitation not found.'); return }
+  audit.record({ actorId: me.id, action: 'group.invitation_accept', targetType: 'group', targetId: r.groupId })
   ok(res, r)
 }
 
@@ -116,6 +123,7 @@ async function declineInvitation (req, res) {
   const me = await currentAdvisor(req)
   const r = await repo.respondInvitation(req.params.id, me.id, false)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Invitation not found.'); return }
+  audit.record({ actorId: me.id, action: 'group.invitation_decline', targetType: 'group', targetId: r.groupId })
   ok(res, r)
 }
 
@@ -136,12 +144,14 @@ async function sendOutreach (req, res) {
   const me = await currentAdvisor(req)
   // Cross-org wall: refuse cold outreach outside your organisation's reach.
   if (!(await repo.canReachAdvisor(me.id, body.toId))) {
+    audit.record({ actorId: me.id, action: 'outreach.blocked', targetType: 'advisor', targetId: body.toId, meta: { reason: 'cross_org' } })
     fail(res, 403, 'CROSS_ORG_BLOCKED', "You can only reach advisers within your own firm — cross-firm collaboration isn't open between your organisations.")
     return
   }
   const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
   const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text, fromName: me.name })
+  audit.record({ actorId: me.id, action: 'outreach.send', targetType: 'advisor', targetId: body.toId })
   ok(res, { success: true, sent: true, threadId: t.id })
 }
 
@@ -185,10 +195,12 @@ async function connect (req, res) {
   if (req.params.id === me.id) { fail(res, 400, 'SELF', 'You cannot connect with yourself.'); return }
   const c = await repo.requestConnection(me.id, req.params.id)
   if (c && c.error === 'CROSS_ORG_BLOCKED') {
+    audit.record({ actorId: me.id, action: 'connection.blocked', targetType: 'advisor', targetId: req.params.id, meta: { reason: 'cross_org' } })
     fail(res, 403, 'CROSS_ORG_BLOCKED', "You can only connect within your own firm — cross-firm collaboration isn't open between your organisations.")
     return
   }
   if (!c) { fail(res, 400, 'BAD_REQUEST', 'Could not create the request.'); return }
+  audit.record({ actorId: me.id, action: 'connection.request', targetType: 'advisor', targetId: req.params.id })
   ok(res, { success: true, status: c.status })
 }
 
@@ -196,6 +208,7 @@ async function acceptConnection (req, res) {
   const me = await currentAdvisor(req)
   const c = await repo.respondConnection(req.params.id, me.id, true)
   if (!c) { fail(res, 404, 'NOT_FOUND', 'Request not found.'); return }
+  audit.record({ actorId: me.id, action: 'connection.accept', targetType: 'connection', targetId: req.params.id })
   ok(res, { success: true, status: c.status })
 }
 
@@ -203,6 +216,7 @@ async function declineConnection (req, res) {
   const me = await currentAdvisor(req)
   const c = await repo.respondConnection(req.params.id, me.id, false)
   if (!c) { fail(res, 404, 'NOT_FOUND', 'Request not found.'); return }
+  audit.record({ actorId: me.id, action: 'connection.decline', targetType: 'connection', targetId: req.params.id })
   ok(res, { success: true, status: c.status })
 }
 
@@ -229,16 +243,31 @@ async function createListing (req, res) {
   // IP governance (plan §6): a locked / non-derivable framework (Tier 2) cannot be
   // listed or re-sold. Enforce the lock flag before anything is created.
   const ip = await ipClass.classify(body.pageId)
-  if (ip.locked) { fail(res, 400, 'LOCKED_IP', 'This is a locked Advisor-e framework and cannot be listed or derived.'); return }
   const me = await currentAdvisor(req)
-  ok(res, await repo.createListing(body, me))
+  if (ip.locked) {
+    audit.record({ actorId: me.id, action: 'listing.locked_blocked', targetType: 'template', targetId: body.pageId, meta: { reason: 'locked_ip' } })
+    fail(res, 400, 'LOCKED_IP', 'This is a locked Advisor-e framework and cannot be listed or derived.')
+    return
+  }
+  const listing = await repo.createListing(body, me)
+  audit.record({ actorId: me.id, action: 'listing.create', targetType: 'listing', targetId: listing.id, meta: { pageId: body.pageId } })
+  ok(res, listing)
 }
 
 async function purchaseListing (req, res) {
   const me = await currentAdvisor(req)
   const r = await repo.recordPurchase(req.params.id, me.id)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Listing not found'); return }
+  audit.record({ actorId: me.id, action: 'purchase.record', targetType: 'listing', targetId: req.params.id })
   ok(res, r)
+}
+
+// Read the audit trail (admin/compliance evidence). DEV-OPEN today — MUST be
+// gated to admin/compliance roles before production (FEAT-RBAC / Q-ROLES).
+async function getAuditLog (req, res) {
+  const q = req.query || {}
+  const limit = q.limit ? parseInt(q.limit, 10) : 100
+  ok(res, { entries: await audit.list({ actorId: q.actorId, action: q.action, limit }) })
 }
 
 module.exports = {
@@ -268,5 +297,6 @@ module.exports = {
   createListing,
   purchaseListing,
   listNotifications,
-  markNotificationsRead
+  markNotificationsRead,
+  getAuditLog
 }

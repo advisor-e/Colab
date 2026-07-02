@@ -137,6 +137,23 @@ CREATE TABLE IF NOT EXISTS marketplace_purchase (
   UNIQUE KEY uq_purchase (listing_id, buyer_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Append-only audit trail (plan §6; FEAT-AUDITLOG). Records who did what, when,
+-- to which target — evidence for shared-IP claims and security review. INSERT
+-- ONLY: never UPDATE or DELETE (tamper-evident). `meta_json` holds small non-PII
+-- detail (ids/labels only). READ access is admin/compliance-only (gate behind
+-- FEAT-RBAC). Keep this table on append-only grants in production.
+CREATE TABLE IF NOT EXISTS audit_log (
+  id           BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  actor_id     VARCHAR(64)  NOT NULL,   -- who performed the action
+  action       VARCHAR(64)  NOT NULL,   -- dotted code, e.g. 'listing.create'
+  target_type  VARCHAR(32)  NULL,       -- 'group' | 'advisor' | 'listing' | …
+  target_id    VARCHAR(80)  NULL,
+  meta_json    JSON         NULL,
+  created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_actor (actor_id, created_at),
+  KEY idx_action (action, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- In-app notifications (per recipient). The visible text is NOT stored — the
 -- frontend renders it from `type` + `params_json` via i18n locale keys, so
 -- notifications are language-agnostic. `params_json` holds the interpolation
