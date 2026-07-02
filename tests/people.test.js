@@ -432,3 +432,31 @@ describe('marketplace', () => {
     expect(sent(missing)[0]).toBe(404)
   })
 })
+
+describe('notifications', () => {
+  test('listNotifications returns the viewer notifications with an unread count', async () => {
+    const res = mkRes()
+    await route.listNotifications({}, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(Array.isArray(body.items)).toBe(true)
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(body.unread).toBe(body.items.filter(n => !n.read).length)
+    expect(body.items.every(n => n.userId === 'me')).toBe(true)
+  })
+
+  test('markNotificationsRead clears the unread count for the viewer', async () => {
+    const before = mkRes()
+    await route.listNotifications({}, before)
+    const unread = sent(before)[1].unread
+    expect(unread).toBeGreaterThan(0)
+
+    const mark = mkRes()
+    await route.markNotificationsRead({}, mark)
+    expect(sent(mark)[1]).toEqual({ success: true, marked: unread })
+
+    const after = mkRes()
+    await route.listNotifications({}, after)
+    expect(sent(after)[1].unread).toBe(0)
+  })
+})

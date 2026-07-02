@@ -122,9 +122,10 @@ async function sendOutreach (req, res) {
   const body = req.body || {}
   // Purposeful cold-outreach: a reason ("context") is required by design.
   if (!body.toId || !body.context) { fail(res, 400, 'MISSING_REASON', 'An outreach must name a recipient and explain why you are reaching out.'); return }
+  const me = await currentAdvisor(req)
   const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
-  const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text })
+  const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text, fromName: me.name })
   ok(res, { success: true, sent: true, threadId: t.id })
 }
 
@@ -142,9 +143,20 @@ async function getThread (req, res) {
 async function replyThread (req, res) {
   const text = ((req.body || {}).text || '').trim()
   if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
-  const t = await repo.appendMessage(req.params.id, { from: 'Me', text })
+  const me = await currentAdvisor(req)
+  const t = await repo.appendMessage(req.params.id, { from: 'Me', fromName: me.name, text })
   if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)
+}
+
+async function listNotifications (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listNotifications(me.id))
+}
+
+async function markNotificationsRead (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.markNotificationsRead(me.id))
 }
 
 async function listConnections (req, res) {
@@ -230,5 +242,7 @@ module.exports = {
   listMarketplace,
   getListing,
   createListing,
-  purchaseListing
+  purchaseListing,
+  listNotifications,
+  markNotificationsRead
 }

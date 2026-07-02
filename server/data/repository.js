@@ -96,11 +96,53 @@ const connections = [
 let connSeq = 1
 
 const listings = [
-  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)' },
-  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor' }
+  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)', createdById: 'anna-r' },
+  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor', createdById: 'sara-okafor' }
 ]
 const purchases = []
 let listingSeq = 1
+
+// ── Notifications (in-app; strictly per recipient) ───────────────────────────
+// Each notification targets ONE recipient (userId); a route only ever returns
+// the caller's own rows, so no cross-user data is exposed. The frontend renders
+// the visible text from `type` + `params` via i18n (locale keys), so no English
+// string lives here. Event functions below call pushNotification(recipientId, …)
+// at the moment the event happens — in production each becomes an INSERT.
+const notifications = []
+let notifSeq = 1
+
+function advisorName (id) {
+  const a = advisors.find(x => x.id === id)
+  return a ? a.name : id
+}
+
+/**
+ * Record an in-app notification for a single recipient.
+ * @param {string} userId recipient advisor id
+ * @param {'connection_request'|'group_invitation'|'message'|'purchase'} type event type
+ * @param {object} params interpolation values for the i18n string (e.g. { name })
+ * @param {string} link in-app route to open when the notification is clicked
+ * @returns {object} the created notification
+ */
+function pushNotification (userId, type, params, link) {
+  // SQL SEAM: INSERT INTO notification (user_id, type, params_json, link, is_read=0, created_at=NOW())
+  const n = { id: 'n-' + (notifSeq++), userId: userId, type: type, params: params || {}, link: link, read: false }
+  notifications.unshift(n)
+  return n
+}
+
+// Seed a few unread notifications for the dev user so the bell is demonstrable
+// in the show-home. These mirror the pre-seeded incoming state (a connection
+// request, two group invitations, a message) plus one illustrative marketplace
+// purchase. In production the store starts empty and fills from live events —
+// this is clearly seed/demo data, not business logic.
+;(function seedNotifications () {
+  pushNotification('me', 'connection_request', { name: 'Anna Richter' }, '/connections')
+  pushNotification('me', 'group_invitation', { inviter: 'Sara Okafor', group: 'Hospitality Turnaround Toolkit' }, '/messages')
+  pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/messages')
+  pushNotification('me', 'message', { name: 'Bob Lindt' }, '/messages')
+  pushNotification('me', 'purchase', { buyer: 'Sara Okafor', tool: 'Trucking Firm Valuation Model' }, '/marketplace')
+}())
 
 function connectionStatusFor (myId, otherId) {
   const c = connections.find(x => (x.requesterId === myId && x.addresseeId === otherId) || (x.requesterId === otherId && x.addresseeId === myId))
@@ -216,6 +258,8 @@ async function inviteToGroup (groupId, inviter, inviteeId, note) {
     messages: [{ from: 'Me', text: text, lang: 'en' }]
   }
   threads.unshift(t)
+  // Notify the invitee (recipient = the person being invited).
+  pushNotification(inviteeId, 'group_invitation', { inviter: inviter.name, group: g.name }, '/messages')
   return { success: true, threadId: t.id, group: { id: g.id, name: g.name }, invitee: { id: invitee.id, name: invitee.name } }
 }
 
@@ -254,6 +298,11 @@ async function appendMessage (threadId, msg) {
   if (!t) { return null }
   t.messages.push({ from: msg.from, text: msg.text, lang: msg.lang || 'en' })
   if (t.status === 'request') { t.status = 'active' }
+  // Notify the 1:1 counterpart of a new inbound message. Group fan-out (one
+  // notification per member) is future work — see design/ACTIONS.md T2.
+  if (t.kind === 'outreach' && t.withId) {
+    pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/messages')
+  }
   return t
 }
 
@@ -264,6 +313,8 @@ async function createOutreachThread (input) {
     status: 'active', direction: 'outgoing', messages: [{ from: 'Me', text: input.text, lang: 'en' }]
   }
   threads.unshift(t)
+  // Notify the recipient of the new incoming outreach.
+  pushNotification(input.toId, 'message', { name: input.fromName || 'Someone' }, '/messages')
   return t
 }
 
@@ -286,6 +337,8 @@ async function requestConnection (fromId, toId) {
   if (!c) {
     c = { id: 'c-' + (connSeq++), requesterId: fromId, addresseeId: toId, status: 'pending' }
     connections.push(c)
+    // Notify the addressee of the new request (recipient = the OTHER party).
+    pushNotification(toId, 'connection_request', { name: advisorName(fromId) }, '/connections')
   }
   return c
 }
@@ -359,8 +412,29 @@ async function recordPurchase (listingId, buyerId) {
   if (!l) { return null }
   if (!purchases.some(p => p.listingId === listingId && p.buyerId === buyerId)) {
     purchases.push({ id: 'p-' + (purchases.length + 1), listingId: listingId, buyerId: buyerId })
+    // Notify the listing's creator (the seller) — record-only, informational.
+    if (l.createdById) {
+      pushNotification(l.createdById, 'purchase', { buyer: advisorName(buyerId), tool: l.title }, '/marketplace')
+    }
   }
   return { success: true, owned: true }
+}
+
+// ── Notifications (read side) ────────────────────────────────────────────────
+
+async function listNotifications (userId) {
+  // SQL SEAM: SELECT * FROM notification WHERE user_id=? ORDER BY created_at DESC LIMIT 50
+  const mine = notifications.filter(n => n.userId === userId)
+  return { items: mine, unread: mine.filter(n => !n.read).length }
+}
+
+async function markNotificationsRead (userId) {
+  // SQL SEAM: UPDATE notification SET is_read=1 WHERE user_id=? AND is_read=0
+  let marked = 0
+  notifications.forEach((n) => {
+    if (n.userId === userId && !n.read) { n.read = true; marked++ }
+  })
+  return { success: true, marked: marked }
 }
 
 module.exports = {
@@ -369,5 +443,6 @@ module.exports = {
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
   requestConnection, listConnections, respondConnection,
-  listListings, getListing, createListing, recordPurchase
+  listListings, getListing, createListing, recordPurchase,
+  listNotifications, markNotificationsRead
 }
