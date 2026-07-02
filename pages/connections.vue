@@ -85,7 +85,7 @@ export default {
       } catch (e) {
         // Keep the safe default shape (see data()) so the template never reads
         // .length of undefined; tell the user rather than showing a blank page.
-        this.$buefy.toast.open({ message: 'Could not load your connections — is the backend running?', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.loadConnections'), type: 'is-danger' })
       } finally {
         this.loading = false
       }
@@ -100,7 +100,7 @@ export default {
           this.$buefy.toast.open({ message: accept ? this.$t('connections.acceptedToast') : this.$t('connections.declinedToast'), type: accept ? 'is-success' : 'is-light' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     }
   }

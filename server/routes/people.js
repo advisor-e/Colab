@@ -148,6 +148,12 @@ async function sendOutreach (req, res) {
     fail(res, 403, 'CROSS_ORG_BLOCKED', "You can only reach advisers within your own firm — cross-firm collaboration isn't open between your organisations.")
     return
   }
+  // Anti-spam (plan §4): one outreach per person — direct repeats into the thread.
+  if (await repo.hasOutgoingOutreach(me.id, body.toId)) {
+    audit.record({ actorId: me.id, action: 'outreach.blocked', targetType: 'advisor', targetId: body.toId, meta: { reason: 'duplicate' } })
+    fail(res, 409, 'ONE_OUTREACH', 'You already have an outreach with this person — continue the conversation in Messages.')
+    return
+  }
   const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
   const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text, fromName: me.name })

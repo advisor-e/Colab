@@ -121,7 +121,7 @@ export default {
         const data = await res.json()
         if (data && data.t && data.t !== m.text) { this.$set(this.translations, key, data.t) }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Translation failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.translationFailed'), type: 'is-danger' })
       } finally {
         this.$set(this.translating, key, false)
       }
@@ -143,7 +143,7 @@ export default {
           await this.select(id)
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Action failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.actionFailed'), type: 'is-danger' })
       }
     },
     async send () {
@@ -159,7 +159,7 @@ export default {
           await this.load()
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
       }
     }
   }

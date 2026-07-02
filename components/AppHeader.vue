@@ -95,7 +95,7 @@ export default {
         this.notifications = this.notifications.map(n => Object.assign({}, n, { read: true }))
         this.unreadCount = 0
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Could not update notifications — is the backend running?', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.updateNotifications'), type: 'is-danger' })
       }
     },
     openNotif (n) {

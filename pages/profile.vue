@@ -85,7 +85,7 @@ export default {
       this.advisorProfile = await res.json()
     } catch (e) {
       // Keep the blank default profile so the form still renders on failure.
-      this.$buefy.toast.open({ message: 'Could not load profile — is the backend running?', type: 'is-danger' })
+      this.$buefy.toast.open({ message: this.$t('toast.loadProfile'), type: 'is-danger' })
     } finally {
       this.loading = false
     }
@@ -111,7 +111,7 @@ export default {
         this.advisorProfile = await res.json()
         this.saved = true
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Save failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.saveFailed'), type: 'is-danger' })
       } finally {
         this.saving = false
       }

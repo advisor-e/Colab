@@ -151,7 +151,7 @@ export default {
         const data = await res.json()
         if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.requestFailed'), type: 'is-danger' })
       }
     },
     async connect (p) {
@@ -169,7 +169,7 @@ export default {
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.requestFailed'), type: 'is-danger' })
       }
     },
     async search () {
@@ -187,7 +187,7 @@ export default {
           this.groups = await res.json()
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Search failed — is the backend running?', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.searchFailed'), type: 'is-danger' })
       } finally {
         this.loading = false
       }
@@ -226,12 +226,12 @@ export default {
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Invite failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.inviteFailed'), type: 'is-danger' })
       }
     },
     async sendOutreach () {
       if (!this.outreach.context) {
-        this.$buefy.toast.open({ message: 'Please say why you are reaching out.', type: 'is-warning' })
+        this.$buefy.toast.open({ message: this.$t('outreach.needReason'), type: 'is-warning' })
         return
       }
       try {
@@ -251,7 +251,7 @@ export default {
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
       }
     }
   }

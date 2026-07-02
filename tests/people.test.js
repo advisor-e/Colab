@@ -289,6 +289,14 @@ describe('messages & outreach', () => {
     expect(sent(res)[0]).toBe(200)
   })
 
+  test('sendOutreach enforces one outreach per person (409 on a repeat)', async () => {
+    await route.sendOutreach({ body: { toId: 'bob-lindt', context: 'First contact' } }, mkRes())
+    const repeat = mkRes()
+    await route.sendOutreach({ body: { toId: 'bob-lindt', context: 'Second contact' } }, repeat)
+    expect(sent(repeat)[0]).toBe(409)
+    expect(sent(repeat)[1].error.code).toBe('ONE_OUTREACH')
+  })
+
   test('listMessages returns the viewer thread summaries', async () => {
     const res = mkRes()
     await route.listMessages({}, res)

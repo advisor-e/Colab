@@ -72,7 +72,7 @@ export default {
         const data = await res.json()
         if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.requestFailed'), type: 'is-danger' })
       } finally {
         this.joining = false
       }
@@ -93,7 +93,7 @@ export default {
           this.$router.push('/messages?thread=' + data.threadId)
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
       }
     }
   }

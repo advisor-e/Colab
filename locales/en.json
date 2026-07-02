@@ -69,6 +69,7 @@
     "attach": "Attach group",
     "send": "Send invitation",
     "onePerPerson": "One outreach per person — make it genuine.",
+    "needReason": "Please say why you are reaching out.",
     "sent": "Invitation sent."
   },
   "messages": {
@@ -166,6 +167,22 @@
     "group_invitation": "{inviter} invited you to {group}",
     "message": "New message from {name}",
     "purchase": "{buyer} bought {tool}"
+  },
+  "toast": {
+    "loadConnections": "Could not load your connections — is the backend running?",
+    "loadProfile": "Could not load profile — is the backend running?",
+    "loadMarketplace": "Could not load the marketplace — is the backend running?",
+    "updateNotifications": "Could not update notifications — is the backend running?",
+    "searchFailed": "Search failed — is the backend running?",
+    "saveFailed": "Save failed",
+    "requestFailed": "Request failed",
+    "sendFailed": "Send failed",
+    "inviteFailed": "Invite failed",
+    "actionFailed": "Action failed",
+    "translationFailed": "Translation failed",
+    "failed": "Something went wrong",
+    "groupCreated": "Group created",
+    "createGroupFailed": "Could not create group"
   },
   "help": {
     "button": "How to use this page",
