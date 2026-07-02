@@ -364,6 +364,19 @@ async function createOutreachThread (input) {
   return t
 }
 
+// Open (or reuse) a 1:1 conversation with a connection — used by the "Message"
+// action on Connections so an advisor can chat without composing a fresh cold
+// outreach. Reuses any existing 1:1 thread with that person.
+async function findOrCreateDirectThread (ownerId, other) {
+  // SQL SEAM: SELECT thread WHERE owner_id=? AND kind='outreach' AND with_id=? ; INSERT if none
+  let t = threads.find(x => x.kind === 'outreach' && x.withId === other.id)
+  if (!t) {
+    t = { id: 't-dm-' + (threadSeq++), kind: 'outreach', withId: other.id, withName: other.name, status: 'active', direction: 'outgoing', messages: [] }
+    threads.unshift(t)
+  }
+  return t
+}
+
 async function findOrCreateGroupThread (group) {
   // SQL SEAM: SELECT thread WHERE kind='group' AND with_id=? ; INSERT if none
   let t = threads.find(x => x.kind === 'group' && x.withId === group.id)
@@ -513,7 +526,7 @@ module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup,
   listManageableGroups, inviteToGroup, respondInvitation,
-  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, hasOutgoingOutreach,
+  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
   requestConnection, listConnections, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,

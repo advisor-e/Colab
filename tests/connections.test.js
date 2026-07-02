@@ -105,6 +105,32 @@ describe('connections page', () => {
     )
   })
 
+  test('filteredConnected narrows the connected list by name/firm', async () => {
+    mockFetch(PAYLOAD)
+    const w = factory()
+    await flush()
+    expect(w.vm.filteredConnected.length).toBe(1)
+    w.vm.search = 'sara'
+    expect(w.vm.filteredConnected.length).toBe(1)
+    w.vm.search = 'zzz-nobody'
+    expect(w.vm.filteredConnected.length).toBe(0)
+  })
+
+  test('message() opens a thread and navigates to it in Messages', async () => {
+    mockFetch(PAYLOAD)
+    const push = jest.fn()
+    const w = mount(Connections, {
+      localVue,
+      mocks: { $t: key => key, $buefy: { toast: { open: jest.fn() } }, $router: { push } }
+    })
+    await flush()
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, threadId: 't-dm-9' }) }))
+    await w.vm.message({ id: 'sara', name: 'Sara Okafor' })
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/advisors/sara/thread', expect.objectContaining({ method: 'POST' }))
+    expect(push).toHaveBeenCalledWith('/messages?thread=t-dm-9')
+  })
+
   test('a failed load leaves the buckets empty and stops loading', async () => {
     global.fetch = jest.fn(() => Promise.reject(new Error('offline')))
     const w = factory()

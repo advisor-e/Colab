@@ -7,6 +7,8 @@
         page-help(help-key="connections")
       b-message(v-if="loading" type="is-info") Loading…
       template(v-else)
+        b-input.mb-4(v-model="search" :placeholder="$t('connections.searchPlaceholder')" rounded)
+
         p.heading {{ $t('connections.incoming') }}
         p.has-text-grey.mb-4(v-if="!data.incoming.length") {{ $t('connections.noIncoming') }}
         .box(v-for="c in data.incoming" :key="c.id")
@@ -23,14 +25,18 @@
 
         p.heading.mt-5 {{ $t('connections.yourConnections') }}
         p.has-text-grey.mb-4(v-if="!data.connected.length") {{ $t('connections.noConnections') }}
-        .box(v-for="c in data.connected" :key="c.id")
-          .is-flex.is-align-items-center
-            .avatar(:style="avatarStyle(c.advisor)") {{ initials(c.advisor.name) }}
-            div
-              p.has-text-weight-semibold
-                | {{ c.advisor.name }} · {{ c.advisor.firm }}
-                span.tag.is-success.is-light.ml-2 ✓ {{ $t('common.connected') }}
-              p.has-text-grey.is-size-7 {{ (c.advisor.strengths || []).join(', ') }}
+        p.has-text-grey.mb-4(v-else-if="!filteredConnected.length") {{ $t('connections.noMatches') }}
+        .box(v-for="c in filteredConnected" :key="c.id")
+          .level.is-mobile
+            .level-left
+              .avatar(:style="avatarStyle(c.advisor)") {{ initials(c.advisor.name) }}
+              div
+                p.has-text-weight-semibold
+                  | {{ c.advisor.name }} · {{ c.advisor.firm }}
+                  span.tag.is-success.is-light.ml-2 ✓ {{ $t('common.connected') }}
+                p.has-text-grey.is-size-7 {{ (c.advisor.strengths || []).join(', ') }}
+            .level-right
+              b-button(type="is-primary" size="is-small" @click="message(c.advisor)") {{ $t('common.message') }}
 
         template(v-if="data.groups && data.groups.length")
           p.heading.mt-5 {{ $t('connections.myGroups') }}
@@ -44,6 +50,7 @@
               .member(v-for="m in g.members" :key="m.id")
                 .avatar(:style="avatarStyle(m)") {{ initials(m.name) }}
                 span {{ m.name }}
+                b-button.ml-2(type="is-primary" size="is-small" outlined @click="message(m)") {{ $t('common.message') }}
 
         template(v-if="data.outgoing.length")
           p.heading.mt-5 {{ $t('connections.pending') }}
@@ -59,7 +66,20 @@
 export default {
   name: 'ConnectionsPage',
   data () {
-    return { data: { incoming: [], outgoing: [], connected: [], groups: [] }, loading: true }
+    return { data: { incoming: [], outgoing: [], connected: [], groups: [] }, loading: true, search: '' }
+  },
+  computed: {
+    // Client-side filter so a large network (100+ connections) stays navigable
+    // without a round-trip. Matches name, firm and strengths.
+    filteredConnected () {
+      const q = (this.search || '').trim().toLowerCase()
+      if (!q) { return this.data.connected }
+      return this.data.connected.filter((c) => {
+        const a = c.advisor || {}
+        const hay = (a.name + ' ' + (a.firm || '') + ' ' + (a.strengths || []).join(' ')).toLowerCase()
+        return hay.includes(q)
+      })
+    }
   },
   async mounted () {
     await this.load()
@@ -88,6 +108,24 @@ export default {
         this.$buefy.toast.open({ message: this.$t('toast.loadConnections'), type: 'is-danger' })
       } finally {
         this.loading = false
+      }
+    },
+    // Open (or reuse) a 1:1 conversation with a connection, then jump to it in
+    // Messages — so an advisor can view AND message from one place.
+    async message (advisor) {
+      try {
+        const res = await fetch('/api/people/advisors/' + advisor.id + '/thread', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$router.push('/messages?thread=' + data.threadId)
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     },
     async respond (c, accept) {
