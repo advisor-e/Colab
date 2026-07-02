@@ -55,6 +55,10 @@
 | Q-CHAT-AUDIENCE | P2 | Decide **messaging audience model**: group-wide vs contact-only, per-message choice; who controls group-chat membership | Decision | Owner + design · "New ideas" below |
 | FEAT-CHAT-AUDIENCE | P2 | Implement the chosen **message-audience / group-chat membership** controls | Feature | Blocked by Q-CHAT-AUDIENCE · "New ideas" below |
 | FEAT-MARKET-HELP | P3 | Add **purchase/access/cascade guidance** to the marketplace "How to use this page" help | Tidy | After Q-ACCESS-CASCADE · "New ideas" below |
+| Q-MENTOR-SCOPE | P2 | Define the **mentor's view + controls** over the advisors/members below them | Decision | Owner + master team · "New ideas" below |
+| FEAT-MENTOR-CONSOLE | P2 | **Mentor console** — see & set controls for advisors/members below | Feature | Blocked by FEAT-RBAC (Q-ROLES) + Q-MENTOR-SCOPE · "New ideas" below |
+| Q-CONN-MSG-IA | P2 | Decide how far to **combine Connections + Messages** + the at-scale pattern (100+ connections) | Decision | Owner + design · "New ideas" below |
+| FEAT-CONNECT-MESSAGE | P2 | **Message a connection directly** from Connections + search/filter for scale; unify with Messages | Feature | Paired with Q-CONN-MSG-IA · "New ideas" below |
 
 > **Resolved 2026-07-03 (owner decisions — now in the Done table + plan §13):** D1-POSTURE →
 > closed/opt-in · D2-GROUPVIS → live immediately · Q6-ONEORG → seal at individual office (branch).
@@ -181,6 +185,33 @@ questions **Q5** / **Q6** are in the plan §12. Review those alongside T1–T6.
   FEAT-RBAC.
 - **FEAT-CHAT-AUDIENCE (P2).** Implement the model chosen in Q-CHAT-AUDIENCE — audience selection
   per conversation and group-chat membership controls. **Blocked by Q-CHAT-AUDIENCE.**
+
+### Theme E — Mentor view & controls
+
+- **Q-MENTOR-SCOPE (P2 · owner + master team).** The advisor's question: *as a **mentor**, what is
+  my view, and how do I set controls for the advisors/members below me?* We need the model — what a
+  mentor can **see** (their downline's profiles, groups, activity?) and **control** (settings,
+  permissions, cross-org posture, approvals?) over each tier below them (plan §5 hierarchy:
+  Mentor → Global → Group → Firm → Advisor → Client). This depends on the role model, so it must be
+  settled alongside **Q-ROLES** (master team).
+- **FEAT-MENTOR-CONSOLE (P2).** Build the mentor's **console** — a view of the advisors/members
+  below them plus the controls decided in Q-MENTOR-SCOPE. **Blocked by FEAT-RBAC (Q-ROLES) +
+  Q-MENTOR-SCOPE** — a mentor console can't be safely built before "who is below me and what may I
+  do to them" is defined by the role hierarchy.
+
+### Theme F — Combine Connections + Messages (+ scale)
+
+- **Q-CONN-MSG-IA (P2 · owner + design).** The advisor's problem: Connections shows *who* you're
+  linked with, but you can't act on them there — you have to switch to Messages and find them again;
+  and *with 100+ connections, how do I find and message someone easily?* Decide the information
+  architecture: **(a)** keep two sections but add a **"Message" action + search/filter** on
+  Connections, **(b)** a **unified inbox** where connections and conversations live together, or
+  **(c)** a hybrid. Include the **at-scale pattern**: search, filter by type (1:1 / group / firm),
+  sort, and pagination for large networks.
+- **FEAT-CONNECT-MESSAGE (P2).** Implement the chosen approach — at minimum a **Message** action
+  from each connection (opens/creates the thread directly) and **connection search/filter** so a
+  large network is navigable; optionally the fuller Connections↔Messages unification. Paired with
+  **Q-CONN-MSG-IA**.
 
 ---
 
