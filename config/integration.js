@@ -61,4 +61,13 @@ const CROSS_ORG = {
   defaultPosture: 'closed' // 'closed' = opt-in (D1) · 'open' = open network
 }
 
-module.exports = { AUTH, DB, CROSS_ORG }
+// ── Advisor-e app links (deep-link a purchased tool to its hosted page) ────────
+// SEAM (Q-PAGE-URL): the URL that opens an Advisor-e catalogue tool from its
+// `pageId`. This is a PLACEHOLDER pattern — confirm the real one with the master
+// team (and whether an SSO/token hop is needed). The link opens Advisor-e, which
+// enforces its OWN access control (see Q-ACCESS-CASCADE) — this app never bypasses it.
+const ADVISOR_E = {
+  pageBaseUrl: process.env.ADVISOR_E_PAGE_BASE || 'https://app.advisor-e.com/p/'
+}
+
+module.exports = { AUTH, DB, CROSS_ORG, ADVISOR_E }
