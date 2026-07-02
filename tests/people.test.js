@@ -414,13 +414,22 @@ describe('marketplace', () => {
     expect(sent(res)[1].error.code).toBe('UNKNOWN_TOOL')
   })
 
-  test('createListing succeeds with a valid catalogue tool', async () => {
+  test('createListing succeeds with a valid catalogue tool and tags it group-owned (Tier 4)', async () => {
     const res = mkRes()
     await route.createListing({ body: { title: 'Real Tool', pageId: KNOWN_PAGE_ID } }, res)
     const [status, body] = sent(res)
     expect(status).toBe(200)
     expect(body.pageId).toBe(KNOWN_PAGE_ID)
     expect(body.title).toBe('Real Tool')
+    expect(body.ipTier).toBe(4)
+  })
+
+  test('createListing refuses a locked / non-derivable framework (LOCKED_IP)', async () => {
+    const res = mkRes()
+    // '8-profit-levers' is a real catalogue id classified as a locked Tier-2 framework.
+    await route.createListing({ body: { title: 'Locked Tool', pageId: '8-profit-levers' } }, res)
+    expect(sent(res)[0]).toBe(400)
+    expect(sent(res)[1].error.code).toBe('LOCKED_IP')
   })
 
   test('purchaseListing records a purchase / 404s unknown', async () => {

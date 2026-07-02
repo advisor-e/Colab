@@ -21,6 +21,8 @@
             p.mt-2 {{ l.summary }}
             .tags.mt-2
               span.tag(v-for="t in (l.tags || [])" :key="t") {{ t }}
+            p.mt-2(v-if="l.ipTier === 4")
+              span.tag.is-link.is-light 🏷️ {{ $t('market.groupOwned') }}
             p.has-text-grey.is-size-7.mt-2 {{ $t('market.by') }} {{ l.createdBy }} · {{ l.groupName }}
             p.has-text-grey.is-size-7 ⓘ {{ $t('market.licence') }}
             .mt-3
@@ -45,7 +47,9 @@
               )
                 template(slot-scope="props")
                   .is-flex.is-justify-content-space-between.is-align-items-center
-                    span {{ props.option.title }}
+                    span
+                      | {{ props.option.title }}
+                      span.tag.is-warning.is-light.ml-2(v-if="props.option.locked") 🔒 {{ $t('market.locked') }}
                     small.has-text-grey.ml-2 {{ props.option.subSection }}
                 template(slot="empty") {{ $t('market.noTool') }}
             b-field(v-if="form.pageId" :label="$t('market.fToolId')")
@@ -152,6 +156,12 @@ export default {
     // title/summary/tags pre-fill from the master record and stay editable.
     onToolSelect (option) {
       if (!option) { return }
+      // A locked / non-derivable framework (Tier 2) can't be listed (plan §6).
+      // Block it at the picker; the backend enforces the same rule on create.
+      if (option.locked) {
+        this.$buefy.toast.open({ message: this.$t('market.lockedTool'), type: 'is-warning' })
+        return
+      }
       this.selectedTool = option
       this.form.pageId = option.pageId
       this.form.title = option.title
@@ -186,6 +196,10 @@ export default {
           this.createOpen = false
           await this.load()
           this.$buefy.toast.open({ message: this.$t('market.listed'), type: 'is-success' })
+        } else {
+          // Surface a handled rejection (e.g. a locked framework) instead of failing silently.
+          const msg = l && l.error && l.error.message ? l.error.message : 'Failed'
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
         this.$buefy.toast.open({ message: 'Failed', type: 'is-danger' })

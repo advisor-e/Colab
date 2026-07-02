@@ -13,12 +13,17 @@
  */
 
 const templates = require('../data/advisoryTemplates')
+const ipClass = require('../data/ipClassification')
 
 function ok (res, data) { res.send(200, data) }
 
 async function list (req, res) {
   const q = (req.query && req.query.q) || ''
-  ok(res, await templates.list(q))
+  const rows = await templates.list(q)
+  // Enrich each row with its IP classification (tier/label/locked) so the picker
+  // can flag locked frameworks and prevent them being listed (plan §6; T3).
+  const enriched = await Promise.all(rows.map(async r => Object.assign({}, r, await ipClass.classify(r.pageId))))
+  ok(res, enriched)
 }
 
 module.exports = { list }

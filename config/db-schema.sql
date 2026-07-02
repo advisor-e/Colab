@@ -106,7 +106,21 @@ CREATE TABLE IF NOT EXISTS marketplace_listing (
   group_id    VARCHAR(80)  NULL,
   created_by  VARCHAR(64)  NOT NULL,
   price       VARCHAR(40)  NULL,
+  ip_tier     TINYINT      NOT NULL DEFAULT 4, -- group-owned IP (plan §6 Tier 4)
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- IP-ownership register (plan §6; T3). Classifies an Advisor-e catalogue tool by
+-- its page ID into one of the four ownership tiers, with a LOCKED / non-derivable
+-- flag on Tier-2 frameworks so they can't be listed or re-sold. This is a SEPARATE
+-- classification layer — the source catalogue is never modified. Today the app
+-- reads this from an in-code map (server/data/ipClassification.js); wire this table
+-- (or Advisory's real IP register) in behind that seam.
+CREATE TABLE IF NOT EXISTS ip_register (
+  page_id    VARCHAR(80) NOT NULL PRIMARY KEY, -- catalogue tool id (the listing `link`)
+  tier       TINYINT     NOT NULL DEFAULT 1,   -- 1 Advisory-owned · 2 locked · 3 co-developed · 4 group-owned
+  is_locked  TINYINT(1)  NOT NULL DEFAULT 0,   -- Tier-2 non-derivable flag
+  updated_at TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS marketplace_listing_tag (

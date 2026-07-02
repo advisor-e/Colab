@@ -153,7 +153,10 @@
     "fSummary": "What is it?",
     "fTags": "Tags",
     "fPrice": "Price",
-    "priceHint": "Members transact directly — Advisory takes no fee. Use 'Free' or any amount."
+    "priceHint": "Members transact directly — Advisory takes no fee. Use 'Free' or any amount.",
+    "groupOwned": "Group-owned IP",
+    "locked": "Locked framework",
+    "lockedTool": "This is a locked Advisor-e framework — it can't be listed or derived."
   },
   "notif": {
     "title": "Notifications",
