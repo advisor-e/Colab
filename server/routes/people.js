@@ -161,6 +161,16 @@ async function sendOutreach (req, res) {
   ok(res, { success: true, sent: true, threadId: t.id })
 }
 
+// Open (or reuse) a direct conversation with a connection, then the frontend
+// navigates to it. Frictionless — no cold-outreach reason required here.
+async function messageAdvisor (req, res) {
+  const me = await currentAdvisor(req)
+  const other = await repo.getAdvisorById(req.params.id)
+  if (!other) { fail(res, 404, 'NOT_FOUND', 'Advisor not found'); return }
+  const t = await repo.findOrCreateDirectThread(me.id, { id: other.id, name: other.name })
+  ok(res, { success: true, threadId: t.id })
+}
+
 async function listMessages (req, res) {
   const me = await currentAdvisor(req)
   ok(res, { threads: await repo.listThreads(me.id) })
@@ -291,6 +301,7 @@ module.exports = {
   acceptInvitation,
   declineInvitation,
   sendOutreach,
+  messageAdvisor,
   listMessages,
   getThread,
   replyThread,

@@ -33,7 +33,8 @@
     "connected": "Connected",
     "requested": "Requested",
     "respond": "Respond",
-    "inviteToGroup": "Invite to group"
+    "inviteToGroup": "Invite to group",
+    "message": "Message"
   },
   "profile": {
     "title": "My Profile",
@@ -131,7 +132,9 @@
     "requestedLabel": "Awaiting their response",
     "acceptedToast": "Connected!",
     "declinedToast": "Request declined.",
-    "myGroups": "Your groups"
+    "myGroups": "Your groups",
+    "searchPlaceholder": "Search your connections by name or firm…",
+    "noMatches": "No connections match your search."
   },
   "market": {
     "title": "Marketplace",

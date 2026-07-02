@@ -297,6 +297,23 @@ describe('messages & outreach', () => {
     expect(sent(repeat)[1].error.code).toBe('ONE_OUTREACH')
   })
 
+  test('messageAdvisor opens a direct thread / 404s unknown / reuses on repeat', async () => {
+    const okRes = mkRes()
+    await route.messageAdvisor({ params: { id: 'sara-okafor' } }, okRes)
+    const [status, body] = sent(okRes)
+    expect(status).toBe(200)
+    expect(body).toEqual(expect.objectContaining({ success: true, threadId: expect.any(String) }))
+
+    // Repeat reuses the same thread (no duplicates).
+    const again = mkRes()
+    await route.messageAdvisor({ params: { id: 'sara-okafor' } }, again)
+    expect(sent(again)[1].threadId).toBe(body.threadId)
+
+    const missing = mkRes()
+    await route.messageAdvisor({ params: { id: 'nobody' } }, missing)
+    expect(sent(missing)[0]).toBe(404)
+  })
+
   test('listMessages returns the viewer thread summaries', async () => {
     const res = mkRes()
     await route.listMessages({}, res)
