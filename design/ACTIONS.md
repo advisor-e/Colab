@@ -11,6 +11,45 @@
 
 ---
 
+## Master to-do — all outstanding work (single index)
+
+> **One scannable list of everything still to do**, gathered from the sections below
+> and from `HANDOVER.md` (§4 seams, §6 not-built, §8 open questions) and the plan
+> (`advisor-collaboration-platform-plan.md` §12). This table is the **index**; the
+> detailed entry for each row lives in the place named in its last column. Nothing
+> outstanding should exist outside this table — if it does, add a row.
+>
+> **Type key:** Fix = code fix/config · Tidy = cleanup · Integration = connect a real
+> Advisory system (needs creds) · Feature = build new capability · Triage = candidate
+> scope, decide keep/delete/do · Decision = needs an answer (owner or master team), not code.
+
+| ID | P | Item | Type | Blocked by / detail in |
+|----|---|------|------|------------------------|
+| INT-MYSQL | P1 | Connect real MySQL — fill SQL into the single seam `server/data/repository.js` | Integration | DB creds + schema provisioned · HANDOVER §4b |
+| INT-AUTH | P1 | Wire real Advisory login — set `JWT_SECRET`, confirm claim names/algorithm | Integration | Advisory auth team · HANDOVER §4a |
+| P1-TOOLCHAIN | P1 | Re-enable strict Node-floor enforcement (`engine-strict`) | Fix | 2 transitive `overrides` · "Open" below |
+| P2-TEMPLATE-FEED | P2 | Marketplace: swap JSON snapshot → live Advisory template feed (keep access-control) | Integration | Advisory template API · HANDOVER §4d |
+| P3-I18N-TOASTS | P3 | Move hardcoded toast strings into `$t()` / locale files | Tidy | — · "Open" below |
+| FEAT-RBAC | P2 | Role hierarchy / RBAC enforcement (Mentor→Global→Group→Firm→Advisor→Client) | Feature | Q-ROLES · HANDOVER §6 |
+| FEAT-CROSSORG | P2 | Cross-org engagement policy enforcement (plan §8) | Feature | Q6-ONEORG + D1-POSTURE · HANDOVER §6 |
+| FEAT-AUDITLOG | P2 | Audit logging | Feature | — · HANDOVER §6 |
+| FEAT-BULKINVITE | P3 | Manager bulk-invite | Feature | — · HANDOVER §6 |
+| T1-SPACES | P2 | Collaboration "spaces" (chat + shared-content references) | Triage | Owner decision · "Backlog" below |
+| T2-NOTIFICATIONS | P2 | Notifications (which events; in-app vs email) | Triage | Owner decision · "Backlog" below |
+| T3-IP-GOVERNANCE | P2 | IP classification & governance (4-tier, locked flag, per-space terms) | Triage | Owner decision · "Backlog" below |
+| T4-ANTISPAM | P3 | Outreach anti-spam guardrails (verify what routes already enforce first) | Triage | — · "Backlog" below |
+| T5-MARKET-SIGNALS | P3 | Marketplace "proven tools" signal + ratings (optional) | Triage | Owner decision · "Backlog" below |
+| T6-SKETCHES-DOC | P3 | Repair truncated `design/ux-sketches.md` | Tidy | — · "Backlog" below |
+| Q-JWTCLAIMS | P1 | Confirm JWT claim names + signing algorithm (HS256 vs RS256) | Decision | Advisory auth team · HANDOVER §8.2 |
+| Q-PROFILE | P1 | Advisor profile API/source to read identity from | Decision | Master team · HANDOVER §8.3 |
+| Q-ROLES | P2 | Role-hierarchy source of truth | Decision | Master team · HANDOVER §8.5 |
+| Q6-ONEORG | P2 | Define "one organisation" for the cross-org policy (branch / firm / country) | Decision | Owner · plan §12.6 |
+| D1-POSTURE | P2 | Default cross-org posture (open vs closed) — a config flip, not a rebuild | Decision | Owner · plan §12 (D1) |
+| D2-GROUPVIS | P2 | New-group approval/visibility default | Decision | Owner · plan §12 (D2) |
+| Q5-GROUPIP | P3 | Confirm net-new group-IP edge cases (member's pre-existing personal IP) | Decision | Owner · plan §12.5 |
+
+---
+
 ## Open
 
 | ID | P | Title | Notes / next step |
