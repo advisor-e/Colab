@@ -73,17 +73,17 @@ a { color: var(--brand); }
   transition: background .15s ease, color .15s ease;
 }
 /* idle colour = the section's colour */
-.navbar.is-light .nav--discover { color: var(--cyan)  !important; }
-.navbar.is-light .nav--profile  { color: var(--brand) !important; }
-.navbar.is-light .nav--messages { color: var(--pink)  !important; }
+.navbar.is-light .nav--discover { color: #00b1e0  !important; }
+.navbar.is-light .nav--profile  { color: #7fd3ff !important; }
+.navbar.is-light .nav--messages { color: #002b64  !important; }
 /* hover / active = filled with the section's colour */
-.navbar.is-light a.nav--discover:hover, .navbar.is-light a.nav--discover.nuxt-link-active { background: var(--cyan)  !important; color:#fff !important; }
-.navbar.is-light a.nav--profile:hover,  .navbar.is-light a.nav--profile.nuxt-link-active  { background: var(--brand) !important; color:#fff !important; }
-.navbar.is-light a.nav--messages:hover, .navbar.is-light a.nav--messages.nuxt-link-active { background: var(--pink)  !important; color:#fff !important; }
+.navbar.is-light a.nav--discover:hover, .navbar.is-light a.nav--discover.nuxt-link-active { background: #00b1e0  !important; color:#fff !important; }
+.navbar.is-light a.nav--profile:hover,  .navbar.is-light a.nav--profile.nuxt-link-active  { background: #7fd3ff !important; color:#002b64 !important; }
+.navbar.is-light a.nav--messages:hover, .navbar.is-light a.nav--messages.nuxt-link-active { background: #002b64  !important; color:#fff !important; }
 .navbar.is-light .nav--connections { color: var(--teal) !important; }
 .navbar.is-light a.nav--connections:hover, .navbar.is-light a.nav--connections.nuxt-link-active { background: var(--teal) !important; color:#fff !important; }
-.navbar.is-light .nav--market { color: var(--coral) !important; }
-.navbar.is-light a.nav--market:hover, .navbar.is-light a.nav--market.nuxt-link-active { background: var(--coral) !important; color:#fff !important; }
+.navbar.is-light .nav--market { color: #0000FF !important; }
+.navbar.is-light a.nav--market:hover, .navbar.is-light a.nav--market.nuxt-link-active { background: #0000FF !important; color:#fff !important; }
 
 /* ===== Buttons ===== */
 .button {
