@@ -22,7 +22,7 @@
 
 // const pool = require('../utils/db')   // <-- uncomment when wiring SQL
 
-const { CROSS_ORG } = require('../../config/integration')
+const { CROSS_ORG, ADVISOR_E } = require('../../config/integration')
 
 // ── In-memory dev store ──────────────────────────────────────────────────────
 
@@ -100,8 +100,8 @@ let connSeq = 1
 // Marketplace listings are group-owned IP → IP Tier 4 (plan §6). The tier travels
 // with the listing so the marketplace can badge ownership.
 const listings = [
-  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)', createdById: 'anna-r', ipTier: 4 },
-  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor', createdById: 'sara-okafor', ipTier: 4 }
+  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)', createdById: 'anna-r', ipTier: 4, pageId: 'id-4466260146' },
+  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor', createdById: 'sara-okafor', ipTier: 4, pageId: '6-keys-notes' }
 ]
 const purchases = []
 let listingSeq = 1
@@ -457,16 +457,26 @@ async function respondConnection (connId, myId, accept) {
 
 // ── Marketplace (group-owned IP; record-only transactions, no Advisory fee) ───
 
+// Deep-link an OWNED tool to its Advisor-e page (Q-PAGE-URL seam). Only owned
+// listings get a URL — "open what you own"; Advisor-e still enforces its own access.
+function openUrlFor (listing, owned) {
+  return owned && listing.pageId ? (ADVISOR_E.pageBaseUrl + listing.pageId) : null
+}
+
 async function listListings (myId) {
   // SQL SEAM: SELECT listing (+ tags) ; owned = EXISTS(purchase by myId)
-  return listings.map(l => Object.assign({}, l, { owned: purchases.some(p => p.listingId === l.id && p.buyerId === myId) }))
+  return listings.map((l) => {
+    const owned = purchases.some(p => p.listingId === l.id && p.buyerId === myId)
+    return Object.assign({}, l, { owned: owned, openUrl: openUrlFor(l, owned) })
+  })
 }
 
 async function getListing (id, myId) {
   // SQL SEAM: SELECT listing WHERE id=? (+ owned flag)
   const l = listings.find(x => x.id === id)
   if (!l) { return null }
-  return Object.assign({}, l, { owned: purchases.some(p => p.listingId === l.id && p.buyerId === myId) })
+  const owned = purchases.some(p => p.listingId === l.id && p.buyerId === myId)
+  return Object.assign({}, l, { owned: owned, openUrl: openUrlFor(l, owned) })
 }
 
 async function createListing (input, creator) {

@@ -408,6 +408,22 @@ describe('marketplace', () => {
     expect(body.every(l => typeof l.owned === 'boolean')).toBe(true)
   })
 
+  test('an unowned listing has no openUrl; a purchased one gets an Advisor-e deep-link', async () => {
+    const before = mkRes()
+    await route.listMarketplace({}, before)
+    const pre = sent(before)[1].find(l => l.id === 'm-trucking')
+    expect(pre.owned).toBe(false)
+    expect(pre.openUrl).toBeNull()
+
+    await route.purchaseListing({ params: { id: 'm-trucking' } }, mkRes())
+    const after = mkRes()
+    await route.listMarketplace({}, after)
+    const post = sent(after)[1].find(l => l.id === 'm-trucking')
+    expect(post.owned).toBe(true)
+    expect(typeof post.openUrl).toBe('string')
+    expect(post.openUrl).toContain('id-4466260146') // base + pageId
+  })
+
   test('getListing returns a listing / 404s unknown', async () => {
     const okRes = mkRes()
     await route.getListing({ params: { id: 'm-trucking' } }, okRes)

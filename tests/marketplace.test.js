@@ -74,6 +74,25 @@ describe('marketplace page', () => {
     expect(w.vm.tools).toEqual([])
   })
 
+  test('the My tools filter shows only owned listings, with an Open tool link', async () => {
+    const listings = [
+      { id: 'm1', title: 'Owned One', price: 'Free', summary: 's', tags: [], createdBy: 'A', groupName: 'G', owned: true, openUrl: 'https://app.advisor-e.com/p/id-1', ipTier: 4 },
+      { id: 'm2', title: 'Not Owned', price: 'Free', summary: 's', tags: [], createdBy: 'A', groupName: 'G', owned: false, openUrl: null, ipTier: 4 }
+    ]
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(listings) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.ownedCount).toBe(1)
+    expect(w.vm.visibleListings.length).toBe(2)
+    // The owned listing renders an "Open tool" deep-link.
+    expect(w.find('a[href="https://app.advisor-e.com/p/id-1"]').exists()).toBe(true)
+
+    w.vm.filter = 'mine'
+    await w.vm.$nextTick()
+    expect(w.vm.visibleListings.length).toBe(1)
+    expect(w.vm.visibleListings[0].id).toBe('m1')
+  })
+
   test('buy() records a purchase and marks the listing owned', async () => {
     mockApi()
     const w = factory()

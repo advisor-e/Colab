@@ -11,9 +11,17 @@
         .level-right
           b-button(type="is-warning" @click="openCreate") ＋ {{ $t('market.list') }}
 
+      .tabs.is-toggle.is-small.mb-4
+        ul
+          li(:class="{ 'is-active': filter === 'all' }")
+            a(@click="filter = 'all'") {{ $t('market.allTools') }}
+          li(:class="{ 'is-active': filter === 'mine' }")
+            a(@click="filter = 'mine'") {{ $t('market.myTools') }} ({{ ownedCount }})
+
       b-message(v-if="loading" type="is-info") Loading…
+      p.has-text-grey(v-else-if="filter === 'mine' && !visibleListings.length") {{ $t('market.noPurchases') }}
       .columns.is-multiline(v-else)
-        .column.is-half(v-for="l in listings" :key="l.id")
+        .column.is-half(v-for="l in visibleListings" :key="l.id")
           .box.listing
             .is-flex.is-justify-content-space-between.is-align-items-flex-start
               p.is-size-5.has-text-weight-semibold {{ l.title }}
@@ -25,9 +33,11 @@
               span.tag.is-link.is-light 🏷️ {{ $t('market.groupOwned') }}
             p.has-text-grey.is-size-7.mt-2 {{ $t('market.by') }} {{ l.createdBy }} · {{ l.groupName }}
             p.has-text-grey.is-size-7 ⓘ {{ $t('market.licence') }}
-            .mt-3
+            .mt-3.buttons
               b-button(v-if="!l.owned" type="is-success" size="is-small" @click="buy(l)") {{ $t('market.get') }}
-              span.tag.is-success.is-light(v-else) ✓ {{ $t('market.owned') }}
+              template(v-else)
+                span.tag.is-success.is-light ✓ {{ $t('market.owned') }}
+                a.button.is-link.is-small.is-light(v-if="l.openUrl" :href="l.openUrl" target="_blank" rel="noopener") ↗ {{ $t('market.openTool') }}
 
       b-modal(v-model="createOpen" has-modal-card)
         .modal-card
@@ -76,6 +86,7 @@ export default {
     return {
       listings: [],
       loading: true,
+      filter: 'all', // 'all' | 'mine' (tools I've bought)
       createOpen: false,
       form: { title: '', summary: '', tags: [], price: 'Free', pageId: '' },
       tools: [],
@@ -85,6 +96,11 @@ export default {
     }
   },
   computed: {
+    ownedCount () { return this.listings.filter(l => l.owned).length },
+    // "All tools" vs "My tools" (only the ones I've bought).
+    visibleListings () {
+      return this.filter === 'mine' ? this.listings.filter(l => l.owned) : this.listings
+    },
     // Client-side filter over the loaded catalogue; capped so the dropdown stays
     // snappy with 200+ tools. Matches title, sub-section and tags.
     filteredTools () {
