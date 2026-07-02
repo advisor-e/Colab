@@ -76,6 +76,18 @@ describe('GET /api/templates route', () => {
     expect(body.length).toBeGreaterThan(0)
     expect(body.length).toBeLessThan((await templates.list()).length)
   })
+
+  test('enriches each row with its IP classification (tier/label/locked)', async () => {
+    const res = { send: jest.fn() }
+    await route.list({ query: {} }, res)
+    const [, body] = res.send.mock.calls[0]
+    // Every row carries the classification fields.
+    expect(body.every(r => typeof r.tier === 'number' && typeof r.locked === 'boolean')).toBe(true)
+    // A normal tool is Advisory-owned (Tier 1); the demo-locked framework is Tier 2 locked.
+    expect(body.find(r => r.pageId === KNOWN_ID)).toEqual(expect.objectContaining({ tier: 1, locked: false }))
+    const locked = body.find(r => r.pageId === '8-profit-levers')
+    expect(locked).toEqual(expect.objectContaining({ tier: 2, locked: true }))
+  })
 })
 
 describe('repository.createListing stores the linked pageId', () => {

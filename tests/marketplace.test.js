@@ -111,6 +111,35 @@ describe('marketplace page', () => {
     expect(w.vm.selectedTool).toEqual(TOOLS[0])
   })
 
+  test('onToolSelect refuses a locked framework and does not link it', async () => {
+    mockApi()
+    const w = factory()
+    await flush()
+    w.vm.onToolSelect({ pageId: 'id-lock', title: 'Locked FW', locked: true })
+    expect(w.vm.form.pageId).toBe('')
+    expect(w.vm.selectedTool).toBeNull()
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-warning' }))
+  })
+
+  test('a group-owned listing shows the IP tier badge', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 'm-1', title: 'Tiered', price: 'Free', summary: 's', tags: [], createdBy: 'A', groupName: 'G', owned: false, ipTier: 4 }]) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.text()).toContain('market.groupOwned')
+  })
+
+  test('create surfaces a locked-framework rejection from the backend', async () => {
+    mockApi()
+    const w = factory()
+    await flush()
+    // Backend refuses with an error envelope (no id).
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: false, error: { code: 'LOCKED_IP', message: 'Locked framework' } }) }))
+    w.vm.form = { title: 'X', summary: '', tags: [], price: 'Free', pageId: 'id-100' }
+    await w.vm.create()
+    await flush()
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-warning' }))
+  })
+
   test('re-typing after a selection drops the linked tool (watch)', async () => {
     mockApi()
     const w = factory()

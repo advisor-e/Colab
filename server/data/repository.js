@@ -97,9 +97,11 @@ const connections = [
 ]
 let connSeq = 1
 
+// Marketplace listings are group-owned IP → IP Tier 4 (plan §6). The tier travels
+// with the listing so the marketplace can badge ownership.
 const listings = [
-  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)', createdById: 'anna-r' },
-  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor', createdById: 'sara-okafor' }
+  { id: 'm-trucking', title: 'Trucking Firm Valuation Model', summary: 'A valuation + capital-raising model built by five firms for road-transport businesses.', groupId: 'seafood-modelling', groupName: 'Seafood Financial Modelling', tags: ['trucking', 'valuation'], price: '€450', createdBy: 'Anna Richter (BDO DE)', createdById: 'anna-r', ipTier: 4 },
+  { id: 'm-hospitality', title: 'Hospitality Turnaround Toolkit', summary: 'Templates and playbooks for rescuing struggling hospitality businesses.', groupId: 'hospitality-turnaround', groupName: 'Hospitality Turnaround Toolkit', tags: ['hospitality', 'turnaround'], price: 'Free', createdBy: 'Sara Okafor', createdById: 'sara-okafor', ipTier: 4 }
 ]
 const purchases = []
 let listingSeq = 1
@@ -458,7 +460,8 @@ async function createListing (input, creator) {
     groupId: input.groupId || null, groupName: input.groupName || '',
     tags: Array.isArray(input.tags) ? input.tags : [],
     price: ((input.price || '').trim()) || 'Free',
-    createdBy: creator.name + ' (' + creator.firm + ')'
+    createdBy: creator.name + ' (' + creator.firm + ')',
+    ipTier: 4 // group-owned IP (plan §6)
   }
   listings.unshift(l)
   return l
