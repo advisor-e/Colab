@@ -47,6 +47,14 @@
 | Q-PROFILE | P1 | Advisor profile API/source to read identity from | Decision | Master team · HANDOVER §8.3 |
 | Q-ROLES | P2 | Role-hierarchy source of truth | Decision | Master team · HANDOVER §8.5 |
 | Q5-GROUPIP | P3 | Confirm net-new group-IP edge cases (member's pre-existing personal IP) | Decision | Owner · plan §12.5 |
+| FEAT-MY-PURCHASES | P2 | Marketplace: a **"my purchased tools"** view + **open-the-tool** deep-link to the Advisor-e-hosted page (via `pageId`) | Feature | Q-PAGE-URL · "New ideas" below |
+| Q-PAGE-URL | P2 | Confirm the **Advisor-e page URL pattern** to open a tool from its `pageId` | Decision | Master team · "New ideas" below |
+| Q-ACCESS-CASCADE | P2 | Define how **page access cascades** (section→subsection→parent→child, up to 4 levels): access to a parent grants child pages | Decision | Master team · "New ideas" below |
+| FEAT-GROUP-SHARED-CONTENT | P2 | Group: creator **attaches shared pages/templates** (dropdown) for members to collaborate/edit; members see the group's **template list** on the group page | Feature | Part of T1-SPACES · "New ideas" below |
+| FEAT-VOICE-EVERYWHERE | P3 | Extend **voice-to-text** (`speechMixin`) to **Messages** + any remaining text fields | Feature | — · "New ideas" below |
+| Q-CHAT-AUDIENCE | P2 | Decide **messaging audience model**: group-wide vs contact-only, per-message choice; who controls group-chat membership | Decision | Owner + design · "New ideas" below |
+| FEAT-CHAT-AUDIENCE | P2 | Implement the chosen **message-audience / group-chat membership** controls | Feature | Blocked by Q-CHAT-AUDIENCE · "New ideas" below |
+| FEAT-MARKET-HELP | P3 | Add **purchase/access/cascade guidance** to the marketplace "How to use this page" help | Tidy | After Q-ACCESS-CASCADE · "New ideas" below |
 
 > **Resolved 2026-07-03 (owner decisions — now in the Done table + plan §13):** D1-POSTURE →
 > closed/opt-in · D2-GROUPVIS → live immediately · Q6-ONEORG → seal at individual office (branch).
@@ -117,6 +125,62 @@
 RBAC, cross-org engagement policy, manager bulk-invite, and audit logging are in `HANDOVER.md`
 §6; the deferred UX defaults **D1** (open-vs-closed) / **D2** (new-group visibility) and open
 questions **Q5** / **Q6** are in the plan §12. Review those alongside T1–T6.
+
+---
+
+## New ideas — advisor feedback (2026-07-03)
+
+> Captured from an advisor-experience review. **Logged, not yet built or designed.**
+> Several need an owner decision or master-team input before implementation; those are
+> flagged. Grouped by the four themes raised.
+
+### Theme A — After I buy from the marketplace
+
+- **FEAT-MY-PURCHASES (P2).** An advisor who buys/licences a tool needs a way to **see what
+  they own** and to **open the tool**. Today the marketplace only shows an "Owned" tag on the
+  card — there's no "my purchases/library" view and no way to open the underlying tool. Build:
+  a purchased-tools view (or filter) + an **"Open in Advisor-e"** action that deep-links to the
+  hosted page using the stored `pageId`. Depends on **Q-PAGE-URL**.
+- **Q-PAGE-URL (P2 · master team).** What is the **URL pattern** that turns a `pageId` (the
+  catalogue `link`) into the live Advisor-e page URL? This app stores only the page ID (by
+  design) and must not bypass Advisory auth — so the deep-link opens Advisor-e, which enforces
+  its own access. Need the pattern (and whether a token/SSO hop is required).
+- **Q-ACCESS-CASCADE (P2 · master team).** Advisor-e pages cascade **section → sub-section →
+  parent → child**, sometimes **4 levels deep**. The advisor's question: *if I'm granted access
+  to a parent page, do I get its child pages too?* We need Advisory's **entitlement model** —
+  does buying a parent grant the whole subtree, or is each page licensed individually? This app
+  records the purchase (a `pageId`); **Advisor-e enforces the actual access**, so the rule lives
+  there. Confirm before we display "what you can open".
+- **FEAT-MARKET-HELP (P3).** Once the above are answered, add plain-English notes to the
+  marketplace **"How to use this page"** help: how to view purchases, how access works, and how
+  the parent→child cascade grants child pages. *(Wording to be confirmed with the owner.)*
+
+### Theme B — Group shared content / collaboration
+
+- **FEAT-GROUP-SHARED-CONTENT (P2 · part of the deferred T1-SPACES).** As a group **creator**,
+  pick pages/templates from a **dropdown** to **share with members** so they can collaborate/edit
+  the models. As a **member** (once accepted), the **group page shows the list of templates being
+  developed** in that group. Note: the actual editing is Advisor-e's existing Google/clone tooling
+  (plan §5 hand-off) — this app attaches references and shows the list; it does not build an editor.
+  **This is the "shared content" half of T1-SPACES (deferred 2026-07-03)** — logging it may mean
+  **un-deferring T1** or building this as its concrete first slice. Owner to steer.
+
+### Theme C — Voice-to-text everywhere
+
+- **FEAT-VOICE-EVERYWHERE (P3).** Extend the existing `speechMixin` 🎤 voice-input (already on
+  Profile + Discover search) to the **Messages** reply/compose boxes and **any remaining text
+  fields** across the site. *Verify current coverage first, then fill the gaps.*
+
+### Theme D — Message audience / who's in the chat
+
+- **Q-CHAT-AUDIENCE (P2 · owner + design).** The advisor's questions: in Messages, is a
+  conversation **open to all group members or contact-only**? Is there a **per-message choice**?
+  How does the sender **control who is involved** in a group chat (even among group members)?
+  Needs a decided model — e.g. (1:1 contact threads) vs (group threads = all members) vs
+  (sub-selected member sub-chats), and who may add/remove participants. Relates to T1-SPACES and
+  FEAT-RBAC.
+- **FEAT-CHAT-AUDIENCE (P2).** Implement the model chosen in Q-CHAT-AUDIENCE — audience selection
+  per conversation and group-chat membership controls. **Blocked by Q-CHAT-AUDIENCE.**
 
 ---
 
