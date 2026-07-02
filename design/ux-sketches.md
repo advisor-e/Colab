@@ -140,12 +140,18 @@ Messages store their original language; each reader can auto-translate to their 
 
 ---
 
+## Screens built since this sketch (2026-07)
+
+- **Create-a-group flow** — built (`pages/groups/new.vue`).
+- **Notifications panel** — built as a header **🔔 bell** with an unread badge + dropdown
+  (`components/AppHeader.vue`; T2-NOTIFICATIONS).
+- **Cross-firm collaboration** — a read-only posture indicator on **My Profile**
+  (FEAT-CROSSORG); the manager open/closed toggle is pending RBAC.
+
 ## Screens still to sketch (next pass)
 
 - Home / dashboard (what a user is greeted with — feeds the deferred "open vs closed default").
-- Notifications panel.
-- Inside a group's collaboration space (chat + members + hand-off into Advisory's Google tooling).
-- Create-a-group flow.
-- Manager bulk-invite flow.
-
-```text
+- Inside a group's collaboration space (chat + members + hand-off into Advisory's Google
+  tooling) — deferred as T1-SPACES.
+- Manager bulk-invite flow — FEAT-BULKINVITE.
+- Admin / compliance audit-log viewer — FEAT-AUDIT-UI (pending RBAC).

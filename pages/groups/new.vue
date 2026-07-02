@@ -48,11 +48,11 @@ export default {
         })
         const g = await res.json()
         if (g && g.id) {
-          this.$buefy.toast.open({ message: 'Group created', type: 'is-success' })
+          this.$buefy.toast.open({ message: this.$t('toast.groupCreated'), type: 'is-success' })
           this.$router.push('/groups/' + g.id)
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Could not create group', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.createGroupFailed'), type: 'is-danger' })
       } finally {
         this.saving = false
       }

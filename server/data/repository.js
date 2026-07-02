@@ -344,6 +344,14 @@ async function appendMessage (threadId, msg) {
   return t
 }
 
+// Anti-spam guard (plan §4): does the sender already have an OUTGOING outreach to
+// this person? Used to enforce "one outreach per person" — continue in-thread
+// rather than sending repeat cold outreach.
+async function hasOutgoingOutreach (ownerId, toId) {
+  // SQL SEAM: SELECT 1 FROM thread WHERE owner_id=? AND kind='outreach' AND direction='outgoing' AND with_id=?
+  return threads.some(t => t.kind === 'outreach' && t.direction === 'outgoing' && t.withId === toId)
+}
+
 async function createOutreachThread (input) {
   // SQL SEAM: INSERT INTO thread (kind='outreach', direction='outgoing', …); INSERT first message
   const t = {
@@ -505,7 +513,7 @@ module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup,
   listManageableGroups, inviteToGroup, respondInvitation,
-  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread,
+  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, hasOutgoingOutreach,
   requestConnection, listConnections, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,

@@ -120,7 +120,7 @@ export default {
         this.listings = await res.json()
       } catch (e) {
         // Keep listings as [] so the grid stays empty rather than crashing.
-        this.$buefy.toast.open({ message: 'Could not load the marketplace — is the backend running?', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.loadMarketplace'), type: 'is-danger' })
       } finally {
         this.loading = false
       }
@@ -136,7 +136,7 @@ export default {
           this.$buefy.toast.open({ message: this.$t('market.gotIt'), type: 'is-success' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     },
     // Load the Advisor-e tool catalogue once, the first time the form opens.
@@ -202,7 +202,7 @@ export default {
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: 'Failed', type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     }
   }
