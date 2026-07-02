@@ -44,7 +44,8 @@ describe('me', () => {
     await route.getMe({ identity: { advisorId: 'ghost' } }, res)
     const [status, body] = sent(res)
     expect(status).toBe(200)
-    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e' })
+    // The placeholder firm 'Advisor-e' is opted-in, so posture resolves to 'open'.
+    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e', crossOrgPosture: 'open' })
   })
 
   test('updateMe applies advertised-interest fields and returns the updated advisor', async () => {
@@ -430,6 +431,39 @@ describe('marketplace', () => {
     const missing = mkRes()
     await route.purchaseListing({ params: { id: 'm-none' } }, missing)
     expect(sent(missing)[0]).toBe(404)
+  })
+})
+
+describe('cross-org wall', () => {
+  test('connect is blocked (403) when the target firm has opted out', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    const res = mkRes()
+    await route.connect({ params: { id: 'bob-lindt' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+  })
+
+  test('getAdvisor is blocked (403) across a closed firm', async () => {
+    require('../server/data/repository').setOrgPosture('BDO Germany', 'closed')
+    const res = mkRes()
+    await route.getAdvisor({ params: { id: 'anna-r' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+  })
+
+  test('sendOutreach is blocked (403) across a closed firm', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    const res = mkRes()
+    await route.sendOutreach({ body: { toId: 'bob-lindt', context: 'Hello' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+  })
+
+  test('listAdvisors hides advisers behind a closed firm', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    const res = mkRes()
+    await route.listAdvisors({ query: {} }, res)
+    expect(sent(res)[1].some(a => a.id === 'bob-lindt')).toBe(false)
   })
 })
 

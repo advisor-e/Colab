@@ -27,13 +27,17 @@ async function currentAdvisor (req) {
 }
 
 async function getMe (req, res) {
-  ok(res, await currentAdvisor(req))
+  const me = await currentAdvisor(req)
+  // Attach the firm's cross-org posture (read-only on the profile; the manager
+  // toggle is deferred with FEAT-RBAC — see design/ACTIONS.md).
+  ok(res, Object.assign({}, me, { crossOrgPosture: await repo.getOrgPosture(me.firm) }))
 }
 
 async function updateMe (req, res) {
   const me = await currentAdvisor(req)
   const updated = await repo.updateAdvisorInterest(me.id, req.body || {})
-  ok(res, updated || me)
+  const result = updated || me
+  ok(res, Object.assign({}, result, { crossOrgPosture: await repo.getOrgPosture(result.firm) }))
 }
 
 async function listAdvisors (req, res) {
@@ -46,6 +50,12 @@ async function listAdvisors (req, res) {
 async function getAdvisor (req, res) {
   const a = await repo.getAdvisorById(req.params.id)
   if (!a) { fail(res, 404, 'NOT_FOUND', 'Advisor not found'); return }
+  const me = await currentAdvisor(req)
+  // Cross-org wall: don't expose an adviser outside your organisation's reach.
+  if (!(await repo.canReachAdvisor(me.id, a.id))) {
+    fail(res, 403, 'CROSS_ORG_BLOCKED', 'This adviser is outside your organisation and not available for cross-firm collaboration.')
+    return
+  }
   ok(res, a)
 }
 
@@ -123,6 +133,11 @@ async function sendOutreach (req, res) {
   // Purposeful cold-outreach: a reason ("context") is required by design.
   if (!body.toId || !body.context) { fail(res, 400, 'MISSING_REASON', 'An outreach must name a recipient and explain why you are reaching out.'); return }
   const me = await currentAdvisor(req)
+  // Cross-org wall: refuse cold outreach outside your organisation's reach.
+  if (!(await repo.canReachAdvisor(me.id, body.toId))) {
+    fail(res, 403, 'CROSS_ORG_BLOCKED', "You can only reach advisers within your own firm — cross-firm collaboration isn't open between your organisations.")
+    return
+  }
   const advisor = await repo.getAdvisorById(body.toId)
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
   const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text, fromName: me.name })
@@ -168,6 +183,10 @@ async function connect (req, res) {
   const me = await currentAdvisor(req)
   if (req.params.id === me.id) { fail(res, 400, 'SELF', 'You cannot connect with yourself.'); return }
   const c = await repo.requestConnection(me.id, req.params.id)
+  if (c && c.error === 'CROSS_ORG_BLOCKED') {
+    fail(res, 403, 'CROSS_ORG_BLOCKED', "You can only connect within your own firm — cross-firm collaboration isn't open between your organisations.")
+    return
+  }
   if (!c) { fail(res, 400, 'BAD_REQUEST', 'Could not create the request.'); return }
   ok(res, { success: true, status: c.status })
 }

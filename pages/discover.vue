@@ -163,6 +163,10 @@ export default {
         if (data.success) {
           p.connectionStatus = 'pending_out'
           this.$buefy.toast.open({ message: this.$t('common.requested'), type: 'is-success' })
+        } else {
+          // Surface a handled rejection (e.g. the cross-firm wall) instead of failing silently.
+          const msg = data.error && data.error.message ? data.error.message : 'Request failed'
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
         this.$buefy.toast.open({ message: 'Request failed', type: 'is-danger' })
@@ -241,6 +245,10 @@ export default {
           this.outreachOpen = false
           this.$buefy.toast.open({ message: this.$t('outreach.sent'), type: 'is-success' })
           this.$router.push('/messages?thread=' + data.threadId)
+        } else {
+          // Surface a handled rejection (e.g. the cross-firm wall) instead of failing silently.
+          const msg = data.error && data.error.message ? data.error.message : 'Send failed'
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
         }
       } catch (e) {
         this.$buefy.toast.open({ message: 'Send failed', type: 'is-danger' })
