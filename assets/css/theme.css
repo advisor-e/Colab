@@ -177,15 +177,16 @@ a { color: var(--brand); }
 }
 .pillar h3 { font-size: 1.25rem; font-weight: 300; margin-bottom: .35rem; }
 .pillar p  { color: var(--muted); font-size: .95rem; }
-.pillar--discover { border-top-color: var(--cyan); }
+.pillar--discover { border-top-color: #00b1e0; }
 .pillar--discover .pillar__icon { background: #e2f6fb; }
-.pillar--messages { border-top-color: var(--pink); }
+.pillar--messages { border-top-color: #002b64; }
 .pillar--messages .pillar__icon { background: #ffe9f1; }
 .pillar--groups   { border-top-color: var(--amber); }
 .pillar--groups .pillar__icon { background: #fff3da; }
 .pillar--connections { border-top-color: var(--teal); }
 .pillar--connections .pillar__icon { background: #d9f8f1; }
-.pillar--market { border-top-color: var(--coral); }
+.pillar--profile { border-top-color: #7fd3ff; }
+.pillar--market { border-top-color: #0000FF; }
 .pillar--market .pillar__icon { background: #ffe8e0; }
 
 /* ===== Discover avatars + group badge ===== */
@@ -211,13 +212,14 @@ a { color: var(--brand); }
   color: #fff; margin: 0; font-family: 'Open Sans';
   font-size: 1.8rem; font-weight: 500 !important; letter-spacing: -0.02em;
 }
-.section-banner--profile  { background: linear-gradient(120deg, var(--brand), var(--brand-2)); }
-.section-banner--discover { background: linear-gradient(120deg, var(--cyan),  #34cbe8); }
-.section-banner--messages { background: linear-gradient(120deg, var(--pink),  #ff8bb0); }
+.section-banner--profile  { background: #7fd3ff; }
+.section-banner--profile h1 { color: #002b64; }
+.section-banner--discover { background: #00b1e0; }
+.section-banner--messages { background: #002b64; }
 .section-banner--groups   { background: linear-gradient(120deg, var(--amber), #ffc24f); }
 .section-banner--groups h1 { color: #4a3200; }
 .section-banner--connections { background: linear-gradient(120deg, var(--teal), #1ad3b2); }
-.section-banner--market { background: linear-gradient(120deg, var(--coral), #ff9b80); }
+.section-banner--market { background: #0000FF; }
 
 /* ===== Group detail ===== */
 .back-link { display: inline-block; color: var(--muted); font-weight: 300; margin-bottom: 1rem; cursor: pointer; }
