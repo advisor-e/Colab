@@ -113,4 +113,17 @@ describe('connections page', () => {
     expect(w.vm.loading).toBe(false)
     expect(w.vm.data.incoming).toEqual([])
   })
+
+  test('a non-OK response keeps the safe default shape and toasts (no crash)', async () => {
+    // A 401/500 body is an error envelope with no incoming/connected arrays; the
+    // page must NOT adopt it, or the template crashes on data.incoming.length.
+    mockFetch({ success: false, error: { code: 'X' } }, false)
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+
+    expect(w.vm.loading).toBe(false)
+    expect(w.vm.data.incoming).toEqual([])
+    expect(w.vm.data.groups).toEqual([])
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
+  })
 })

@@ -151,6 +151,14 @@ describe('discover page', () => {
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ message: 'Already a member', type: 'is-warning' }))
   })
 
+  test('a non-OK search keeps results safe and toasts instead of adopting an error body', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ success: false }) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.people).toEqual([])
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
+  })
+
   test('initials and avatarStyle behave', () => {
     mockApi()
     const { vm } = factory()

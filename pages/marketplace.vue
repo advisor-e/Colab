@@ -112,9 +112,11 @@ export default {
       this.loading = true
       try {
         const res = await fetch('/api/people/marketplace')
+        if (!res.ok) { throw new Error('HTTP ' + res.status) }
         this.listings = await res.json()
       } catch (e) {
-        // leave empty
+        // Keep listings as [] so the grid stays empty rather than crashing.
+        this.$buefy.toast.open({ message: 'Could not load the marketplace — is the backend running?', type: 'is-danger' })
       } finally {
         this.loading = false
       }
@@ -139,7 +141,7 @@ export default {
       this.toolsLoading = true
       try {
         const res = await fetch('/api/templates')
-        this.tools = await res.json()
+        if (res.ok) { this.tools = await res.json() }
       } catch (e) {
         // leave empty; the picker just shows no options
       } finally {

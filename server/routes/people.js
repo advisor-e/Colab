@@ -14,9 +14,11 @@
 
 const repo = require('../data/repository')
 const templates = require('../data/advisoryTemplates')
+const { sendApiError } = require('../utils/sendError')
 
 function ok (res, data) { res.send(200, data) }
-function fail (res, status, code, message) { res.send(status, { success: false, error: { code, message } }) }
+// Standard error envelope (incl. the mandated timestamp) — see server/utils/sendError.js.
+function fail (res, status, code, message) { sendApiError(res, status, code, message) }
 
 // Resolve the logged-in advisor (dev identity = 'me' under ALLOW_DEV_AUTH).
 async function currentAdvisor (req) {

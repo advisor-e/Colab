@@ -56,6 +56,24 @@ describe('marketplace page', () => {
     expect(w.text()).toContain('Trucking Model')
   })
 
+  test('a non-OK load keeps listings empty and toasts (no crash on an error body)', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ success: false }) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.loading).toBe(false)
+    expect(w.vm.listings).toEqual([])
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
+  })
+
+  test('loadTools ignores a non-OK catalogue response and leaves the picker empty', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }))
+    const w = factory()
+    await flush()
+    w.vm.tools = []
+    await w.vm.loadTools()
+    expect(w.vm.tools).toEqual([])
+  })
+
   test('buy() records a purchase and marks the listing owned', async () => {
     mockApi()
     const w = factory()
