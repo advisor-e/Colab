@@ -106,6 +106,8 @@ server.post('/api/people/connections/:id/accept', auth, people.acceptConnection)
 server.post('/api/people/connections/:id/decline', auth, people.declineConnection)
 server.get('/api/people/notifications', auth, people.listNotifications)
 server.post('/api/people/notifications/read', auth, people.markNotificationsRead)
+// Audit trail (admin/compliance). DEV-OPEN — gate behind FEAT-RBAC before production.
+server.get('/api/people/audit', auth, people.getAuditLog)
 server.get('/api/people/marketplace', auth, people.listMarketplace)
 server.post('/api/people/marketplace', auth, people.createListing)
 server.get('/api/people/marketplace/:id', auth, people.getListing)

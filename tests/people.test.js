@@ -503,3 +503,46 @@ describe('notifications', () => {
     expect(sent(after)[1].unread).toBe(0)
   })
 })
+
+describe('audit trail', () => {
+  test('a significant action writes an audit entry', async () => {
+    const audit = require('../server/data/auditLog')
+    await route.createGroup({ body: { name: 'Audited Group' } }, mkRes())
+    const rows = await audit.list({ action: 'group.create' })
+    expect(rows.length).toBe(1)
+    expect(rows[0]).toEqual(expect.objectContaining({ actorId: 'me', targetType: 'group' }))
+  })
+
+  test('a blocked cross-firm connection is audited as a security event', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    const audit = require('../server/data/auditLog')
+    await route.connect({ params: { id: 'bob-lindt' } }, mkRes())
+    const rows = await audit.list({ action: 'connection.blocked' })
+    expect(rows.length).toBe(1)
+    expect(rows[0].meta).toEqual({ reason: 'cross_org' })
+  })
+
+  test('a refused locked-IP listing is audited', async () => {
+    const audit = require('../server/data/auditLog')
+    await route.createListing({ body: { title: 'Locked', pageId: '8-profit-levers' } }, mkRes())
+    expect((await audit.list({ action: 'listing.locked_blocked' })).length).toBe(1)
+  })
+
+  test('getAuditLog returns the trail newest-first, with an action filter', async () => {
+    await route.createGroup({ body: { name: 'G1' } }, mkRes())
+    await route.connect({ params: { id: 'bob-lindt' } }, mkRes())
+
+    const all = mkRes()
+    await route.getAuditLog({ query: {} }, all)
+    const [status, body] = sent(all)
+    expect(status).toBe(200)
+    expect(Array.isArray(body.entries)).toBe(true)
+    expect(body.entries.length).toBeGreaterThanOrEqual(2)
+    // Newest first: the connection request was recorded after the group create.
+    expect(body.entries[0].action).toBe('connection.request')
+
+    const filtered = mkRes()
+    await route.getAuditLog({ query: { action: 'group.create' } }, filtered)
+    expect(sent(filtered)[1].entries.every(e => e.action === 'group.create')).toBe(true)
+  })
+})
