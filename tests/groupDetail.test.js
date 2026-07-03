@@ -96,7 +96,7 @@ describe('group detail page', () => {
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/message', expect.objectContaining({ method: 'POST' }))
     expect(w.vm.msgOpen).toBe(false)
-    expect(w.vm.$router.push).toHaveBeenCalledWith('/messages?thread=t-grp')
+    expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-grp')
   })
 
   test('sendGroupMessage does nothing when empty', async () => {

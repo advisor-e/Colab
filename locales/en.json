@@ -7,7 +7,8 @@
     "connections": "Connections",
     "marketplace": "Marketplace",
     "profile": "My Profile",
-    "messages": "Messages"
+    "messages": "Messages",
+    "connecting": "Connecting"
   },
   "home": {
     "title": "Find your people. Build together.",
@@ -16,6 +17,7 @@
     "discoverDesc": "Find advisers and specialty groups across the network.",
     "messagesDesc": "Reach out, get replies, and start collaborating.",
     "connectionsDesc": "Your network and the groups you're in.",
+    "connectingDesc": "Your connections and conversations, together in one place.",
     "groups": "Groups",
     "groupsDesc": "Form and join specialty groups.",
     "marketDesc": "Buy and license tools other groups have built."
@@ -136,6 +138,30 @@
     "searchPlaceholder": "Search your connections by name or firm…",
     "noMatches": "No connections match your search."
   },
+  "connecting": {
+    "title": "Connecting",
+    "loading": "Loading…",
+    "searchPlaceholder": "Search by name, firm or message…",
+    "sortBy": "Sort",
+    "sortRecent": "Recent",
+    "sortName": "Name",
+    "empty": "Nothing here yet — find people and groups in Discover.",
+    "tab": {
+      "all": "All",
+      "chats": "Chats",
+      "groups": "Groups",
+      "connections": "Connections",
+      "requests": "Requests"
+    },
+    "type": {
+      "chat": "Chat",
+      "group": "Group",
+      "invitation": "Group invite",
+      "connection": "Connection",
+      "request-incoming": "Wants to connect",
+      "request-outgoing": "Request sent"
+    }
+  },
   "market": {
     "title": "Marketplace",
     "intro": "Tools and models built by groups — get them for your own clients.",
@@ -211,6 +237,15 @@
         "‘Requests to connect’ — people who want to connect with you; Accept or Decline.",
         "‘Your connections’ — advisers you're already linked with. ‘Requests you've sent’ — awaiting their reply.",
         "‘Your groups’ — the specialty groups you belong to."
+      ]
+    },
+    "connecting": {
+      "title": "Your connections and conversations, together in one place.",
+      "body": [
+        "‘Connecting’ brings your people and your chats into a single list — the noun (who you know) and the verb (staying in touch).",
+        "Filter with the tabs — All, Chats, Groups, Connections, Requests — and search to find anyone in a large network.",
+        "‘Requests’ holds both connection requests and group invitations — anything waiting for your decision.",
+        "Open any row to view or start the conversation."
       ]
     },
     "marketplace": {

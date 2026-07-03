@@ -141,10 +141,10 @@ function pushNotification (userId, type, params, link) {
 // purchase. In production the store starts empty and fills from live events —
 // this is clearly seed/demo data, not business logic.
 ;(function seedNotifications () {
-  pushNotification('me', 'connection_request', { name: 'Anna Richter' }, '/connections')
-  pushNotification('me', 'group_invitation', { inviter: 'Sara Okafor', group: 'Hospitality Turnaround Toolkit' }, '/messages')
-  pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/messages')
-  pushNotification('me', 'message', { name: 'Bob Lindt' }, '/messages')
+  pushNotification('me', 'connection_request', { name: 'Anna Richter' }, '/connecting')
+  pushNotification('me', 'group_invitation', { inviter: 'Sara Okafor', group: 'Hospitality Turnaround Toolkit' }, '/connecting')
+  pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/connecting')
+  pushNotification('me', 'message', { name: 'Bob Lindt' }, '/connecting')
   pushNotification('me', 'purchase', { buyer: 'Sara Okafor', tool: 'Trucking Firm Valuation Model' }, '/marketplace')
 }())
 
@@ -297,7 +297,7 @@ async function inviteToGroup (groupId, inviter, inviteeId, note) {
   }
   threads.unshift(t)
   // Notify the invitee (recipient = the person being invited).
-  pushNotification(inviteeId, 'group_invitation', { inviter: inviter.name, group: g.name }, '/messages')
+  pushNotification(inviteeId, 'group_invitation', { inviter: inviter.name, group: g.name }, '/connecting')
   return { success: true, threadId: t.id, group: { id: g.id, name: g.name }, invitee: { id: invitee.id, name: invitee.name } }
 }
 
@@ -342,7 +342,7 @@ async function appendMessage (threadId, msg) {
   // Notify the 1:1 counterpart of a new inbound message. Group fan-out (one
   // notification per member) is future work — see design/ACTIONS.md T2.
   if (t.kind === 'outreach' && t.withId) {
-    pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/messages')
+    pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/connecting')
   }
   return t
 }
@@ -363,7 +363,7 @@ async function createOutreachThread (input) {
   }
   threads.unshift(t)
   // Notify the recipient of the new incoming outreach.
-  pushNotification(input.toId, 'message', { name: input.fromName || 'Someone' }, '/messages')
+  pushNotification(input.toId, 'message', { name: input.fromName || 'Someone' }, '/connecting')
   return t
 }
 
@@ -425,7 +425,7 @@ async function requestConnection (fromId, toId) {
     c = { id: 'c-' + (connSeq++), requesterId: fromId, addresseeId: toId, status: 'pending' }
     connections.push(c)
     // Notify the addressee of the new request (recipient = the OTHER party).
-    pushNotification(toId, 'connection_request', { name: advisorName(fromId) }, '/connections')
+    pushNotification(toId, 'connection_request', { name: advisorName(fromId) }, '/connecting')
   }
   return c
 }
@@ -447,6 +447,93 @@ async function listConnections (myId) {
     outgoing: mine.filter(c => c.status === 'pending' && c.requesterId === myId).map(enrich),
     connected: mine.filter(c => c.status === 'accepted').map(enrich),
     groups: myGroups
+  }
+}
+
+// ── Unified "Connecting" inbox (Q-CONN-MSG-IA → Option B) ─────────────────────
+/**
+ * Compose ONE merged list for the unified "Connecting" screen: conversations
+ * (1:1 + group threads), pending connection requests, connected people, and
+ * group rooms — each row tagged with `type` so the frontend can filter
+ * (chat / group / invitation / connection / request-*) without a second
+ * round-trip. A person who is both a connection AND already has a 1:1 thread
+ * collapses to a single (chat) row rather than appearing twice.
+ *
+ * SQL SEAM: the real query builds the same shape from the thread/connection/group
+ *   tables and ORDER BYs a real activity timestamp. The mock has no timestamps,
+ *   so order follows the threads' existing (newest-first) array order, then
+ *   requests, connections and groups — `lastActivity` is omitted here, not faked.
+ * AUTH SEAM (SEC-THREAD-ACL): this reuses listThreads, which in the mock returns
+ *   ALL threads; once real auth lands the seam scopes threads to `myId`.
+ * @param {string} myId viewer advisor id
+ * @returns {Promise<{rows: object[], counts: object}>} merged rows + per-type counts
+ */
+async function listConnecting (myId) {
+  const rows = []
+  const oneToOneByPerson = {} // advisorId -> chat row (for de-dup + enrichment)
+  const groupByGroupId = {} // groupId -> group row (for de-dup + enrichment)
+
+  // 1) Conversations first (threads are already newest-first in the mock).
+  for (const t of await listThreads(myId)) {
+    if (t.kind === 'group') {
+      const row = { type: 'group', rowKey: 'thread:' + t.id, threadId: t.id, groupId: t.withId, name: t.withName, subtitle: t.lastText || '', status: t.status }
+      groupByGroupId[t.withId] = row
+      rows.push(row)
+    } else if (t.kind === 'invitation') {
+      rows.push({ type: 'invitation', rowKey: 'thread:' + t.id, threadId: t.id, groupId: t.withId, name: t.withName, subtitle: t.lastText || '', status: t.status, direction: t.direction })
+    } else {
+      const row = { type: 'chat', rowKey: 'thread:' + t.id, threadId: t.id, advisorId: t.withId, name: t.withName, subtitle: t.lastText || '', status: t.status, direction: t.direction }
+      if (t.withId) { oneToOneByPerson[t.withId] = row }
+      rows.push(row)
+    }
+  }
+
+  const conns = await listConnections(myId)
+
+  // 2) Pending requests — actionable (accept/decline or ⏳), surfaced even without a thread.
+  for (const c of conns.incoming) {
+    rows.push({ type: 'request-incoming', rowKey: 'conn:' + c.id, connectionId: c.id, advisorId: c.advisor.id, name: c.advisor.name, subtitle: c.advisor.firm || '', firm: c.advisor.firm || '', strengths: c.advisor.strengths || [] })
+  }
+  for (const c of conns.outgoing) {
+    rows.push({ type: 'request-outgoing', rowKey: 'conn:' + c.id, connectionId: c.id, advisorId: c.advisor.id, name: c.advisor.name, subtitle: c.advisor.firm || '', firm: c.advisor.firm || '' })
+  }
+
+  // 3) Connected people: enrich an existing chat row, else add a standalone
+  //    connection row so the viewer can start the conversation.
+  for (const c of conns.connected) {
+    const existing = oneToOneByPerson[c.advisor.id]
+    if (existing) {
+      existing.connectionId = c.id
+      existing.firm = c.advisor.firm || ''
+      existing.strengths = c.advisor.strengths || []
+    } else {
+      rows.push({ type: 'connection', rowKey: 'conn:' + c.id, connectionId: c.id, advisorId: c.advisor.id, name: c.advisor.name, subtitle: c.advisor.firm || '', firm: c.advisor.firm || '', strengths: c.advisor.strengths || [] })
+    }
+  }
+
+  // 4) Groups the viewer belongs to: enrich an existing group thread row, else add
+  //    a group row (threadId null → the room opens/creates on first message).
+  for (const g of conns.groups) {
+    const existing = groupByGroupId[g.id]
+    if (existing) {
+      existing.icon = g.icon
+      existing.members = g.members
+    } else {
+      rows.push({ type: 'group', rowKey: 'group:' + g.id, threadId: null, groupId: g.id, name: g.name, icon: g.icon, subtitle: '', members: g.members })
+    }
+  }
+
+  const countBy = type => rows.filter(r => r.type === type).length
+  return {
+    rows: rows,
+    counts: {
+      all: rows.length,
+      chats: countBy('chat'),
+      groups: countBy('group'),
+      invitations: countBy('invitation'),
+      connections: countBy('connection'),
+      requests: countBy('request-incoming') + countBy('request-outgoing')
+    }
   }
 }
 
@@ -540,7 +627,7 @@ module.exports = {
   listGroups, getGroupById, createGroup, requestJoinGroup,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
-  requestConnection, listConnections, respondConnection,
+  requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
   canReachAdvisor, getOrgPosture, setOrgPosture

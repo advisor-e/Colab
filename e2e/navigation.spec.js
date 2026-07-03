@@ -9,10 +9,10 @@
 
 const { test, expect } = require('@playwright/test')
 
-test('home hero renders and shows the six pillar links', async ({ page }) => {
+test('home hero renders and shows the five pillar links', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('.hero-title')).toBeVisible()
-  await expect(page.locator('.pillar')).toHaveCount(6)
+  await expect(page.locator('.pillar')).toHaveCount(5)
 })
 
 test('home → Discover shows advisor result cards', async ({ page }) => {

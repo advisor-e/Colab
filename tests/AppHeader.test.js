@@ -19,8 +19,8 @@ import AppHeader from '../components/AppHeader.vue'
 
 const NOTIFS = {
   items: [
-    { id: 'n-1', userId: 'me', type: 'connection_request', params: { name: 'Anna Richter' }, link: '/connections', read: false },
-    { id: 'n-2', userId: 'me', type: 'message', params: { name: 'Bob Lindt' }, link: '/messages', read: true }
+    { id: 'n-1', userId: 'me', type: 'connection_request', params: { name: 'Anna Richter' }, link: '/connecting', read: false },
+    { id: 'n-2', userId: 'me', type: 'message', params: { name: 'Bob Lindt' }, link: '/connecting', read: true }
   ],
   unread: 1
 }
@@ -100,7 +100,7 @@ describe('AppHeader notifications bell', () => {
     await flush(); await w.vm.$nextTick()
     await w.find('.notif-toggle').trigger('click')
     await w.findAll('.notif-item').at(0).trigger('click')
-    expect(push).toHaveBeenCalledWith('/connections')
+    expect(push).toHaveBeenCalledWith('/connecting')
     expect(w.vm.notifOpen).toBe(false)
   })
 
