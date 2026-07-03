@@ -213,6 +213,14 @@ async function listConnections (req, res) {
   ok(res, await repo.listConnections(me.id))
 }
 
+// Unified "Connecting" inbox (Q-CONN-MSG-IA → Option B): one merged, type-tagged
+// list of conversations + connections for the single screen that supersedes the
+// standalone Connections page. Read-only; the actions reuse the existing routes.
+async function listConnecting (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listConnecting(me.id))
+}
+
 async function connect (req, res) {
   const me = await currentAdvisor(req)
   if (req.params.id === me.id) { fail(res, 400, 'SELF', 'You cannot connect with yourself.'); return }
@@ -313,6 +321,7 @@ module.exports = {
   getThread,
   replyThread,
   listConnections,
+  listConnecting,
   connect,
   acceptConnection,
   declineConnection,

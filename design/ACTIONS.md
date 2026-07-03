@@ -60,7 +60,8 @@
 | FEAT-MARKET-HELP | P3 | Add **purchase/access/cascade guidance** to the marketplace "How to use this page" help | Tidy | After Q-ACCESS-CASCADE · "New ideas" below |
 | Q-MENTOR-SCOPE | P2 | Define the **mentor's view + controls** over the advisors/members below them | Decision | Owner + master team · "New ideas" below |
 | FEAT-MENTOR-CONSOLE | P2 | **Mentor console** — see & set controls for advisors/members below | Feature | Blocked by FEAT-RBAC (Q-ROLES) + Q-MENTOR-SCOPE · "New ideas" below |
-| Q-CONN-MSG-IA | P2 | Decide how far to **combine Connections + Messages** + the at-scale pattern (100+ connections) | Decision | Owner + design · "New ideas" below |
+| ~~Q-CONN-MSG-IA~~ | P2 | Decide how far to **combine Connections + Messages** + the at-scale pattern (100+ connections) | Decision | ✅ **DONE 2026-07-03** (Option B — unified inbox "Connecting") — see Done table |
+| FEAT-CONNECTING | P2 | Build the unified **"Connecting"** inbox (Option B) — conversations + connections in one screen; supersedes the standalone Connections page | Feature | **In progress** (phased) — see "In progress" below |
 | ~~FEAT-CONNECT-MESSAGE~~ | P2 | Message a connection directly + connection search — **core done**; fuller unify pending Q-CONN-MSG-IA | Feature | ✅ **core DONE 2026-07-03** — see Done table |
 
 > **Resolved 2026-07-03 (owner decisions — now in the Done table + plan §13):** D1-POSTURE →
@@ -81,7 +82,7 @@
 
 | ID | P | Title | Notes |
 |----|---|-------|-------|
-| _(none — all in-flight items resolved)_ | | | |
+| FEAT-CONNECTING | P2 | Unified **"Connecting"** inbox (Option B) | Owner decision (Q-CONN-MSG-IA): merge Connections + Messages into one screen named **"Connecting"** (noun = your connections, verb = staying in touch); it **supersedes** the standalone Connections page. Built incrementally, each phase gate-green: **① backend merge seam (DONE 2026-07-03)** — `GET /api/people/connecting` + `repo.listConnecting` return one `type`-tagged list (chat / group / invitation / connection / request), de-duping a person who is both a connection and a 1:1 thread; nothing removed yet. **② unified list UI** (left rail + search/filter-by-type/sort). **③ fold in requests/pending/groups actions.** **④ retire the standalone Connections page + nav.** Real activity-timestamp sort is a MySQL seam (mock has no timestamps). |
 
 ## Done
 

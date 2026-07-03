@@ -399,6 +399,74 @@ groups: expect.any(Array)
   })
 })
 
+describe('connecting (unified inbox — Q-CONN-MSG-IA Option B)', () => {
+  // Return the merged rows for the viewer ('me').
+  async function connecting () {
+    const res = mkRes()
+    await route.listConnecting({}, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    return body
+  }
+
+  test('merges threads + requests + connections into one type-tagged list with counts', async () => {
+    const body = await connecting()
+    expect(Array.isArray(body.rows)).toBe(true)
+    // Seed for 'me': 2 chats (bob, anna), 1 group thread (seafood), 2 invitations,
+    // 1 incoming request (anna), 1 connected-without-thread (sara).
+    const types = body.rows.map(r => r.type)
+    expect(types).toContain('chat')
+    expect(types).toContain('group')
+    expect(types).toContain('invitation')
+    expect(types).toContain('request-incoming')
+    expect(types).toContain('connection')
+    // Counts are self-consistent with the rows.
+    expect(body.counts.all).toBe(body.rows.length)
+    expect(body.counts.chats).toBe(body.rows.filter(r => r.type === 'chat').length)
+    expect(body.counts.requests).toBe(body.rows.filter(r => r.type === 'request-incoming' || r.type === 'request-outgoing').length)
+  })
+
+  test('a connected person without a 1:1 thread appears as a standalone connection row', async () => {
+    const body = await connecting()
+    // Sara is connected (c-sara) but has no 1:1 outreach thread in the seed.
+    const sara = body.rows.find(r => r.type === 'connection' && r.advisorId === 'sara-okafor')
+    expect(sara).toBeTruthy()
+    expect(sara.connectionId).toBe('c-sara')
+    expect(sara.firm).toBe('Okafor Advisory')
+  })
+
+  test('a connected person WITH a 1:1 thread collapses to a single chat row (no duplicate)', async () => {
+    // Open a direct thread with Sara, then re-fetch: she should now be a chat row
+    // carrying her connectionId — and NOT also appear as a separate connection row.
+    await route.messageAdvisor({ params: { id: 'sara-okafor' } }, mkRes())
+    const body = await connecting()
+    const saraRows = body.rows.filter(r => r.advisorId === 'sara-okafor')
+    expect(saraRows).toHaveLength(1)
+    expect(saraRows[0].type).toBe('chat')
+    expect(saraRows[0].connectionId).toBe('c-sara')
+  })
+
+  test('an outgoing pending request surfaces as a request-outgoing row', async () => {
+    await route.connect({ params: { id: 'bob-lindt' } }, mkRes()) // me -> bob (pending)
+    const body = await connecting()
+    const out = body.rows.find(r => r.type === 'request-outgoing' && r.advisorId === 'bob-lindt')
+    expect(out).toBeTruthy()
+    expect(typeof out.connectionId).toBe('string')
+    expect(out.name).toBe('Bob Lindt')
+  })
+
+  test('a group with no thread yet appears as a group row with a null threadId', async () => {
+    // A freshly-created group has the viewer as its only member and no group thread.
+    const made = mkRes()
+    await route.createGroup({ body: { name: 'No-Thread Group' } }, made)
+    const gid = sent(made)[1].id
+    const body = await connecting()
+    const row = body.rows.find(r => r.type === 'group' && r.groupId === gid)
+    expect(row).toBeTruthy()
+    expect(row.threadId).toBeNull()
+  })
+})
+
 describe('marketplace', () => {
   test('listMarketplace returns listings with an owned flag', async () => {
     const res = mkRes()
