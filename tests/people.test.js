@@ -130,6 +130,16 @@ describe('groups', () => {
     expect(sent(missing)[0]).toBe(404)
   })
 
+  test('getGroup exposes the shared workspace as Advisor-e deep-links', async () => {
+    const res = mkRes()
+    await route.getGroup({ params: { id: 'seafood-modelling' } }, res)
+    const body = sent(res)[1]
+    expect(body.sharedPages.length).toBeGreaterThan(0)
+    // Each shared page carries an openUrl built from the seam base + its pageId.
+    expect(body.sharedPages[0].openUrl).toMatch(/^https?:\/\//)
+    expect(body.sharedPages[0].openUrl).toContain(body.sharedPages[0].pageId)
+  })
+
   test('createGroup requires a name', async () => {
     const res = mkRes()
     await route.createGroup({ body: { name: '   ' } }, res)
@@ -413,6 +423,14 @@ describe('messages & outreach', () => {
     const missing = mkRes()
     await route.getThread({ params: { id: 'no-thread' } }, missing)
     expect(sent(missing)[0]).toBe(404)
+  })
+
+  test('getThread exposes a 1:1 shared workspace as Advisor-e deep-links', async () => {
+    const res = mkRes()
+    await route.getThread({ params: { id: 't-anna' } }, res) // seeded with a shared page
+    const body = sent(res)[1]
+    expect(body.sharedPages[0].title).toBe('Joint Forecast Model')
+    expect(body.sharedPages[0].openUrl).toContain('ae-anna-forecast-01')
   })
 
   test('replyThread appends / 400s empty / 404s unknown', async () => {

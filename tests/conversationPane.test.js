@@ -110,6 +110,19 @@ describe('ConversationPane', () => {
     expect(w.vm.translating['t-bob:0']).toBe(false)
   })
 
+  test('shows the shared-workspace strip with Advisor-e links when the thread has shared pages', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(Object.assign({}, CURRENT, {
+        sharedPages: [{ pageId: 'ae-x', title: 'Joint Forecast', openUrl: 'https://app.advisor-e.com/p/ae-x' }]
+      }))
+    }))
+    const w = factory('t-anna')
+    await flush(); await w.vm.$nextTick()
+    expect(w.text()).toContain('Joint Forecast')
+    expect(w.find('a[href="https://app.advisor-e.com/p/ae-x"]').exists()).toBe(true)
+  })
+
   test('isForeign flags a message only when its lang differs from the reader', async () => {
     mockApi()
     const w = factory()

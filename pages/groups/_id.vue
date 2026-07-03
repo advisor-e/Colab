@@ -20,6 +20,16 @@
             .member(v-for="m in (group.members || [])" :key="m.id")
               .avatar(:style="avatarStyle(m)") {{ initials(m) }}
               span {{ m.name }}
+
+          //- Shared workspace — deep-links to the Advisor-e pages/tools the group
+          //- co-creates. This app stores only the page ID (fake in demo); the link
+          //- opens Advisor-e, which enforces access. Seam: Q-PAGE-URL.
+          p.label.mt-5 {{ $t('group.sharedWorkspace') }}
+          p.has-text-grey.is-size-7(v-if="!(group.sharedPages || []).length") {{ $t('group.noSharedPages') }}
+          .is-flex.is-align-items-center.is-justify-content-space-between.mb-2(v-for="p in (group.sharedPages || [])" :key="p.pageId")
+            span 📄 {{ p.title }}
+            a.button.is-small.is-light(:href="p.openUrl" target="_blank" rel="noopener") {{ $t('group.openInAdvisorE') }} ↗
+
           .buttons.mt-5
             span.tag.is-success.is-light.is-medium(v-if="group.joinStatus === 'member'") ✓ {{ $t('group.member') }}
             span.tag.is-warning.is-light.is-medium(v-else-if="group.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}

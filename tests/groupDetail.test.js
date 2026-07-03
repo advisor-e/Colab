@@ -114,6 +114,19 @@ describe('group detail page', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/people/group-requests/gjr-1/accept', expect.objectContaining({ method: 'POST' }))
   })
 
+  test('renders the shared workspace links to Advisor-e', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(Object.assign({}, GROUP, {
+        sharedPages: [{ pageId: 'ae-x', title: 'Cashflow Model', openUrl: 'https://app.advisor-e.com/p/ae-x' }]
+      }))
+    }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.text()).toContain('Cashflow Model')
+    expect(w.find('a[href="https://app.advisor-e.com/p/ae-x"]').exists()).toBe(true)
+  })
+
   test('join flips the page to Request Pending', async () => {
     mockApi()
     const w = factory()
