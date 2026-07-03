@@ -55,6 +55,8 @@
 | ~~FEAT-GROUP-SHARED-CONTENT~~ | P2 | Group: creator **attaches shared pages/templates** (dropdown) for members to collaborate/edit; members see the group's **template list** on the group page | Feature | ✅ **DONE 2026-07-03** (display + add-a-tool) — see Done · actual editing is Advisor-e's hand-off (out of scope) |
 | ~~FEAT-SHARED-WORKSPACE-ATTACH~~ | P2 | The **"+ Add a tool"** picker so a group member can add Advisor-e pages to the Shared workspace | Feature | ✅ **DONE 2026-07-03** — see Done table |
 | FEAT-SHARED-WORKSPACE-1TO1-ATTACH | P3 | Extend "+ Add a tool" to the **1:1 conversation** pane (groups done; 1:1 shows shared pages read-only for now) | Feature | — (same route/picker, needs a per-thread add endpoint) |
+| FEAT-SHARED-WORKSPACE-REMOVE | P3 | Let a member **remove/detach** a tool from a group's Shared workspace (add-a-tool is add-only today) | Feature | — (mirror of `addGroupSharedPage`; members-only) · idea 2026-07-03 |
+| FEAT-GROUP-CHAT-QUICKOPEN | P3 | One-click **"Open chat"** from the group page (today "Message the group" is compose-first, then jumps to the thread) | Tidy | — surfaced when group rows were made to always open the group page (FIX-CONNECTING-GROUP-CLICK) · idea 2026-07-03 |
 | ~~FEAT-VOICE-EVERYWHERE~~ | P3 | Voice-to-text in **Messages** + group message box (generic mixin) | Feature | ✅ **core DONE 2026-07-03** — see Done table |
 | FEAT-VOICE-MORE | P3 | Add 🎤 to the remaining composers (outreach modal, create-group, list-a-tool forms) | Feature | — (uses the new generic `toggleVoiceInput`) |
 | ~~Q-CHAT-AUDIENCE~~ | P2 | Decide **messaging audience model**: group-wide vs contact-only, per-message choice; who controls group-chat membership | Decision | ✅ **DONE 2026-07-03** (Model A) — see Done table |
