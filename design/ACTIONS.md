@@ -27,6 +27,7 @@
 |----|---|------|------|------------------------|
 | INT-MYSQL | P1 | Connect real MySQL — fill SQL into the single seam `server/data/repository.js` | Integration | DB creds + schema provisioned · HANDOVER §4b |
 | INT-AUTH | P1 | Wire real Advisory login — set `JWT_SECRET`, confirm claim names/algorithm | Integration | Advisory auth team · HANDOVER §4a |
+| SEC-THREAD-ACL | P2 | Enforce **participant/member authorization** on message read + reply + list (privacy) | Fix | At INT-AUTH/INT-MYSQL wiring · "Open" below |
 | P1-TOOLCHAIN | P1 | Re-enable strict Node-floor enforcement (`engine-strict`) | Fix | 2 transitive `overrides` · "Open" below |
 | P2-TEMPLATE-FEED | P2 | Marketplace: swap JSON snapshot → live Advisory template feed (keep access-control) | Integration | Advisory template API · HANDOVER §4d |
 | ~~P3-I18N-TOASTS~~ | P3 | Move hardcoded toast strings into `$t()` / locale files | Tidy | ✅ **DONE 2026-07-03** — see Done table |
@@ -53,8 +54,9 @@
 | FEAT-GROUP-SHARED-CONTENT | P2 | Group: creator **attaches shared pages/templates** (dropdown) for members to collaborate/edit; members see the group's **template list** on the group page | Feature | Part of T1-SPACES · "New ideas" below |
 | ~~FEAT-VOICE-EVERYWHERE~~ | P3 | Voice-to-text in **Messages** + group message box (generic mixin) | Feature | ✅ **core DONE 2026-07-03** — see Done table |
 | FEAT-VOICE-MORE | P3 | Add 🎤 to the remaining composers (outreach modal, create-group, list-a-tool forms) | Feature | — (uses the new generic `toggleVoiceInput`) |
-| Q-CHAT-AUDIENCE | P2 | Decide **messaging audience model**: group-wide vs contact-only, per-message choice; who controls group-chat membership | Decision | Owner + design · "New ideas" below |
-| FEAT-CHAT-AUDIENCE | P2 | Implement the chosen **message-audience / group-chat membership** controls | Feature | Blocked by Q-CHAT-AUDIENCE · "New ideas" below |
+| ~~Q-CHAT-AUDIENCE~~ | P2 | Decide **messaging audience model**: group-wide vs contact-only, per-message choice; who controls group-chat membership | Decision | ✅ **DONE 2026-07-03** (Model A) — see Done table |
+| ~~FEAT-CHAT-AUDIENCE~~ | P2 | Implement the chosen **message-audience / group-chat membership** controls | Feature | ✅ **DONE 2026-07-03** (Model A already built) — see Done table |
+| FEAT-CHAT-SUBGROUPS | P3 | Model B fast-follow — hand-picked **sub-group side-chats** within a group + add/remove-participant controls | Feature | Blocked by FEAT-RBAC (Q-ROLES) · see Done note |
 | FEAT-MARKET-HELP | P3 | Add **purchase/access/cascade guidance** to the marketplace "How to use this page" help | Tidy | After Q-ACCESS-CASCADE · "New ideas" below |
 | Q-MENTOR-SCOPE | P2 | Define the **mentor's view + controls** over the advisors/members below them | Decision | Owner + master team · "New ideas" below |
 | FEAT-MENTOR-CONSOLE | P2 | **Mentor console** — see & set controls for advisors/members below | Feature | Blocked by FEAT-RBAC (Q-ROLES) + Q-MENTOR-SCOPE · "New ideas" below |
@@ -72,6 +74,7 @@
 | ID | P | Title | Notes / next step |
 |----|---|-------|-------------------|
 | P1-TOOLCHAIN | P1 | Dev-toolchain Node-floor drift | Per CLAUDE.md: `engine-strict` is `false` pending two transitive `overrides`; some build tools declare a Node floor above 14.15. Audit `.npmrc` overrides, document, and aim to re-enable `engine-strict`. |
+| SEC-THREAD-ACL | P2 | Message endpoints do no participant/member authorization | Found during the Q-CHAT-AUDIENCE (Model A) verification, 2026-07-03. `getThread` ([server/routes/people.js](../server/routes/people.js)) returns **any** thread by id; `replyThread` lets anyone post to **any** thread id; `listThreads` ([server/data/repository.js](../server/data/repository.js)) ignores its `ownerId` and returns **all** threads. Harmless in the single-user mock, but once real multi-user auth + MySQL land this lets a user read/post into conversations (incl. group rooms) they are not part of — a **privacy/data-leak bug**. Enforcement is the point that makes the owner's **Model A** ("1:1 = the two parties; group room = members only") actually safe. **Do at the INT-AUTH / INT-MYSQL wiring:** filter `listThreads` by participant/membership, and reject `getThread`/`replyThread` when the caller is not a participant (1:1) or group member (group). `AUTH SEAM` markers added at all three spots. Added 2026-07-03. |
 | P2-TEMPLATE-FEED | P2 | Marketplace tool links use a JSON snapshot, not the live Advisory feed | The "List a tool" picker + create-validation read a **read-only snapshot** (`design/reference/search_content_*.json`) via the seam `server/data/advisoryTemplates.js` (async `list`/`exists`). Before production: (a) swap the seam to Advisory's **live template API/DB** — drop-in, keep the return shapes (HANDOVER §4d); (b) **security:** ensure a shared tool link stays **gated by Advisory's own access control** — this app only stores the page ID and must never bypass Advisory auth. Added 2026-07-01. |
 
 ## In progress
@@ -109,6 +112,7 @@
 | D1-POSTURE | P2 | Default cross-org posture (open vs closed) | 2026-07-03 — owner: **closed / opt-in**. New members start sealed to their own organisation and opt in to reach across firms — the recommended posture for a high-IP network. Remains a config flip (both paths switchable). Feeds FEAT-CROSSORG; recorded in plan §12/§13. |
 | D2-GROUPVIS | P2 | New-group approval/visibility default | 2026-07-03 — owner: **live immediately**. A new specialty group is listed and can recruit the moment it's created; no manager pre-approval step. Recorded in plan §12/§13. |
 | Q6-ONEORG | P2 | "One organisation" boundary for the cross-org policy | 2026-07-03 — owner: seal at the **individual office (branch / Firm tier)** — two offices of the same firm are treated as cross-org and need opt-in. Maps directly onto Advisory's existing `branch`; needs no extra master data. Feeds FEAT-CROSSORG; recorded in plan §12/§13. |
+| Q-CHAT-AUDIENCE / FEAT-CHAT-AUDIENCE | P2 | Message audience model | 2026-07-03 — owner decision: **Model A** — conversations are either a **private 1:1** with a contact or a **single shared room per group** open to all its members; **no** per-message audience choice and **no** sub-group huddles. **Shape verified as built** in `server/data/repository.js` (`findOrCreateDirectThread` = 1:1; `findOrCreateGroupThread` = one shared thread per group) — no per-message picker, no sub-group mechanism, all correct for Model A. **Caveat (verified 2026-07-03):** the *members-only enforcement* that makes Model A safe is **not built** — `getThread`/`replyThread` and `listThreads` do **no** participant/member authorization (fine in the single-user mock, a **privacy leak once real multi-user auth+MySQL land**). Logged separately as **SEC-THREAD-ACL (P2)** with `AUTH SEAM` markers in the code. **Residual (FEAT-CHAT-SUBGROUPS, P3):** Model B — sub-group side-chats + participant controls — fast-follow, blocked by FEAT-RBAC (Q-ROLES). Recorded in plan §13. |
 | P1-NODE-ENV | P1 | Local dev on Node 20 → reconciled to locked 14.15 | 2026-07-02 — `.nvmrc` `20`→`14.15.0`; installed **nvm-windows** on the dev machine and selected **Node 14.15.0 / npm 6.14.8**; `npm ci` restored the full toolchain (incl. the previously-missing `markdownlint-cli` + `husky`) and **re-wired the pre-commit hook** (was not firing locally). Local gate now green on 14.15: `lint` (0 errors), `lint:md` (clean), `test` (76 passing, 10 suites); `package-lock.json` unchanged. Stale "npm 6.14.8 / Node 14.15 local" claims corrected in `SECURITY-AUDIT-NOTES.md`. Invalidated the npm-6 premise in P1-AUDIT-GATE (still open). |
 
 ---
@@ -181,14 +185,14 @@ questions **Q5** / **Q6** are in the plan §12. Review those alongside T1–T6.
 
 ### Theme D — Message audience / who's in the chat
 
-- **Q-CHAT-AUDIENCE (P2 · owner + design).** The advisor's questions: in Messages, is a
-  conversation **open to all group members or contact-only**? Is there a **per-message choice**?
-  How does the sender **control who is involved** in a group chat (even among group members)?
-  Needs a decided model — e.g. (1:1 contact threads) vs (group threads = all members) vs
-  (sub-selected member sub-chats), and who may add/remove participants. Relates to T1-SPACES and
-  FEAT-RBAC.
-- **FEAT-CHAT-AUDIENCE (P2).** Implement the model chosen in Q-CHAT-AUDIENCE — audience selection
-  per conversation and group-chat membership controls. **Blocked by Q-CHAT-AUDIENCE.**
+- **Q-CHAT-AUDIENCE (P2 · owner + design). ✅ DECIDED 2026-07-03 — Model A.** The owner chose the
+  simplest, clearest model: a conversation is either a **private 1:1** with a contact **or** a
+  **single shared room per group** open to all its members — **no** per-message audience choice and
+  **no** sub-selected member sub-chats. See the Done table. Relates to T1-SPACES and FEAT-RBAC.
+- **FEAT-CHAT-AUDIENCE (P2). ✅ DONE 2026-07-03.** Model A is already implemented in
+  `server/data/repository.js` (1:1 direct threads + one shared thread per group) — no new build,
+  verification only. **Residual FEAT-CHAT-SUBGROUPS (P3):** Model B (sub-group side-chats +
+  participant controls) is logged as a fast-follow, blocked by FEAT-RBAC (Q-ROLES).
 
 ### Theme E — Mentor view & controls
 

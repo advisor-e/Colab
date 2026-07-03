@@ -177,6 +177,10 @@ async function listMessages (req, res) {
 }
 
 async function getThread (req, res) {
+  // AUTH SEAM (SEC-THREAD-ACL): before returning, verify `me` is a participant of a
+  // 1:1 thread or a member of the group thread — else 403. Not enforced in the
+  // single-user mock; MUST be added at real auth/MySQL wiring or it leaks other
+  // people's (and non-member group) conversations. See design/ACTIONS.md.
   const t = await repo.getThreadById(req.params.id)
   if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)
@@ -186,6 +190,9 @@ async function replyThread (req, res) {
   const text = ((req.body || {}).text || '').trim()
   if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
   const me = await currentAdvisor(req)
+  // AUTH SEAM (SEC-THREAD-ACL): before appending, verify `me` may post to this
+  // thread (1:1 participant or group member) — else 403. Not enforced in the
+  // single-user mock; MUST be added at real auth/MySQL wiring. See design/ACTIONS.md.
   const t = await repo.appendMessage(req.params.id, { from: 'Me', fromName: me.name, text })
   if (!t) { fail(res, 404, 'NOT_FOUND', 'Conversation not found'); return }
   ok(res, t)

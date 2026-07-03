@@ -322,6 +322,9 @@ async function respondInvitation (threadId, advisorId, accept) {
 
 async function listThreads (ownerId) {
   // SQL SEAM: SELECT thread (+ last message) WHERE owner_id = ? ORDER BY created_at DESC
+  // AUTH SEAM (SEC-THREAD-ACL): this mock ignores `ownerId` and returns ALL threads.
+  // The real query MUST scope to threads `ownerId` participates in (1:1 party or
+  // group member) — otherwise every user sees everyone's conversations. See design/ACTIONS.md.
   return threads.map(threadSummary)
 }
 
