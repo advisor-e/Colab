@@ -22,9 +22,12 @@
               span {{ m.name }}
 
           //- Shared workspace — deep-links to the Advisor-e pages/tools the group
-          //- co-creates. This app stores only the page ID (fake in demo); the link
-          //- opens Advisor-e, which enforces access. Seam: Q-PAGE-URL.
-          p.label.mt-5 {{ $t('group.sharedWorkspace') }}
+          //- co-creates. This app stores only the page ID; the link opens Advisor-e,
+          //- which enforces access. Members can attach a tool (collaboration only —
+          //- separate from on-selling it). Seam: Q-PAGE-URL.
+          .is-flex.is-align-items-center.is-justify-content-space-between.mt-5.mb-2
+            p.label.mb-0 {{ $t('group.sharedWorkspace') }}
+            b-button.is-small.is-light(v-if="group.joinStatus === 'member'" @click="openToolPicker") ＋ {{ $t('group.addTool') }}
           p.has-text-grey.is-size-7(v-if="!(group.sharedPages || []).length") {{ $t('group.noSharedPages') }}
           .is-flex.is-align-items-center.is-justify-content-space-between.mb-2(v-for="p in (group.sharedPages || [])" :key="p.pageId")
             span 📄 {{ p.title }}
@@ -67,6 +70,36 @@
             footer.modal-card-foot
               b-button(type="is-warning" @click="sendGroupMessage") {{ $t('messages.sendBtn') }}
               b-button(@click="msgOpen = false") {{ $t('common.cancel') }}
+
+        //- Add-a-tool picker: search the Advisor-e catalogue and attach a tool to
+        //- the group's Shared workspace (collaboration only — not an on-sell).
+        b-modal(v-model="toolModalOpen" has-modal-card)
+          .modal-card
+            header.modal-card-head
+              p.modal-card-title {{ $t('group.addTool') }} · {{ group.name }}
+            section.modal-card-body
+              b-field(:label="$t('market.fTool')" :message="$t('group.addToolHint')")
+                b-autocomplete(
+                  v-model="toolQuery"
+                  :data="filteredTools"
+                  field="title"
+                  :placeholder="$t('market.toolPlaceholder')"
+                  :loading="toolsLoading"
+                  open-on-focus
+                  clearable
+                  @select="onToolSelect"
+                )
+                  template(slot-scope="props")
+                    .is-flex.is-justify-content-space-between.is-align-items-center
+                      span {{ props.option.title }}
+                      small.has-text-grey.ml-2 {{ props.option.subSection }}
+                  template(slot="empty") {{ $t('market.noTool') }}
+              b-field(v-if="selectedTool" :label="$t('market.fToolId')")
+                .tags.has-addons.mb-0
+                  span.tag.is-dark {{ selectedTool.pageId }}
+            footer.modal-card-foot
+              b-button(type="is-primary" :disabled="!selectedTool" @click="addTool") {{ $t('group.addTool') }}
+              b-button(@click="toolModalOpen = false") {{ $t('common.cancel') }}
 </template>
 
 <script>
@@ -76,7 +109,39 @@ export default {
   name: 'GroupDetailPage',
   mixins: [speechMixin],
   data () {
-    return { group: null, loading: true, joining: false, msgOpen: false, msgText: '', joinRequests: [] }
+    return {
+      group: null,
+      loading: true,
+      joining: false,
+      msgOpen: false,
+      msgText: '',
+      joinRequests: [],
+      // Add-a-tool picker (reuses the Advisor-e catalogue, like the marketplace).
+      toolModalOpen: false,
+      tools: [],
+      toolsLoading: false,
+      toolQuery: '',
+      selectedTool: null
+    }
+  },
+  computed: {
+    // Client-side filter over the loaded catalogue; capped so the dropdown stays snappy.
+    filteredTools () {
+      const q = (this.toolQuery || '').trim().toLowerCase()
+      const base = q
+        ? this.tools.filter((t) => {
+          const hay = (t.title + ' ' + (t.subSection || '') + ' ' + (t.tags || []).join(' ')).toLowerCase()
+          return hay.includes(q)
+        })
+        : this.tools
+      return base.slice(0, 40)
+    }
+  },
+  watch: {
+    // Re-searching drops a stale selection until they pick again.
+    toolQuery (val) {
+      if (this.selectedTool && val !== this.selectedTool.title) { this.selectedTool = null }
+    }
   },
   async mounted () {
     try {
@@ -147,6 +212,48 @@ export default {
         if (res.ok) { this.joinRequests = (await res.json()).requests || [] }
       } catch (e) {
         // Non-blocking: a failed load just leaves the requests list empty.
+      }
+    },
+    // Open the add-a-tool picker and lazy-load the catalogue the first time.
+    openToolPicker () {
+      this.toolModalOpen = true
+      this.loadTools()
+    },
+    async loadTools () {
+      if (this.tools.length) { return }
+      this.toolsLoading = true
+      try {
+        const res = await fetch('/api/templates')
+        if (res.ok) { this.tools = await res.json() }
+      } catch (e) {
+        // leave empty; the picker just shows no options
+      } finally {
+        this.toolsLoading = false
+      }
+    },
+    onToolSelect (option) { this.selectedTool = option || null },
+    // Attach the picked tool to the group's Shared workspace (collaboration only).
+    async addTool () {
+      if (!this.selectedTool) { return }
+      try {
+        const res = await fetch('/api/people/groups/' + this.group.id + '/shared-pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pageId: this.selectedTool.pageId, title: this.selectedTool.title })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$set(this.group, 'sharedPages', data.sharedPages)
+          this.$buefy.toast.open({ message: this.$t('group.toolAdded'), type: 'is-success' })
+          this.toolModalOpen = false
+          this.selectedTool = null
+          this.toolQuery = ''
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     },
     // Approve/decline one pending join request, then refresh the group + list.

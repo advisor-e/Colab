@@ -15,7 +15,7 @@ import GroupDetail from '../pages/groups/_id.vue'
 
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
-;['b-message', 'b-modal', 'b-input', 'b-button', 'page-help'].forEach(n => localVue.component(n, Stub))
+;['b-message', 'b-modal', 'b-input', 'b-button', 'b-field', 'b-autocomplete', 'page-help'].forEach(n => localVue.component(n, Stub))
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -112,6 +112,24 @@ describe('group detail page', () => {
     await w.vm.respondRequest({ id: 'gjr-1' }, true)
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/group-requests/gjr-1/accept', expect.objectContaining({ method: 'POST' }))
+  })
+
+  test('a member can add a tool to the shared workspace via the picker', async () => {
+    global.fetch = jest.fn((url) => {
+      let payload = {}
+      if (url.includes('/shared-pages')) { payload = { success: true, sharedPages: [{ pageId: 'id-x', title: 'Picked Tool', openUrl: 'https://app.advisor-e.com/p/id-x' }] } } else if (url === '/api/templates') { payload = [{ pageId: 'id-x', title: 'Picked Tool', subSection: 'Finance' }] } else if (url.endsWith('/requests')) { payload = { requests: [] } } else { payload = Object.assign({}, GROUP, { joinStatus: 'member', sharedPages: [] }) }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    await w.vm.openToolPicker()
+    await flush()
+    expect(w.vm.tools).toHaveLength(1)
+    w.vm.onToolSelect({ pageId: 'id-x', title: 'Picked Tool' })
+    await w.vm.addTool()
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/shared-pages', expect.objectContaining({ method: 'POST' }))
+    expect(w.vm.group.sharedPages[0].pageId).toBe('id-x')
   })
 
   test('renders the shared workspace links to Advisor-e', async () => {

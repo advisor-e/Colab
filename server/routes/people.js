@@ -111,6 +111,20 @@ async function respondGroupRequest (req, res, accept) {
 async function acceptGroupRequest (req, res) { await respondGroupRequest(req, res, true) }
 async function declineGroupRequest (req, res) { await respondGroupRequest(req, res, false) }
 
+// Attach an Advisor-e catalogue tool to a group's Shared workspace (members only).
+// Collaboration only — NOT a marketplace listing (on-sell is a separate action).
+async function addSharedPage (req, res) {
+  const me = await currentAdvisor(req)
+  const body = req.body || {}
+  if (!(body.pageId || '').trim()) { fail(res, 400, 'MISSING_TOOL', 'Choose a tool to add.'); return }
+  if (!(await templates.exists(body.pageId))) { fail(res, 400, 'UNKNOWN_TOOL', 'That tool is not in the Advisor-e catalogue.'); return }
+  const r = await repo.addGroupSharedPage(req.params.id, me.id, body)
+  if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
+  if (r.error === 'NOT_MEMBER') { fail(res, 403, 'NOT_MEMBER', 'Only a group member can add a tool.'); return }
+  audit.record({ actorId: me.id, action: 'group.shared_page_added', targetType: 'group', targetId: req.params.id, meta: { pageId: body.pageId } })
+  ok(res, { success: true, sharedPages: r.sharedPages })
+}
+
 // Groups the viewer can invite people into (owner/manager).
 async function listMyGroups (req, res) {
   const me = await currentAdvisor(req)
@@ -334,6 +348,7 @@ module.exports = {
   listGroupRequests,
   acceptGroupRequest,
   declineGroupRequest,
+  addSharedPage,
   messageGroup,
   listMyGroups,
   inviteToGroup,
