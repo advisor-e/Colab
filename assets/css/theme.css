@@ -219,6 +219,7 @@ a { color: var(--brand); }
 .section-banner--groups   { background: linear-gradient(120deg, var(--amber), #ffc24f); }
 .section-banner--groups h1 { color: #4a3200; }
 .section-banner--connections { background: linear-gradient(120deg, var(--teal), #1ad3b2); }
+.section-banner--connecting { background: linear-gradient(120deg, #0057d9, #00b1e0); }
 .section-banner--market { background: #0000FF; }
 
 /* ===== Group detail ===== */
