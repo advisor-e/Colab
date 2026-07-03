@@ -59,7 +59,9 @@
             span.tag(v-for="t in (g.tags || [])" :key="t") {{ t }}
           .buttons.mt-2
             nuxt-link.button.is-small.is-light(:to="'/groups/' + g.id") {{ $t('common.view') }}
-            button.button.is-warning.is-small(@click="requestJoin(g)") {{ $t('common.requestToJoin') }}
+            span.button.is-small.is-static(v-if="g.joinStatus === 'member'") ✓ {{ $t('group.member') }}
+            span.button.is-small.is-static(v-else-if="g.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}
+            button.button.is-warning.is-small(v-else @click="requestJoin(g)") {{ $t('common.requestToJoin') }}
 
       b-modal(v-model="outreachOpen" has-modal-card)
         .modal-card
@@ -149,7 +151,11 @@ export default {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
         })
         const data = await res.json()
-        if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
+        if (data.success) {
+          // Reflect the pending state on the card immediately (like people's ⏳ Requested).
+          this.$set(g, 'joinStatus', data.status === 'member' ? 'member' : 'requested')
+          this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' })
+        }
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('toast.requestFailed'), type: 'is-danger' })
       }

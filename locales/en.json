@@ -120,6 +120,8 @@
     "listed": "Listed — anyone can find it",
     "unlisted": "Unlisted — invite only",
     "requested": "Request sent — the group owner will review it.",
+    "requestPending": "Request Pending",
+    "member": "Member",
     "notFound": "Group not found."
   },
   "connections": {
@@ -159,8 +161,10 @@
       "invitation": "Group invite",
       "connection": "Connection",
       "request-incoming": "Wants to connect",
-      "request-outgoing": "Request sent"
-    }
+      "request-outgoing": "Request sent",
+      "group-request": "Group request"
+    },
+    "requestPending": "Request Pending"
   },
   "market": {
     "title": "Marketplace",
@@ -198,6 +202,7 @@
     "markAllRead": "Mark all as read",
     "connection_request": "{name} wants to connect",
     "group_invitation": "{inviter} invited you to {group}",
+    "group_join_request": "{name} asked to join {group}",
     "message": "New message from {name}",
     "purchase": "{buyer} bought {tool}"
   },

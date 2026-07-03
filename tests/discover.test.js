@@ -114,6 +114,17 @@ describe('discover page', () => {
     expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-1')
   })
 
+  test('requestJoin records the request and flips the card to pending', async () => {
+    mockApi()
+    const w = factory()
+    await flush()
+    const g = { id: 'tax-automation', joinStatus: 'none' }
+    await w.vm.requestJoin(g)
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/tax-automation/join', expect.objectContaining({ method: 'POST' }))
+    expect(g.joinStatus).toBe('requested')
+  })
+
   test('openInvite loads the viewer groups and preselects the first', async () => {
     mockApi()
     const w = factory()
