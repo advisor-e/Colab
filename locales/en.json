@@ -122,6 +122,12 @@
     "requested": "Request sent — the group owner will review it.",
     "requestPending": "Request Pending",
     "member": "Member",
+    "joinRequests": "Requests to join",
+    "approve": "Approve",
+    "decline": "Decline",
+    "approvedToast": "Added to the group.",
+    "declinedToast": "Request declined.",
+    "noRequests": "No pending requests to join.",
     "notFound": "Group not found."
   },
   "connections": {
@@ -203,6 +209,7 @@
     "connection_request": "{name} wants to connect",
     "group_invitation": "{inviter} invited you to {group}",
     "group_join_request": "{name} asked to join {group}",
+    "group_join_accepted": "You're now in {group}",
     "message": "New message from {name}",
     "purchase": "{buyer} bought {tool}"
   },

@@ -93,6 +93,24 @@ async function joinGroup (req, res) {
   ok(res, Object.assign({ success: true }, r))
 }
 
+// A group's pending join requests — visible only to someone who manages it.
+async function listGroupRequests (req, res) {
+  const me = await currentAdvisor(req)
+  ok(res, { requests: await repo.listGroupJoinRequests(req.params.id, me.id) })
+}
+
+// Approve or decline a pending join request (manager only).
+async function respondGroupRequest (req, res, accept) {
+  const me = await currentAdvisor(req)
+  const r = await repo.respondJoinRequest(me.id, req.params.id, accept)
+  if (r.error === 'NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Request not found.'); return }
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a group manager can respond to join requests.'); return }
+  audit.record({ actorId: me.id, action: accept ? 'group.join_approved' : 'group.join_declined', targetType: 'group', targetId: r.groupId, meta: { advisorId: r.advisorId } })
+  ok(res, { success: true, status: r.status })
+}
+async function acceptGroupRequest (req, res) { await respondGroupRequest(req, res, true) }
+async function declineGroupRequest (req, res) { await respondGroupRequest(req, res, false) }
+
 // Groups the viewer can invite people into (owner/manager).
 async function listMyGroups (req, res) {
   const me = await currentAdvisor(req)
@@ -313,6 +331,9 @@ module.exports = {
   getGroup,
   createGroup,
   joinGroup,
+  listGroupRequests,
+  acceptGroupRequest,
+  declineGroupRequest,
   messageGroup,
   listMyGroups,
   inviteToGroup,

@@ -22,14 +22,15 @@ beforeEach(() => {
 describe('read side', () => {
   test('listNotifications returns the seeded unread notifications for "me"', async () => {
     const { items, unread } = await repo.listNotifications('me')
-    expect(items.length).toBe(5)
-    expect(unread).toBe(5)
+    expect(items.length).toBe(6)
+    expect(unread).toBe(6)
     // Every returned row belongs to the caller — no cross-user leakage.
     expect(items.every(n => n.userId === 'me')).toBe(true)
     expect(items.some(n => n.type === 'connection_request')).toBe(true)
     expect(items.some(n => n.type === 'group_invitation')).toBe(true)
     expect(items.some(n => n.type === 'message')).toBe(true)
     expect(items.some(n => n.type === 'purchase')).toBe(true)
+    expect(items.some(n => n.type === 'group_join_request')).toBe(true)
   })
 
   test('an unknown user has no notifications', async () => {
@@ -40,7 +41,7 @@ describe('read side', () => {
 
   test('markNotificationsRead clears the unread count and reports how many it marked', async () => {
     const first = await repo.markNotificationsRead('me')
-    expect(first).toEqual({ success: true, marked: 5 })
+    expect(first).toEqual({ success: true, marked: 6 })
     const after = await repo.listNotifications('me')
     expect(after.unread).toBe(0)
     // Idempotent: a second call marks nothing.
@@ -75,6 +76,19 @@ describe('event wiring', () => {
     expect(n).toBeTruthy()
     expect(n.params).toEqual({ name: 'Sara Okafor', group: 'Tax Automation Lab' })
     expect(n.link).toBe('/groups/tax-automation')
+  })
+
+  test('approving a group-join request notifies the requester', async () => {
+    const me = { id: 'me', name: 'Mike Barnes', firm: 'Advisor-e' }
+    const g = await repo.createGroup({ name: 'Notify Approve Group' }, me)
+    await repo.requestJoinGroup(g.id, 'bob-lindt')
+    const reqs = await repo.listGroupJoinRequests(g.id, 'me')
+    await repo.respondJoinRequest('me', reqs[0].id, true)
+    const bob = await repo.listNotifications('bob-lindt')
+    const n = bob.items.find(x => x.type === 'group_join_accepted')
+    expect(n).toBeTruthy()
+    expect(n.params).toEqual({ group: 'Notify Approve Group' })
+    expect(n.link).toBe('/groups/' + g.id)
   })
 
   test('a duplicate connection request does not create a second notification', async () => {
