@@ -99,6 +99,21 @@ describe('group detail page', () => {
     expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-grp')
   })
 
+  test('a manager loads pending join requests and can approve one', async () => {
+    global.fetch = jest.fn((url) => {
+      let payload = {}
+      if (url.includes('/group-requests/')) { payload = { success: true, status: 'accepted' } } else if (url.endsWith('/requests')) { payload = { requests: [{ id: 'gjr-1', advisor: { id: 'bob-lindt', name: 'Bob Lindt', firm: 'Lindt' } }] } } else { payload = Object.assign({}, GROUP, { joinStatus: 'member' }) }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.joinRequests).toHaveLength(1)
+    expect(w.text()).toContain('Bob Lindt')
+    await w.vm.respondRequest({ id: 'gjr-1' }, true)
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/group-requests/gjr-1/accept', expect.objectContaining({ method: 'POST' }))
+  })
+
   test('join flips the page to Request Pending', async () => {
     mockApi()
     const w = factory()

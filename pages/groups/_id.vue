@@ -26,6 +26,22 @@
             b-button(v-else type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
             b-button(@click="messageGroup") {{ $t('group.message') }}
 
+        //- Manager-only: approve/decline requests to join this group. "Manage" is
+        //- approximated as membership (RBAC seam) — see server/data/repository.js.
+        .box(v-if="group.joinStatus === 'member'")
+          p.label {{ $t('group.joinRequests') }}
+          p.has-text-grey.is-size-7(v-if="!joinRequests.length") {{ $t('group.noRequests') }}
+          .level.is-mobile(v-for="r in joinRequests" :key="r.id")
+            .level-left
+              .avatar(:style="avatarStyle(r.advisor)") {{ initials(r.advisor) }}
+              div.ml-3
+                p.has-text-weight-semibold {{ r.advisor.name }}
+                p.has-text-grey.is-size-7(v-if="r.advisor.firm") {{ r.advisor.firm }}
+            .level-right
+              .buttons.mb-0
+                b-button(type="is-success" size="is-small" @click="respondRequest(r, true)") {{ $t('group.approve') }}
+                b-button(size="is-small" @click="respondRequest(r, false)") {{ $t('group.decline') }}
+
         b-modal(v-model="msgOpen" has-modal-card)
           .modal-card
             header.modal-card-head
@@ -50,12 +66,16 @@ export default {
   name: 'GroupDetailPage',
   mixins: [speechMixin],
   data () {
-    return { group: null, loading: true, joining: false, msgOpen: false, msgText: '' }
+    return { group: null, loading: true, joining: false, msgOpen: false, msgText: '', joinRequests: [] }
   },
   async mounted () {
     try {
       const res = await fetch('/api/people/groups/' + this.$route.params.id)
-      if (res.ok) { this.group = await res.json() }
+      if (res.ok) {
+        this.group = await res.json()
+        // Managers (members, in the current approximation) see pending join requests.
+        if (this.group && this.group.joinStatus === 'member') { await this.loadRequests() }
+      }
     } catch (e) {
       // leave null -> not-found state
     } finally {
@@ -109,6 +129,35 @@ export default {
         }
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
+      }
+    },
+    async loadRequests () {
+      try {
+        const res = await fetch('/api/people/groups/' + this.group.id + '/requests')
+        if (res.ok) { this.joinRequests = (await res.json()).requests || [] }
+      } catch (e) {
+        // Non-blocking: a failed load just leaves the requests list empty.
+      }
+    },
+    // Approve/decline one pending join request, then refresh the group + list.
+    async respondRequest (r, accept) {
+      const verb = accept ? 'accept' : 'decline'
+      try {
+        const res = await fetch('/api/people/group-requests/' + r.id + '/' + verb, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+        })
+        if (res.ok) {
+          this.$buefy.toast.open({
+            message: accept ? this.$t('group.approvedToast') : this.$t('group.declinedToast'),
+            type: accept ? 'is-success' : 'is-light'
+          })
+          // Reload the group (member list/count may have changed) and the requests.
+          const gRes = await fetch('/api/people/groups/' + this.group.id)
+          if (gRes.ok) { this.group = await gRes.json() }
+          await this.loadRequests()
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.actionFailed'), type: 'is-danger' })
       }
     }
   }

@@ -261,6 +261,65 @@ describe('group invitations', () => {
   })
 })
 
+describe('group join approval', () => {
+  // Create a group owned by the viewer, with one outsider (bob) requesting to join.
+  async function ownedGroupWithRequest () {
+    const made = mkRes()
+    await route.createGroup({ body: { name: 'Approval Test Group' } }, made)
+    const gid = sent(made)[1].id
+    await require('../server/data/repository').requestJoinGroup(gid, 'bob-lindt')
+    return gid
+  }
+
+  test('a manager sees pending join requests; a non-manager sees none', async () => {
+    const gid = await ownedGroupWithRequest()
+    const mgr = mkRes()
+    await route.listGroupRequests({ params: { id: gid } }, mgr) // me owns it
+    expect(sent(mgr)[1].requests.length).toBe(1)
+    expect(sent(mgr)[1].requests[0].advisor.id).toBe('bob-lindt')
+
+    const outsider = mkRes()
+    await route.listGroupRequests({ params: { id: 'tax-automation' } }, outsider) // me is not a member
+    expect(sent(outsider)[1].requests).toEqual([])
+  })
+
+  test('approving a request adds the requester as a member', async () => {
+    const gid = await ownedGroupWithRequest()
+    const lr = mkRes(); await route.listGroupRequests({ params: { id: gid } }, lr)
+    const reqId = sent(lr)[1].requests[0].id
+    const ar = mkRes(); await route.acceptGroupRequest({ params: { id: reqId } }, ar)
+    expect(sent(ar)[1]).toEqual({ success: true, status: 'accepted' })
+    const gr = mkRes(); await route.getGroup({ params: { id: gid } }, gr)
+    expect(sent(gr)[1].members.some(m => m.id === 'bob-lindt')).toBe(true)
+  })
+
+  test('declining a request clears it without adding a member', async () => {
+    const gid = await ownedGroupWithRequest()
+    const lr = mkRes(); await route.listGroupRequests({ params: { id: gid } }, lr)
+    const reqId = sent(lr)[1].requests[0].id
+    await route.declineGroupRequest({ params: { id: reqId } }, mkRes())
+    const after = mkRes(); await route.listGroupRequests({ params: { id: gid } }, after)
+    expect(sent(after)[1].requests).toEqual([])
+    const gr = mkRes(); await route.getGroup({ params: { id: gid } }, gr)
+    expect(sent(gr)[1].members.some(m => m.id === 'bob-lindt')).toBe(false)
+  })
+
+  test('accept 404s for an unknown request and 403s for a non-manager', async () => {
+    const unknown = mkRes()
+    await route.acceptGroupRequest({ params: { id: 'gjr-999' } }, unknown)
+    expect(sent(unknown)[0]).toBe(404)
+
+    // A request into tax-automation, which the viewer does NOT manage.
+    const repo = require('../server/data/repository')
+    await repo.requestJoinGroup('tax-automation', 'sara-okafor')
+    const reqs = await repo.listGroupJoinRequests('tax-automation', 'bob-lindt') // bob manages tax
+    const forbidden = mkRes()
+    await route.acceptGroupRequest({ params: { id: reqs[0].id } }, forbidden) // me tries
+    expect(sent(forbidden)[0]).toBe(403)
+    expect(sent(forbidden)[1].error.code).toBe('NOT_MANAGER')
+  })
+})
+
 describe('messages & outreach', () => {
   test('messageGroup posts to a group thread', async () => {
     const res = mkRes()

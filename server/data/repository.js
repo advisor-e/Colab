@@ -78,6 +78,16 @@ const groups = [
     tags: ['tax', 'automation', 'workflow'],
     summary: 'Building shared tax-automation workflows and templates.',
     members: [{ id: 'bob-lindt', name: 'Bob Lindt' }]
+  },
+  // Demo: a group the dev user OWNS, so the group-owner approval UI is
+  // demonstrable in the show-home (a pending request is seeded below).
+  {
+    id: 'cashflow-clinic', name: 'Cashflow Clinic', icon: '💧',
+    createdBy: 'Mike Barnes (Advisor-e)', firms: 1, memberCount: 1,
+    visibility: 'listed', joinPolicy: 'request-approval',
+    tags: ['cashflow', 'forecasting'],
+    summary: 'A small working group building a shared 13-week cashflow toolkit.',
+    members: [{ id: 'me', name: 'Mike Barnes' }]
   }
 ]
 
@@ -98,10 +108,13 @@ const connections = [
 let connSeq = 1
 
 // Group-join requests (viewer asked to join a group; consent-based). One row per
-// (group, advisor); status stays 'requested' until an owner-approval flow lands
-// (owner approval is a tracked follow-up — see design/ACTIONS.md). SQL SEAM: a
-// `group_join_request` table.
-const groupJoinRequests = []
+// (group, advisor). A group's manager approves/declines (see respondJoinRequest).
+// SQL SEAM: a `group_join_request` table. The seed row lets the dev user (owner of
+// "Cashflow Clinic") see the approval UI in the show-home; production starts empty.
+const groupJoinRequests = [
+  { id: 'gjr-seed-1', groupId: 'cashflow-clinic', advisorId: 'anna-r', status: 'requested' }
+]
+let gjrSeq = 1
 
 // Marketplace listings are group-owned IP → IP Tier 4 (plan §6). The tier travels
 // with the listing so the marketplace can badge ownership.
@@ -152,6 +165,8 @@ function pushNotification (userId, type, params, link) {
   pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/connecting')
   pushNotification('me', 'message', { name: 'Bob Lindt' }, '/connecting')
   pushNotification('me', 'purchase', { buyer: 'Sara Okafor', tool: 'Trucking Firm Valuation Model' }, '/marketplace')
+  // Mirrors the seeded Cashflow Clinic join request so the owner sees it in the bell.
+  pushNotification('me', 'group_join_request', { name: 'Anna Richter', group: 'Cashflow Clinic' }, '/groups/cashflow-clinic')
 }())
 
 // ── Cross-org engagement postures (per office/firm) ──────────────────────────
@@ -287,7 +302,7 @@ async function requestJoinGroup (groupId, advisorId) {
   // consistent with connection requests / invitations. Owner approval is a
   // tracked follow-up (see design/ACTIONS.md).
   if (!groupJoinRequests.some(r => r.groupId === groupId && r.advisorId === advisorId)) {
-    groupJoinRequests.push({ groupId: groupId, advisorId: advisorId, status: 'requested' })
+    groupJoinRequests.push({ id: 'gjr-' + (gjrSeq++), groupId: groupId, advisorId: advisorId, status: 'requested' })
     // Owner id isn't stored explicitly in the mock; derive it by matching the
     // `createdBy` label to a member (holds for seeded + user-created groups).
     const owner = (g.members || []).find(m => (g.createdBy || '').startsWith(m.name))
@@ -296,6 +311,40 @@ async function requestJoinGroup (groupId, advisorId) {
     }
   }
   return { status: 'requested', groupId: g.id, joinPolicy: g.joinPolicy }
+}
+
+// A group manager's pending incoming join requests for one group. "Manage" is
+// approximated as membership — the same rule inviteToGroup already uses — until
+// per-member roles land (RBAC SEAM: replace with role IN ('owner','admin')). A
+// non-manager sees nothing.
+async function listGroupJoinRequests (groupId, managerId) {
+  // SQL SEAM: SELECT r.*, advisor … FROM group_join_request r WHERE r.group_id=? AND r.status='requested'
+  const g = groups.find(x => x.id === groupId)
+  if (!g || !(g.members || []).some(m => m.id === managerId)) { return [] }
+  return groupJoinRequests
+    .filter(r => r.groupId === groupId)
+    .map(r => ({ id: r.id, advisor: advisors.find(a => a.id === r.advisorId) || { id: r.advisorId, name: r.advisorId } }))
+}
+
+// Approve or decline a join request. Only a manager (member — see above) may act.
+// Accept adds the requester as a member and notifies them; decline just clears it.
+async function respondJoinRequest (managerId, requestId, accept) {
+  // SQL SEAM: verify manager role; DELETE the request; on accept INSERT group_member.
+  const req = groupJoinRequests.find(r => r.id === requestId)
+  if (!req) { return { error: 'NOT_FOUND' } }
+  const g = groups.find(x => x.id === req.groupId)
+  if (!g) { return { error: 'NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === managerId)) { return { error: 'NOT_MANAGER' } }
+  groupJoinRequests.splice(groupJoinRequests.indexOf(req), 1)
+  if (accept) {
+    if (!(g.members || []).some(m => m.id === req.advisorId)) {
+      g.members.push({ id: req.advisorId, name: advisorName(req.advisorId) })
+      g.memberCount = (g.memberCount || g.members.length) + 1
+    }
+    // Tell the requester they're in. Text is rendered from type+params via i18n.
+    pushNotification(req.advisorId, 'group_join_accepted', { group: g.name }, '/groups/' + g.id)
+  }
+  return { success: true, status: accept ? 'accepted' : 'declined', groupId: g.id, advisorId: req.advisorId }
 }
 
 // ── Group invitations (group owner/manager → adviser; consent required) ───────
@@ -668,6 +717,7 @@ async function markNotificationsRead (userId) {
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
+  listGroupJoinRequests, respondJoinRequest,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
   requestConnection, listConnections, listConnecting, respondConnection,
