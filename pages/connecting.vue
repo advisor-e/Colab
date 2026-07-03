@@ -147,8 +147,10 @@ export default {
     // opens its group page. Incoming requests use their inline buttons, not this.
     async openRow (r) {
       if (r.type === 'request-incoming') { return }
-      // A pending group-join request → open the group's page.
-      if (r.type === 'group-request' && r.groupId) { this.$router.push('/groups/' + r.groupId); return }
+      // Groups (and pending group requests) ALWAYS open the group's full page —
+      // members, Shared workspace, Add-a-tool, and "Message the group" for the chat.
+      // (A group with an existing chat used to open the chat and hide its page.)
+      if ((r.type === 'group' || r.type === 'group-request') && r.groupId) { this.$router.push('/groups/' + r.groupId); return }
       if (r.threadId) { this.selectedThreadId = r.threadId; return }
       if (r.type === 'connection' && r.advisorId) {
         try {
@@ -161,9 +163,7 @@ export default {
         } catch (e) {
           this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
         }
-        return
       }
-      if (r.type === 'group' && r.groupId) { this.$router.push('/groups/' + r.groupId) }
     },
     // Accept/decline an incoming connection request in place, then refresh the list.
     async respondRequest (r, accept) {
