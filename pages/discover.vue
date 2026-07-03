@@ -39,7 +39,7 @@
               .buttons
                 button.button.is-small(v-if="!p.connectionStatus || p.connectionStatus === 'none'" @click="connect(p)") ＋ {{ $t('common.connect') }}
                 span.button.is-small.is-static(v-else-if="p.connectionStatus === 'pending_out'") ⏳ {{ $t('common.requested') }}
-                nuxt-link.button.is-small.is-light(v-else-if="p.connectionStatus === 'pending_in'" to="/connections") {{ $t('common.respond') }}
+                nuxt-link.button.is-small.is-light(v-else-if="p.connectionStatus === 'pending_in'" to="/connecting") {{ $t('common.respond') }}
                 span.button.is-small.is-success.is-light(v-else-if="p.connectionStatus === 'connected'") ✓ {{ $t('common.connected') }}
                 button.button.is-primary.is-small(@click="openOutreach(p)") {{ $t('common.reachOut') }}
                 button.button.is-link.is-small.is-light(@click="openInvite(p)") {{ $t('common.inviteToGroup') }}
@@ -244,7 +244,7 @@ export default {
         if (data.success) {
           this.outreachOpen = false
           this.$buefy.toast.open({ message: this.$t('outreach.sent'), type: 'is-success' })
-          this.$router.push('/messages?thread=' + data.threadId)
+          this.$router.push('/connecting?thread=' + data.threadId)
         } else {
           // Surface a handled rejection (e.g. the cross-firm wall) instead of failing silently.
           const msg = data.error && data.error.message ? data.error.message : 'Send failed'

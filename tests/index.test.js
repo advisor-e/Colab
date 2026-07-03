@@ -5,7 +5,7 @@
 /* eslint-env browser, jest */
 
 /**
- * Component test for pages/index.vue — the static home hero with the six pillar
+ * Component test for pages/index.vue — the static home hero with the five pillar
  * links. Display-only, so this just asserts the links are present and correct.
  */
 
@@ -27,15 +27,14 @@ describe('home page', () => {
     expect(factory().text()).toContain('home.title')
   })
 
-  test('links to the six pillars', () => {
+  test('links to the five pillars (Connecting replaces Connections + Messages)', () => {
     const links = factory().findAllComponents(RouterLinkStub)
     const targets = links.wrappers.map(w => w.props('to'))
     expect(targets).toEqual([
       '/discover',
-      '/connections',
+      '/connecting',
       '/discover?tab=groups',
       '/marketplace',
-      '/messages',
       '/profile'
     ])
   })

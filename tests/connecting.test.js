@@ -46,6 +46,7 @@ function factory () {
     localVue,
     mocks: {
       $t: key => key,
+      $route: { query: {} },
       $router: { push },
       $buefy: { toast: { open: jest.fn() } }
     }

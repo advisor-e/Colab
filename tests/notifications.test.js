@@ -64,7 +64,7 @@ describe('event wiring', () => {
     const n = bob.items.find(x => x.type === 'connection_request')
     expect(n).toBeTruthy()
     expect(n.params).toEqual({ name: 'Sara Okafor' })
-    expect(n.link).toBe('/connections')
+    expect(n.link).toBe('/connecting')
   })
 
   test('a duplicate connection request does not create a second notification', async () => {
@@ -82,7 +82,7 @@ describe('event wiring', () => {
     const n = bob.items.find(x => x.type === 'group_invitation')
     expect(n).toBeTruthy()
     expect(n.params).toEqual({ inviter: 'Mike Barnes', group: 'Notify Test Group' })
-    expect(n.link).toBe('/messages')
+    expect(n.link).toBe('/connecting')
   })
 
   test('a reply on a 1:1 outreach thread notifies the counterpart, using fromName', async () => {

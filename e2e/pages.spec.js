@@ -7,19 +7,20 @@
 
 const { test, expect } = require('@playwright/test')
 
-test('Connections loads the incoming/connected buckets', async ({ page }) => {
-  await page.goto('/connections')
-  await expect(page.locator('.section-banner--connections')).toBeVisible()
-  await expect(page.locator('.box').first()).toBeVisible()
+test('Connecting loads the unified list and opens a conversation side-by-side', async ({ page }) => {
+  await page.goto('/connecting')
+  await expect(page.locator('.section-banner--connecting')).toBeVisible()
+  const firstRow = page.locator('.cx-row').first()
+  await expect(firstRow).toBeVisible()
+  await firstRow.click()
+  await expect(page.locator('.conversation')).toBeVisible()
 })
 
-test('Messages lists threads and opens a conversation', async ({ page }) => {
+test('the retired /connections and /messages routes redirect into Connecting', async ({ page }) => {
+  await page.goto('/connections')
+  await expect(page).toHaveURL(/\/connecting/)
   await page.goto('/messages')
-  await expect(page.locator('.section-banner--messages')).toBeVisible()
-  const firstThread = page.locator('.thread-item').first()
-  await expect(firstThread).toBeVisible()
-  await firstThread.click()
-  await expect(page.locator('.conversation')).toBeVisible()
+  await expect(page).toHaveURL(/\/connecting/)
 })
 
 test('Marketplace lists group-owned tools', async ({ page }) => {

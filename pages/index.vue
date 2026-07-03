@@ -9,10 +9,10 @@
             .pillar__icon 🔎
             h3 {{ $t('nav.discover') }}
             p {{ $t('home.discoverDesc') }}
-          nuxt-link.pillar.pillar--connections(to="/connections")
-            .pillar__icon 🤝
-            h3 {{ $t('nav.connections') }}
-            p {{ $t('home.connectionsDesc') }}
+          nuxt-link.pillar.pillar--connections(to="/connecting")
+            .pillar__icon 🔗
+            h3 {{ $t('nav.connecting') }}
+            p {{ $t('home.connectingDesc') }}
           nuxt-link.pillar.pillar--groups(to="/discover?tab=groups")
             .pillar__icon 👥
             h3 {{ $t('home.groups') }}
@@ -21,10 +21,6 @@
             .pillar__icon 🛒
             h3 {{ $t('nav.marketplace') }}
             p {{ $t('home.marketDesc') }}
-          nuxt-link.pillar.pillar--messages(to="/messages")
-            .pillar__icon 💬
-            h3 {{ $t('nav.messages') }}
-            p {{ $t('home.messagesDesc') }}
           nuxt-link.pillar.pillar--profile(to="/profile")
             .pillar__icon 👤
             h3 {{ $t('nav.profile') }}

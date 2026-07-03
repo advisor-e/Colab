@@ -141,10 +141,10 @@ function pushNotification (userId, type, params, link) {
 // purchase. In production the store starts empty and fills from live events —
 // this is clearly seed/demo data, not business logic.
 ;(function seedNotifications () {
-  pushNotification('me', 'connection_request', { name: 'Anna Richter' }, '/connections')
-  pushNotification('me', 'group_invitation', { inviter: 'Sara Okafor', group: 'Hospitality Turnaround Toolkit' }, '/messages')
-  pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/messages')
-  pushNotification('me', 'message', { name: 'Bob Lindt' }, '/messages')
+  pushNotification('me', 'connection_request', { name: 'Anna Richter' }, '/connecting')
+  pushNotification('me', 'group_invitation', { inviter: 'Sara Okafor', group: 'Hospitality Turnaround Toolkit' }, '/connecting')
+  pushNotification('me', 'group_invitation', { inviter: 'Bob Lindt', group: 'Tax Automation Lab' }, '/connecting')
+  pushNotification('me', 'message', { name: 'Bob Lindt' }, '/connecting')
   pushNotification('me', 'purchase', { buyer: 'Sara Okafor', tool: 'Trucking Firm Valuation Model' }, '/marketplace')
 }())
 
@@ -297,7 +297,7 @@ async function inviteToGroup (groupId, inviter, inviteeId, note) {
   }
   threads.unshift(t)
   // Notify the invitee (recipient = the person being invited).
-  pushNotification(inviteeId, 'group_invitation', { inviter: inviter.name, group: g.name }, '/messages')
+  pushNotification(inviteeId, 'group_invitation', { inviter: inviter.name, group: g.name }, '/connecting')
   return { success: true, threadId: t.id, group: { id: g.id, name: g.name }, invitee: { id: invitee.id, name: invitee.name } }
 }
 
@@ -342,7 +342,7 @@ async function appendMessage (threadId, msg) {
   // Notify the 1:1 counterpart of a new inbound message. Group fan-out (one
   // notification per member) is future work — see design/ACTIONS.md T2.
   if (t.kind === 'outreach' && t.withId) {
-    pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/messages')
+    pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/connecting')
   }
   return t
 }
@@ -363,7 +363,7 @@ async function createOutreachThread (input) {
   }
   threads.unshift(t)
   // Notify the recipient of the new incoming outreach.
-  pushNotification(input.toId, 'message', { name: input.fromName || 'Someone' }, '/messages')
+  pushNotification(input.toId, 'message', { name: input.fromName || 'Someone' }, '/connecting')
   return t
 }
 
@@ -425,7 +425,7 @@ async function requestConnection (fromId, toId) {
     c = { id: 'c-' + (connSeq++), requesterId: fromId, addresseeId: toId, status: 'pending' }
     connections.push(c)
     // Notify the addressee of the new request (recipient = the OTHER party).
-    pushNotification(toId, 'connection_request', { name: advisorName(fromId) }, '/connections')
+    pushNotification(toId, 'connection_request', { name: advisorName(fromId) }, '/connecting')
   }
   return c
 }

@@ -99,7 +99,7 @@ export default {
         const data = await res.json()
         if (data.success) {
           this.msgOpen = false
-          this.$router.push('/messages?thread=' + data.threadId)
+          this.$router.push('/connecting?thread=' + data.threadId)
         }
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })

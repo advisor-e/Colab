@@ -97,6 +97,10 @@ export default {
   },
   async mounted () {
     await this.load()
+    // Open a conversation from a deep-link (e.g. a notification or a "Message"
+    // button, incl. links redirected from the retired /messages route).
+    const q = this.$route.query.thread
+    if (q) { this.selectedThreadId = q }
   },
   methods: {
     tabOf (type) {

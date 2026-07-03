@@ -111,7 +111,7 @@ describe('discover page', () => {
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/outreach', expect.objectContaining({ method: 'POST' }))
     expect(w.vm.outreachOpen).toBe(false)
-    expect(w.vm.$router.push).toHaveBeenCalledWith('/messages?thread=t-1')
+    expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-1')
   })
 
   test('openInvite loads the viewer groups and preselects the first', async () => {
