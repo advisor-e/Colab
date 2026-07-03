@@ -23,60 +23,30 @@
               p.has-text-grey.is-size-7.truncate {{ t.lastText }}
 
         .column
-          b-message(v-if="!current" type="is-info") {{ $t('messages.empty') }}
-          .conversation(v-else)
-            .conv-head
-              div
-                span.has-text-weight-bold {{ current.withName }}
-                b-tag.ml-2(v-if="current.kind === 'group'" type="is-warning") {{ $t('messages.groupTag') }}
-              b-switch(v-model="autoTranslate" size="is-small") 🌐 {{ $t('messages.autoTranslate') }}
-            .conv-body
-              p.has-text-grey.has-text-centered(v-if="!current.messages.length") {{ $t('messages.noMessages') }}
-              .msg(v-for="(m, i) in current.messages" :key="i" :class="{ 'msg--me': m.from === 'Me' }")
-                .msg-bubble
-                  span {{ m.text }}
-                  p.msg-trans(v-if="translations[msgKey(i)]") ⤷ {{ translations[msgKey(i)] }}
-                a.msg-translate(v-if="isForeign(m) && !translations[msgKey(i)]" @click="translateMsg(m, i)")
-                  | {{ translating[msgKey(i)] ? '…' : ('🌐 ' + $t('messages.translate')) }}
-                span.msg-from {{ m.from }}
-            .conv-reply(v-if="isInvitation")
-              template(v-if="current.status === 'request'")
-                b-button(type="is-primary" @click="respondInvite(true)") {{ $t('invite.accept') }}
-                b-button(@click="respondInvite(false)") {{ $t('invite.decline') }}
-              span.has-text-grey.is-size-7(v-else) {{ $t('invite.handled') }}
-            .conv-reply(v-else)
-              input.input(v-model="reply" :placeholder="$t('messages.type')" @keyup.enter="send")
-              button.button.is-light.mic(
-                v-if="speechSupported"
-                @click="toggleVoiceInput('reply')"
-                :class="{ 'is-danger': voiceField === 'reply' }"
-                title="Voice input"
-              ) 🎤
-              b-button(type="is-primary" @click="send") {{ $t('messages.sendBtn') }}
+          //- Shared conversation view; reloads the thread list when a reply is
+          //- sent or an invitation is handled inside the pane.
+          conversation-pane(:thread-id="selectedId" @changed="load")
 </template>
 
 <script>
-import speechMixin from '~/mixins/speechMixin'
-
+/**
+ * Messages — the thread list (requests vs chats) with the shared ConversationPane
+ * on the right. The conversation logic lives in components/shared/ConversationPane
+ * (extracted in Phase 3 of FEAT-CONNECTING) so this page only owns the left rail.
+ */
 export default {
   name: 'MessagesPage',
-  mixins: [speechMixin],
   data () {
-    return { threads: [], selectedId: null, current: null, reply: '', autoTranslate: false, translations: {}, translating: {} }
+    return { threads: [], selectedId: null }
   },
   computed: {
     requests () { return this.threads.filter(t => t.status === 'request') },
-    chats () { return this.threads.filter(t => t.status !== 'request') },
-    readerLocale () { return this.$i18n.locale },
-    isInvitation () { return !!(this.current && this.current.kind === 'invitation' && this.current.direction === 'incoming') }
-  },
-  watch: {
-    autoTranslate (on) { if (on) { this.translateAllForeign() } }
+    chats () { return this.threads.filter(t => t.status !== 'request') }
   },
   async mounted () {
     await this.load()
     const q = this.$route.query.thread
-    if (q) { this.select(q) }
+    if (q) { this.selectedId = q }
   },
   methods: {
     initials (name) {
@@ -90,8 +60,6 @@ export default {
       const c = colors[h % colors.length]
       return { background: 'linear-gradient(135deg, ' + c + ', ' + c + 'cc)' }
     },
-    isForeign (m) { return !!m.lang && m.lang !== this.readerLocale },
-    msgKey (i) { return (this.current ? this.current.id : '') + ':' + i },
     async load () {
       try {
         const res = await fetch('/api/people/messages')
@@ -101,76 +69,7 @@ export default {
         // leave empty
       }
     },
-    async select (id) {
-      this.selectedId = id
-      try {
-        const res = await fetch('/api/people/messages/' + id)
-        if (res.ok) {
-          this.current = await res.json()
-          if (this.autoTranslate) { this.translateAllForeign() }
-        }
-      } catch (e) {
-        this.current = null
-      }
-    },
-    translateAllForeign () {
-      if (!this.current) { return }
-      this.current.messages.forEach((m, i) => { if (this.isForeign(m)) { this.translateMsg(m, i) } })
-    },
-    async translateMsg (m, i) {
-      const key = this.msgKey(i)
-      if (this.translations[key] || this.translating[key]) { return }
-      this.$set(this.translating, key, true)
-      try {
-        const res = await fetch('/api/translate/locale', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ texts: { t: m.text }, langCode: this.readerLocale, from: m.lang })
-        })
-        const data = await res.json()
-        if (data && data.t && data.t !== m.text) { this.$set(this.translations, key, data.t) }
-      } catch (e) {
-        this.$buefy.toast.open({ message: this.$t('toast.translationFailed'), type: 'is-danger' })
-      } finally {
-        this.$set(this.translating, key, false)
-      }
-    },
-    async respondInvite (accept) {
-      const id = this.current.id
-      const verb = accept ? 'accept' : 'decline'
-      try {
-        const res = await fetch('/api/people/invitations/' + id + '/' + verb, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
-        })
-        const data = await res.json()
-        if (data.success) {
-          this.$buefy.toast.open({
-            message: accept ? this.$t('invite.joined') : this.$t('invite.declined'),
-            type: accept ? 'is-success' : 'is-info'
-          })
-          await this.load()
-          await this.select(id)
-        }
-      } catch (e) {
-        this.$buefy.toast.open({ message: this.$t('toast.actionFailed'), type: 'is-danger' })
-      }
-    },
-    async send () {
-      const text = (this.reply || '').trim()
-      if (!text || !this.current) { return }
-      try {
-        const res = await fetch('/api/people/messages/' + this.current.id + '/reply', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
-        })
-        if (res.ok) {
-          this.current = await res.json()
-          this.reply = ''
-          await this.load()
-        }
-      } catch (e) {
-        this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
-      }
-    }
+    select (id) { this.selectedId = id }
   }
 }
 </script>
@@ -182,17 +81,4 @@ export default {
 .thread-text { min-width: 0; }
 .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 14rem; }
 .avatar--sm { width: 40px; height: 40px; border-radius: 12px; margin: 0; font-size: .8rem; }
-
-.conversation { background: #fff; border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 26rem; }
-.conv-head { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.conv-body { flex: 1; padding: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
-.msg { display: flex; flex-direction: column; align-items: flex-start; }
-.msg--me { align-items: flex-end; }
-.msg-bubble { background: #f1f0fb; padding: .55rem .9rem; border-radius: 14px; max-width: 80%; white-space: pre-wrap; }
-.msg--me .msg-bubble { background: linear-gradient(120deg, var(--brand), var(--brand-2)); color: #fff; }
-.msg-trans { font-size: .85em; opacity: .85; margin-top: .35rem; padding-top: .3rem; border-top: 1px solid rgba(0,0,0,.1); }
-.msg-translate { font-size: .72rem; color: var(--brand); margin-top: .15rem; cursor: pointer; }
-.msg-from { font-size: .7rem; color: #aaa; margin-top: .2rem; }
-.conv-reply { display: flex; gap: .5rem; padding: 1rem 1.25rem; border-top: 1px solid #eee; }
-.conv-reply .input { flex: 1; }
 </style>

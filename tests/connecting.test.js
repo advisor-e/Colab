@@ -6,9 +6,10 @@
 
 /**
  * Component tests for pages/connecting.vue — the unified "Connecting" inbox
- * (Q-CONN-MSG-IA Option B, Phase 2). Covers: merged-row load + tab counts, tab
- * filtering, search, name sort, and openRow navigation for each row kind. fetch
- * is URL-aware; $t/$router/$buefy mocked.
+ * (Q-CONN-MSG-IA Option B). Covers merged-row load + tab counts, tab filtering,
+ * search, name sort, side-by-side selection into the shared pane, and inline
+ * accept/decline of a connection request. fetch is URL-aware; $t/$router/$buefy
+ * mocked; <conversation-pane> stubbed.
  */
 
 import { mount, createLocalVue } from '@vue/test-utils'
@@ -16,7 +17,7 @@ import Connecting from '../pages/connecting.vue'
 
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
-;['b-message', 'b-input', 'page-help'].forEach(n => localVue.component(n, Stub))
+;['b-message', 'b-input', 'b-button', 'page-help', 'conversation-pane'].forEach(n => localVue.component(n, Stub))
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -94,12 +95,13 @@ describe('connecting page', () => {
     expect(names).toEqual(names.slice().sort((a, b) => a.localeCompare(b)))
   })
 
-  test('openRow: a row with a thread opens it in Messages', async () => {
+  test('openRow: a row with a thread selects it into the side-by-side pane', async () => {
     mockApi()
     const { w, push } = factory()
     await flush()
     await w.vm.openRow({ type: 'chat', threadId: 't-bob' })
-    expect(push).toHaveBeenCalledWith('/messages?thread=t-bob')
+    expect(w.vm.selectedThreadId).toBe('t-bob')
+    expect(push).not.toHaveBeenCalled()
   })
 
   test('openRow: a threadless group opens the group page', async () => {
@@ -110,21 +112,32 @@ describe('connecting page', () => {
     expect(push).toHaveBeenCalledWith('/groups/tax')
   })
 
-  test('openRow: a connection with no thread creates one then opens it', async () => {
+  test('openRow: a connection with no thread creates one then shows it in the pane', async () => {
     mockApi()
-    const { w, push } = factory()
+    const { w } = factory()
     await flush()
     await w.vm.openRow({ type: 'connection', advisorId: 'sara' })
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/advisors/sara/thread', expect.objectContaining({ method: 'POST' }))
-    expect(push).toHaveBeenCalledWith('/messages?thread=t-new')
+    expect(w.vm.selectedThreadId).toBe('t-new')
   })
 
-  test('openRow: a connection request hands off to the Connections page (Phase 3 adds inline actions)', async () => {
+  test('openRow: an incoming request is a no-op (its inline buttons handle it)', async () => {
     mockApi()
     const { w, push } = factory()
     await flush()
-    await w.vm.openRow({ type: 'request-incoming', advisorId: 'anna' })
-    expect(push).toHaveBeenCalledWith('/connections')
+    await w.vm.openRow({ type: 'request-incoming', connectionId: 'c-anna' })
+    expect(w.vm.selectedThreadId).toBeNull()
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  test('respondRequest: accepting posts to the connection accept route and reloads', async () => {
+    mockApi()
+    const { w } = factory()
+    await flush()
+    await w.vm.respondRequest({ connectionId: 'c-anna' }, true)
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/connections/c-anna/accept', expect.objectContaining({ method: 'POST' }))
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-success' }))
   })
 })
