@@ -61,7 +61,10 @@ const groups = [
     visibility: 'listed', joinPolicy: 'request-approval',
     tags: ['seafood', 'valuation', 'capital raising'],
     summary: 'Building a shared valuation + capital-raising model for seafood processors. We would love capital-raising experience.',
-    members: [{ id: 'me', name: 'Mike Barnes' }, { id: 'anna-r', name: 'Anna Richter' }, { id: 'sara-okafor', name: 'Sara Okafor' }, { id: 'bob-lindt', name: 'Bob Lindt' }]
+    members: [{ id: 'me', name: 'Mike Barnes' }, { id: 'anna-r', name: 'Anna Richter' }, { id: 'sara-okafor', name: 'Sara Okafor' }, { id: 'bob-lindt', name: 'Bob Lindt' }],
+    // DEMO page IDs (fake). Real IDs + the URL pattern are the master-team seam
+    // Q-PAGE-URL; Advisor-e enforces the actual access. See design/ACTIONS.md.
+    sharedPages: [{ pageId: 'ae-seafood-valuation-01', title: 'Seafood Valuation Model' }, { pageId: 'ae-capital-raise-deck-02', title: 'Capital-Raising Deck' }]
   },
   {
     id: 'hospitality-turnaround', name: 'Hospitality Turnaround Toolkit', icon: '🍽️',
@@ -77,7 +80,8 @@ const groups = [
     visibility: 'listed', joinPolicy: 'request-approval',
     tags: ['tax', 'automation', 'workflow'],
     summary: 'Building shared tax-automation workflows and templates.',
-    members: [{ id: 'bob-lindt', name: 'Bob Lindt' }]
+    members: [{ id: 'bob-lindt', name: 'Bob Lindt' }],
+    sharedPages: [{ pageId: 'ae-tax-workflow-01', title: 'Tax Automation Workflow' }]
   },
   // Demo: a group the dev user OWNS, so the group-owner approval UI is
   // demonstrable in the show-home (a pending request is seeded below).
@@ -87,13 +91,14 @@ const groups = [
     visibility: 'listed', joinPolicy: 'request-approval',
     tags: ['cashflow', 'forecasting'],
     summary: 'A small working group building a shared 13-week cashflow toolkit.',
-    members: [{ id: 'me', name: 'Mike Barnes' }]
+    members: [{ id: 'me', name: 'Mike Barnes' }],
+    sharedPages: [{ pageId: 'ae-cashflow-13week-01', title: '13-Week Cashflow Model' }, { pageId: 'ae-onboarding-checklist-02', title: 'Client Onboarding Checklist' }]
   }
 ]
 
 const threads = [
   { id: 't-bob', kind: 'outreach', withId: 'bob-lindt', withName: 'Bob Lindt', status: 'request', direction: 'incoming', messages: [{ from: 'Bob Lindt', text: 'Gerne! Wann passt es Ihnen?', lang: 'de' }] },
-  { id: 't-anna', kind: 'outreach', withId: 'anna-r', withName: 'Anna Richter', status: 'request', direction: 'incoming', messages: [{ from: 'Anna Richter', text: 'Would you be open to joining the seafood modelling group?', lang: 'en' }] },
+  { id: 't-anna', kind: 'outreach', withId: 'anna-r', withName: 'Anna Richter', status: 'request', direction: 'incoming', messages: [{ from: 'Anna Richter', text: 'Would you be open to joining the seafood modelling group?', lang: 'en' }], sharedPages: [{ pageId: 'ae-anna-forecast-01', title: 'Joint Forecast Model' }] },
   { id: 't-seafood-grp', kind: 'group', withId: 'seafood-modelling', withName: 'Seafood Financial Modelling', status: 'active', direction: 'outgoing', messages: [{ from: 'Anna Richter', text: 'Welcome — glad to have you looking at this!', lang: 'en' }] },
   // Incoming group invitations (someone invited "me" to join) — Accept joins the group.
   { id: 't-inv-hosp', kind: 'invitation', withId: 'hospitality-turnaround', withName: 'Hospitality Turnaround Toolkit', groupId: 'hospitality-turnaround', inviterName: 'Sara Okafor', status: 'request', direction: 'incoming', messages: [{ from: 'Sara Okafor', text: 'We would love your capital-raising experience on the Hospitality Turnaround group — would you join us?', lang: 'en' }] },
@@ -262,9 +267,20 @@ async function listGroups (opts) {
     .map(g => Object.assign({}, g, { joinStatus: groupJoinStatus(g.id, o.viewerId) }))
 }
 
+// Turn each shared Advisor-e page/tool into a deep-link, using the same seam the
+// marketplace uses (config/integration.js → pageBaseUrl + pageId). This app only
+// stores the page ID; the link opens Advisor-e, which enforces its OWN access
+// (Q-PAGE-URL / Q-ACCESS-CASCADE). Returns a shallow copy so seed data isn't mutated.
+function enrichShared (entity) {
+  if (!entity || !entity.sharedPages) { return entity }
+  return Object.assign({}, entity, {
+    sharedPages: entity.sharedPages.map(p => Object.assign({}, p, { openUrl: ADVISOR_E.pageBaseUrl + p.pageId }))
+  })
+}
+
 async function getGroupById (id) {
-  // SQL SEAM: SELECT `group` + group_tag + group_member WHERE id = ?
-  return groups.find(g => g.id === id) || null
+  // SQL SEAM: SELECT `group` + group_tag + group_member (+ group_shared_page) WHERE id = ?
+  return enrichShared(groups.find(g => g.id === id) || null)
 }
 
 async function createGroup (input, creator) {
@@ -412,8 +428,8 @@ async function listThreads (ownerId) {
 }
 
 async function getThreadById (id) {
-  // SQL SEAM: SELECT thread + messages WHERE thread.id = ? ORDER BY message.created_at
-  return threads.find(t => t.id === id) || null
+  // SQL SEAM: SELECT thread + messages (+ thread_shared_page) WHERE thread.id = ? ORDER BY message.created_at
+  return enrichShared(threads.find(t => t.id === id) || null)
 }
 
 async function appendMessage (threadId, msg) {
@@ -427,7 +443,7 @@ async function appendMessage (threadId, msg) {
   if (t.kind === 'outreach' && t.withId) {
     pushNotification(t.withId, 'message', { name: msg.fromName || msg.from }, '/connecting')
   }
-  return t
+  return enrichShared(t)
 }
 
 // Anti-spam guard (plan §4): does the sender already have an OUTGOING outreach to

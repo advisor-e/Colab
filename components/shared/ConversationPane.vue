@@ -5,6 +5,11 @@
         span.has-text-weight-bold {{ current.withName }}
         b-tag.ml-2(v-if="current.kind === 'group'" type="is-warning") {{ $t('messages.groupTag') }}
       b-switch(v-model="autoTranslate" size="is-small") 🌐 {{ $t('messages.autoTranslate') }}
+    //- Shared workspace — Advisor-e pages/tools these two are working on together.
+    //- Links open Advisor-e (which enforces access); this app stores only the id.
+    .conv-shared(v-if="(current.sharedPages || []).length")
+      span.conv-shared__label {{ $t('group.sharedWorkspace') }}
+      a.conv-shared__link(v-for="p in current.sharedPages" :key="p.pageId" :href="p.openUrl" target="_blank" rel="noopener") 📄 {{ p.title }} ↗
     .conv-body
       p.has-text-grey.has-text-centered(v-if="!current.messages.length") {{ $t('messages.noMessages') }}
       .msg(v-for="(m, i) in current.messages" :key="i" :class="{ 'msg--me': m.from === 'Me' }")
@@ -148,6 +153,10 @@ export default {
 <style scoped>
 .conversation { background: #fff; border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; min-height: 26rem; }
 .conv-head { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.conv-shared { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .6rem 1.25rem; background: #f7f6ff; border-bottom: 1px solid #eee; }
+.conv-shared__label { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.conv-shared__link { font-size: .82rem; color: var(--brand); background: #fff; border: 1px solid #e7e4fb; border-radius: 999px; padding: .2rem .7rem; }
+.conv-shared__link:hover { background: #efeafe; }
 .conv-body { flex: 1; padding: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
 .msg { display: flex; flex-direction: column; align-items: flex-start; }
 .msg--me { align-items: flex-end; }
