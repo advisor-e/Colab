@@ -97,6 +97,12 @@ const connections = [
 ]
 let connSeq = 1
 
+// Group-join requests (viewer asked to join a group; consent-based). One row per
+// (group, advisor); status stays 'requested' until an owner-approval flow lands
+// (owner approval is a tracked follow-up — see design/ACTIONS.md). SQL SEAM: a
+// `group_join_request` table.
+const groupJoinRequests = []
+
 // Marketplace listings are group-owned IP → IP Tier 4 (plan §6). The tier travels
 // with the listing so the marketplace can badge ownership.
 const listings = [
@@ -234,7 +240,11 @@ async function updateAdvisorInterest (id, fields) {
 
 async function listGroups (opts) {
   // SQL SEAM: SELECT * FROM `group` (+ group_tag) WHERE visibility='listed' AND (search match)
-  return groups.filter(g => matchesQuery(g, (opts || {}).q))
+  //           LEFT JOIN group_member / group_join_request to derive the viewer's joinStatus.
+  const o = opts || {}
+  return groups
+    .filter(g => matchesQuery(g, o.q))
+    .map(g => Object.assign({}, g, { joinStatus: groupJoinStatus(g.id, o.viewerId) }))
 }
 
 async function getGroupById (id) {
@@ -257,10 +267,34 @@ async function createGroup (input, creator) {
   return group
 }
 
+// The viewer's relationship to a group: already in it, asked to join, or neither.
+// Powers the "Request Pending" state on the group card + the pending row in
+// Connecting. @returns {'member'|'requested'|'none'}
+function groupJoinStatus (groupId, advisorId) {
+  const g = groups.find(x => x.id === groupId)
+  if (g && (g.members || []).some(m => m.id === advisorId)) { return 'member' }
+  if (groupJoinRequests.some(r => r.groupId === groupId && r.advisorId === advisorId)) { return 'requested' }
+  return 'none'
+}
+
 async function requestJoinGroup (groupId, advisorId) {
   // SQL SEAM: INSERT INTO group_join_request (group_id, advisor_id, 'requested') ON DUPLICATE KEY UPDATE …
   const g = groups.find(x => x.id === groupId)
   if (!g) { return null }
+  // Already in the group → nothing to request.
+  if ((g.members || []).some(m => m.id === advisorId)) { return { status: 'member', groupId: g.id } }
+  // Record the request once (idempotent) and notify the group's owner so it's
+  // consistent with connection requests / invitations. Owner approval is a
+  // tracked follow-up (see design/ACTIONS.md).
+  if (!groupJoinRequests.some(r => r.groupId === groupId && r.advisorId === advisorId)) {
+    groupJoinRequests.push({ groupId: groupId, advisorId: advisorId, status: 'requested' })
+    // Owner id isn't stored explicitly in the mock; derive it by matching the
+    // `createdBy` label to a member (holds for seeded + user-created groups).
+    const owner = (g.members || []).find(m => (g.createdBy || '').startsWith(m.name))
+    if (owner) {
+      pushNotification(owner.id, 'group_join_request', { name: advisorName(advisorId), group: g.name }, '/groups/' + g.id)
+    }
+  }
   return { status: 'requested', groupId: g.id, joinPolicy: g.joinPolicy }
 }
 
@@ -523,6 +557,15 @@ async function listConnecting (myId) {
     }
   }
 
+  // 5) Groups the viewer asked to join but isn't in yet → a pending "Group request"
+  //    row (under the Requests tab) so the viewer has a record of it.
+  for (const req of groupJoinRequests) {
+    if (req.advisorId !== myId) { continue }
+    const g = groups.find(x => x.id === req.groupId)
+    if (!g || (g.members || []).some(m => m.id === myId)) { continue } // gone / already joined
+    rows.push({ type: 'group-request', rowKey: 'gjr:' + g.id, groupId: g.id, name: g.name, icon: g.icon, subtitle: '' })
+  }
+
   const countBy = type => rows.filter(r => r.type === type).length
   return {
     rows: rows,
@@ -532,7 +575,7 @@ async function listConnecting (myId) {
       groups: countBy('group'),
       invitations: countBy('invitation'),
       connections: countBy('connection'),
-      requests: countBy('request-incoming') + countBy('request-outgoing')
+      requests: countBy('request-incoming') + countBy('request-outgoing') + countBy('group-request')
     }
   }
 }
@@ -624,7 +667,7 @@ async function markNotificationsRead (userId) {
 
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
-  listGroups, getGroupById, createGroup, requestJoinGroup,
+  listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
   requestConnection, listConnections, listConnecting, respondConnection,

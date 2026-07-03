@@ -67,6 +67,16 @@ describe('event wiring', () => {
     expect(n.link).toBe('/connecting')
   })
 
+  test('a group-join request notifies the group owner', async () => {
+    // tax-automation is owned by Bob Lindt (its only seeded member).
+    await repo.requestJoinGroup('tax-automation', 'sara-okafor')
+    const bob = await repo.listNotifications('bob-lindt')
+    const n = bob.items.find(x => x.type === 'group_join_request')
+    expect(n).toBeTruthy()
+    expect(n.params).toEqual({ name: 'Sara Okafor', group: 'Tax Automation Lab' })
+    expect(n.link).toBe('/groups/tax-automation')
+  })
+
   test('a duplicate connection request does not create a second notification', async () => {
     await repo.requestConnection('sara-okafor', 'bob-lindt')
     await repo.requestConnection('sara-okafor', 'bob-lindt')

@@ -132,6 +132,17 @@ describe('connecting page', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
+  test('a group-request row falls under Requests, reads "Request Pending", and opens the group page', async () => {
+    mockApi()
+    const { w, push } = factory()
+    await flush()
+    const r = { type: 'group-request', rowKey: 'gjr:tax', groupId: 'tax-automation', name: 'Tax Automation Lab', icon: '🧮' }
+    expect(w.vm.tabOf('group-request')).toBe('requests')
+    expect(w.vm.rowSubtitle(r)).toBe('connecting.requestPending') // $t stub echoes the key
+    await w.vm.openRow(r)
+    expect(push).toHaveBeenCalledWith('/groups/tax-automation')
+  })
+
   test('respondRequest: accepting posts to the connection accept route and reloads', async () => {
     mockApi()
     const { w } = factory()

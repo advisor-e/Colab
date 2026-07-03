@@ -99,6 +99,16 @@ describe('group detail page', () => {
     expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-grp')
   })
 
+  test('join flips the page to Request Pending', async () => {
+    mockApi()
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    await w.vm.join()
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/join', expect.objectContaining({ method: 'POST' }))
+    expect(w.vm.group.joinStatus).toBe('requested')
+  })
+
   test('sendGroupMessage does nothing when empty', async () => {
     mockApi()
     const w = factory()

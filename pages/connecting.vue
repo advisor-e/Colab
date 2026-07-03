@@ -134,11 +134,12 @@ export default {
       return { background: 'linear-gradient(135deg, ' + c + ', ' + c + 'cc)' }
     },
     rowIcon (r) {
-      if (r.type === 'group') { return r.icon || '👥' }
+      if (r.type === 'group' || r.type === 'group-request') { return r.icon || '👥' }
       if (r.type === 'invitation') { return '✉️' }
       return this.initials(r.name)
     },
     rowSubtitle (r) {
+      if (r.type === 'group-request') { return this.$t('connecting.requestPending') }
       return r.subtitle || r.firm || ''
     },
     // Open a row. Conversations (incl. group invitations) show in the pane on the
@@ -146,6 +147,8 @@ export default {
     // opens its group page. Incoming requests use their inline buttons, not this.
     async openRow (r) {
       if (r.type === 'request-incoming') { return }
+      // A pending group-join request → open the group's page.
+      if (r.type === 'group-request' && r.groupId) { this.$router.push('/groups/' + r.groupId); return }
       if (r.threadId) { this.selectedThreadId = r.threadId; return }
       if (r.type === 'connection' && r.advisorId) {
         try {

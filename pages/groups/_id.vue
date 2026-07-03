@@ -21,7 +21,9 @@
               .avatar(:style="avatarStyle(m)") {{ initials(m) }}
               span {{ m.name }}
           .buttons.mt-5
-            b-button(type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
+            span.tag.is-success.is-light.is-medium(v-if="group.joinStatus === 'member'") ✓ {{ $t('group.member') }}
+            span.tag.is-warning.is-light.is-medium(v-else-if="group.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}
+            b-button(v-else type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
             b-button(@click="messageGroup") {{ $t('group.message') }}
 
         b-modal(v-model="msgOpen" has-modal-card)
@@ -79,7 +81,11 @@ export default {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
         })
         const data = await res.json()
-        if (data.success) { this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' }) }
+        if (data.success) {
+          // Reflect the pending state on the page immediately.
+          this.$set(this.group, 'joinStatus', data.status === 'member' ? 'member' : 'requested')
+          this.$buefy.toast.open({ message: this.$t('group.requested'), type: 'is-success' })
+        }
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('toast.requestFailed'), type: 'is-danger' })
       } finally {

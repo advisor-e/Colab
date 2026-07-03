@@ -166,6 +166,29 @@ describe('groups', () => {
     expect(status).toBe(200)
     expect(body.some(g => g.id === 'seafood-modelling')).toBe(true)
   })
+
+  test('listGroups tags each group with the viewer joinStatus', async () => {
+    const res = mkRes()
+    await route.listGroups({ query: {} }, res)
+    const [, body] = sent(res)
+    // me is a member of seafood-modelling, and not of tax-automation.
+    expect(body.find(g => g.id === 'seafood-modelling').joinStatus).toBe('member')
+    expect(body.find(g => g.id === 'tax-automation').joinStatus).toBe('none')
+  })
+
+  test('requesting to join records a pending request (idempotent); getGroup reflects it', async () => {
+    await route.joinGroup({ params: { id: 'tax-automation' } }, mkRes())
+    await route.joinGroup({ params: { id: 'tax-automation' } }, mkRes()) // duplicate — no double record
+    const res = mkRes()
+    await route.getGroup({ params: { id: 'tax-automation' } }, res)
+    expect(sent(res)[1].joinStatus).toBe('requested')
+  })
+
+  test('joining a group you are already in returns member, not a request', async () => {
+    const res = mkRes()
+    await route.joinGroup({ params: { id: 'seafood-modelling' } }, res) // me is a member
+    expect(sent(res)[1]).toEqual(expect.objectContaining({ success: true, status: 'member' }))
+  })
 })
 
 describe('group invitations', () => {
@@ -424,6 +447,15 @@ describe('connecting (unified inbox — Q-CONN-MSG-IA Option B)', () => {
     expect(body.counts.all).toBe(body.rows.length)
     expect(body.counts.chats).toBe(body.rows.filter(r => r.type === 'chat').length)
     expect(body.counts.requests).toBe(body.rows.filter(r => r.type === 'request-incoming' || r.type === 'request-outgoing').length)
+  })
+
+  test('a group you asked to join (but are not in) appears as a group-request row under Requests', async () => {
+    await route.joinGroup({ params: { id: 'tax-automation' } }, mkRes())
+    const body = await connecting()
+    const row = body.rows.find(r => r.type === 'group-request' && r.groupId === 'tax-automation')
+    expect(row).toBeTruthy()
+    expect(row.name).toBe('Tax Automation Lab')
+    expect(body.counts.requests).toBeGreaterThanOrEqual(1)
   })
 
   test('a connected person without a 1:1 thread appears as a standalone connection row', async () => {

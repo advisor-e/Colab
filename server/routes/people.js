@@ -63,13 +63,16 @@ async function getAdvisor (req, res) {
 }
 
 async function listGroups (req, res) {
-  ok(res, await repo.listGroups({ q: (req.query && req.query.q) || '' }))
+  const me = await currentAdvisor(req)
+  ok(res, await repo.listGroups({ q: (req.query && req.query.q) || '', viewerId: me.id }))
 }
 
 async function getGroup (req, res) {
   const g = await repo.getGroupById(req.params.id)
   if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
-  ok(res, g)
+  const me = await currentAdvisor(req)
+  // Attach the viewer's join status so the page can show Request Pending / Member.
+  ok(res, Object.assign({}, g, { joinStatus: repo.groupJoinStatus(g.id, me.id) }))
 }
 
 async function createGroup (req, res) {
