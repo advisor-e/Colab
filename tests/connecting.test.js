@@ -113,6 +113,15 @@ describe('connecting page', () => {
     expect(push).toHaveBeenCalledWith('/groups/tax')
   })
 
+  test('openRow: a group WITH an existing chat also opens the group page (consistent, not the inline chat)', async () => {
+    mockApi()
+    const { w, push } = factory()
+    await flush()
+    await w.vm.openRow({ type: 'group', threadId: 't-grp', groupId: 'seafood' })
+    expect(push).toHaveBeenCalledWith('/groups/seafood')
+    expect(w.vm.selectedThreadId).toBeNull()
+  })
+
   test('openRow: a connection with no thread creates one then shows it in the pane', async () => {
     mockApi()
     const { w } = factory()
