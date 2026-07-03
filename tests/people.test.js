@@ -140,6 +140,34 @@ describe('groups', () => {
     expect(body.sharedPages[0].openUrl).toContain(body.sharedPages[0].pageId)
   })
 
+  test('a member can add a catalogue tool to the group Shared workspace', async () => {
+    const res = mkRes()
+    await route.addSharedPage({ params: { id: 'seafood-modelling' }, body: { pageId: KNOWN_PAGE_ID, title: 'Added Tool' } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    const added = body.sharedPages.find(p => p.pageId === KNOWN_PAGE_ID)
+    expect(added).toBeTruthy()
+    expect(added.openUrl).toContain(KNOWN_PAGE_ID) // it's a real deep-link
+  })
+
+  test('addSharedPage rejects a missing tool, an unknown tool, and a non-member', async () => {
+    const noTool = mkRes()
+    await route.addSharedPage({ params: { id: 'seafood-modelling' }, body: {} }, noTool)
+    expect(sent(noTool)[0]).toBe(400)
+    expect(sent(noTool)[1].error.code).toBe('MISSING_TOOL')
+
+    const unknown = mkRes()
+    await route.addSharedPage({ params: { id: 'seafood-modelling' }, body: { pageId: 'id-0000000000' } }, unknown)
+    expect(sent(unknown)[0]).toBe(400)
+    expect(sent(unknown)[1].error.code).toBe('UNKNOWN_TOOL')
+
+    const notMember = mkRes()
+    // me is not a member of tax-automation.
+    await route.addSharedPage({ params: { id: 'tax-automation' }, body: { pageId: KNOWN_PAGE_ID } }, notMember)
+    expect(sent(notMember)[0]).toBe(403)
+    expect(sent(notMember)[1].error.code).toBe('NOT_MEMBER')
+  })
+
   test('createGroup requires a name', async () => {
     const res = mkRes()
     await route.createGroup({ body: { name: '   ' } }, res)

@@ -283,6 +283,24 @@ async function getGroupById (id) {
   return enrichShared(groups.find(g => g.id === id) || null)
 }
 
+// Attach an Advisor-e catalogue tool/page to a group's Shared workspace so members
+// can collaborate on it. This is INTERNAL collaboration only — separate from
+// on-selling (the marketplace listing), which goes to advisers outside the group.
+// Any member may add (the same "member manages" approximation; RBAC SEAM).
+async function addGroupSharedPage (groupId, memberId, page) {
+  // SQL SEAM: verify membership; INSERT INTO group_shared_page (group_id, page_id, title).
+  const g = groups.find(x => x.id === groupId)
+  if (!g) { return { error: 'GROUP_NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === memberId)) { return { error: 'NOT_MEMBER' } }
+  const pageId = ((page && page.pageId) || '').trim()
+  if (!pageId) { return { error: 'MISSING_TOOL' } }
+  if (!g.sharedPages) { g.sharedPages = [] }
+  if (!g.sharedPages.some(p => p.pageId === pageId)) {
+    g.sharedPages.push({ pageId: pageId, title: ((page.title || '').trim()) || pageId })
+  }
+  return { success: true, sharedPages: enrichShared(g).sharedPages }
+}
+
 async function createGroup (input, creator) {
   // SQL SEAM: INSERT INTO `group` (…); INSERT group_tag rows; INSERT group_member (owner)
   const name = (input.name || '').trim()
@@ -733,7 +751,7 @@ async function markNotificationsRead (userId) {
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
-  listGroupJoinRequests, respondJoinRequest,
+  listGroupJoinRequests, respondJoinRequest, addGroupSharedPage,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
   requestConnection, listConnections, listConnecting, respondConnection,
