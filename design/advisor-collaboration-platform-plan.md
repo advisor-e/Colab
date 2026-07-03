@@ -466,6 +466,7 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 | 2026-07-03 | **T2** — notifications: build an **in-app-only MVP** for highest-value events (no email); event list TBD. |
 | 2026-07-03 | **T3** — IP governance: build an **MVP** (4-tier ownership labels + enforce locked flag); per-space terms-acceptance deferred (depends on spaces). |
 | 2026-07-03 | **T1** — collaboration "spaces" (chat + shared content) **deferred** to a later phase. |
+| 2026-07-03 | **Q-CHAT-AUDIENCE** — message audience = **Model A**: a conversation is either a **private 1:1** or a **single shared group room** (all members); no per-message choice, no sub-group huddles. Already implemented; sub-group side-chats (Model B) deferred as FEAT-CHAT-SUBGROUPS, blocked by the role hierarchy (Q-ROLES). |
 | 2026-06-30 | Group creation open to every role **except Client**; membership opt-in. |
 | 2026-06-30 | Marketplace: no Advisory fee; **off-platform, record-only**; buyer gets unlimited-client usage (no resale); **ongoing updates** included. |
 | 2026-06-30 | Cross-org engagement controlled at Global/Group level; both-sides consent; Global sets ceiling. Default posture **deferred** (D1). |
