@@ -73,8 +73,20 @@
             b-message(type="is-info" size="is-small") {{ $t('outreach.hint') }}
             b-field(:label="$t('outreach.context')")
               b-input(type="textarea" v-model="outreach.context")
+            button.button.is-light.is-small.mb-4(
+              v-if="speechSupported"
+              @click="toggleVoiceInput('outreach.context')"
+              :class="{ 'is-danger': voiceField === 'outreach.context' }"
+              title="Voice input"
+            ) 🎤
             b-field(:label="$t('outreach.ask')")
               b-input(v-model="outreach.ask")
+            button.button.is-light.is-small(
+              v-if="speechSupported"
+              @click="toggleVoiceInput('outreach.ask')"
+              :class="{ 'is-danger': voiceField === 'outreach.ask' }"
+              title="Voice input"
+            ) 🎤
           footer.modal-card-foot
             b-button(type="is-primary" @click="sendOutreach") {{ $t('outreach.send') }}
             span.has-text-grey.is-size-7.ml-2 {{ $t('outreach.onePerPerson') }}
