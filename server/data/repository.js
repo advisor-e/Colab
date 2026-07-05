@@ -520,6 +520,35 @@ async function findOrCreateGroupThread (group) {
   return t
 }
 
+// Attach/detach an Advisor-e catalogue tool to a 1:1 conversation's Shared
+// workspace — the thread-level mirror of the group functions. Allowed on 1:1
+// (kind 'outreach') threads only; group tools are managed on the group page.
+// Stores only the reference. AUTH SEAM (SEC-THREAD-ACL): the real query must
+// confirm the caller is one of the two parties before mutating.
+async function addThreadSharedPage (threadId, page) {
+  // SQL SEAM: verify caller is a party; INSERT INTO thread_shared_page (thread_id, page_id, title)
+  const t = threads.find(x => x.id === threadId)
+  if (!t) { return { error: 'THREAD_NOT_FOUND' } }
+  if (t.kind !== 'outreach') { return { error: 'NOT_DIRECT' } }
+  const pageId = ((page && page.pageId) || '').trim()
+  if (!pageId) { return { error: 'MISSING_TOOL' } }
+  if (!t.sharedPages) { t.sharedPages = [] }
+  if (!t.sharedPages.some(p => p.pageId === pageId)) {
+    t.sharedPages.push({ pageId: pageId, title: ((page.title || '').trim()) || pageId })
+  }
+  return { success: true, sharedPages: enrichShared(t).sharedPages }
+}
+
+async function removeThreadSharedPage (threadId, pageId) {
+  // SQL SEAM: verify caller is a party; DELETE FROM thread_shared_page WHERE thread_id=? AND page_id=?
+  const t = threads.find(x => x.id === threadId)
+  if (!t) { return { error: 'THREAD_NOT_FOUND' } }
+  if (t.kind !== 'outreach') { return { error: 'NOT_DIRECT' } }
+  const id = (pageId || '').trim()
+  if (t.sharedPages) { t.sharedPages = t.sharedPages.filter(p => p.pageId !== id) }
+  return { success: true, sharedPages: enrichShared(t).sharedPages }
+}
+
 // ── Connections (1:1, mutual accept) ─────────────────────────────────────────
 
 // Can `fromId` initiate contact with `toId` under the cross-org policy? Same firm
@@ -767,6 +796,7 @@ module.exports = {
   listGroupJoinRequests, respondJoinRequest, addGroupSharedPage, removeGroupSharedPage,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
+  addThreadSharedPage, removeThreadSharedPage,
   requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,

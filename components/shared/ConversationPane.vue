@@ -7,9 +7,14 @@
       b-switch(v-model="autoTranslate" size="is-small") 🌐 {{ $t('messages.autoTranslate') }}
     //- Shared workspace — Advisor-e pages/tools these two are working on together.
     //- Links open Advisor-e (which enforces access); this app stores only the id.
-    .conv-shared(v-if="(current.sharedPages || []).length")
+    //- On a 1:1 conversation either party can attach/detach a tool (collaboration
+    //- only). Group tools are managed on the group page — read-only here.
+    .conv-shared(v-if="canShareTools || (current.sharedPages || []).length")
       span.conv-shared__label {{ $t('group.sharedWorkspace') }}
-      a.conv-shared__link(v-for="p in current.sharedPages" :key="p.pageId" :href="p.openUrl" target="_blank" rel="noopener") 📄 {{ p.title }} ↗
+      .conv-shared__item(v-for="p in (current.sharedPages || [])" :key="p.pageId")
+        a.conv-shared__link(:href="p.openUrl" target="_blank" rel="noopener") 📄 {{ p.title }} ↗
+        a.conv-shared__remove(v-if="canShareTools" @click="removeTool(p)") {{ $t('group.removeTool') }}
+      b-button.is-small.is-light(v-if="canShareTools" @click="openToolPicker") ＋ {{ $t('group.addTool') }}
     .conv-body
       p.has-text-grey.has-text-centered(v-if="!current.messages.length") {{ $t('messages.noMessages') }}
       .msg(v-for="(m, i) in current.messages" :key="i" :class="{ 'msg--me': m.from === 'Me' }")
@@ -33,6 +38,34 @@
         title="Voice input"
       ) 🎤
       b-button(type="is-primary" @click="send") {{ $t('messages.sendBtn') }}
+    //- Add-a-tool picker for a 1:1 Shared workspace (mirrors the group page).
+    b-modal(v-model="toolModalOpen" has-modal-card)
+      .modal-card
+        header.modal-card-head
+          p.modal-card-title {{ $t('group.addTool') }}
+        section.modal-card-body
+          b-field(:label="$t('market.fTool')" :message="$t('messages.addToolHint')")
+            b-autocomplete(
+              v-model="toolQuery"
+              :data="filteredTools"
+              field="title"
+              :placeholder="$t('market.toolPlaceholder')"
+              :loading="toolsLoading"
+              open-on-focus
+              clearable
+              @select="onToolSelect"
+            )
+              template(slot-scope="props")
+                .is-flex.is-justify-content-space-between.is-align-items-center
+                  span {{ props.option.title }}
+                  small.has-text-grey.ml-2 {{ props.option.subSection }}
+              template(slot="empty") {{ $t('market.noTool') }}
+          b-field(v-if="selectedTool" :label="$t('market.fToolId')")
+            .tags.has-addons.mb-0
+              span.tag.is-dark {{ selectedTool.pageId }}
+        footer.modal-card-foot
+          b-button(type="is-primary" :disabled="!selectedTool" @click="addTool") {{ $t('group.addTool') }}
+          b-button(@click="toolModalOpen = false") {{ $t('common.cancel') }}
   b-message(v-else type="is-info") {{ $t('messages.empty') }}
 </template>
 
@@ -57,16 +90,46 @@ export default {
     threadId: { type: String, default: null }
   },
   data () {
-    return { current: null, reply: '', autoTranslate: false, translations: {}, translating: {} }
+    return {
+      current: null,
+      reply: '',
+      autoTranslate: false,
+      translations: {},
+      translating: {},
+      // Add-a-tool picker (1:1 Shared workspace) — mirrors the group page.
+      toolModalOpen: false,
+      tools: [],
+      toolsLoading: false,
+      toolQuery: '',
+      selectedTool: null
+    }
   },
   computed: {
     readerLocale () { return this.$i18n.locale },
-    isInvitation () { return !!(this.current && this.current.kind === 'invitation' && this.current.direction === 'incoming') }
+    isInvitation () { return !!(this.current && this.current.kind === 'invitation' && this.current.direction === 'incoming') },
+    // Only a 1:1 conversation (kind 'outreach') can attach/detach tools here;
+    // group tools live on the group page.
+    canShareTools () { return !!(this.current && this.current.kind === 'outreach') },
+    // Client-side filter over the loaded catalogue; capped so the dropdown stays snappy.
+    filteredTools () {
+      const q = (this.toolQuery || '').trim().toLowerCase()
+      const base = q
+        ? this.tools.filter((t) => {
+          const hay = (t.title + ' ' + (t.subSection || '') + ' ' + (t.tags || []).join(' ')).toLowerCase()
+          return hay.includes(q)
+        })
+        : this.tools
+      return base.slice(0, 40)
+    }
   },
   watch: {
     // Load whenever the selected thread changes (immediate = initial load too).
     threadId: { immediate: true, handler () { this.load() } },
-    autoTranslate (on) { if (on) { this.translateAllForeign() } }
+    autoTranslate (on) { if (on) { this.translateAllForeign() } },
+    // Re-searching drops a stale selection until they pick again.
+    toolQuery (val) {
+      if (this.selectedTool && val !== this.selectedTool.title) { this.selectedTool = null }
+    }
   },
   methods: {
     async load () {
@@ -145,6 +208,77 @@ export default {
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
       }
+    },
+    // Open the picker and lazy-load the Advisor-e catalogue the first time.
+    openToolPicker () {
+      this.toolModalOpen = true
+      this.loadTools()
+    },
+    async loadTools () {
+      if (this.tools.length) { return }
+      this.toolsLoading = true
+      try {
+        const res = await fetch('/api/templates')
+        if (res.ok) { this.tools = await res.json() }
+      } catch (e) {
+        // leave empty; the picker just shows no options
+      } finally {
+        this.toolsLoading = false
+      }
+    },
+    onToolSelect (option) { this.selectedTool = option || null },
+    // Attach the picked tool to this 1:1 conversation's Shared workspace.
+    async addTool () {
+      if (!this.selectedTool || !this.current) { return }
+      try {
+        const res = await fetch('/api/people/messages/' + this.current.id + '/shared-pages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pageId: this.selectedTool.pageId, title: this.selectedTool.title })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$set(this.current, 'sharedPages', data.sharedPages)
+          this.$buefy.toast.open({ message: this.$t('group.toolAdded'), type: 'is-success' })
+          this.toolModalOpen = false
+          this.selectedTool = null
+          this.toolQuery = ''
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
+      }
+    },
+    // Confirm, then detach a tool — removes only the stored reference (nothing in
+    // Advisor-e is deleted; the dialog says so).
+    removeTool (p) {
+      this.$buefy.dialog.confirm({
+        message: this.$t('messages.removeToolConfirm', { title: p.title }),
+        confirmText: this.$t('group.removeTool'),
+        cancelText: this.$t('common.cancel'),
+        type: 'is-danger',
+        onConfirm: () => this.doRemoveTool(p)
+      })
+    },
+    async doRemoveTool (p) {
+      if (!this.current) { return }
+      try {
+        const res = await fetch('/api/people/messages/' + this.current.id + '/shared-pages/' + encodeURIComponent(p.pageId), {
+          method: 'DELETE'
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$set(this.current, 'sharedPages', data.sharedPages)
+          this.$buefy.toast.open({ message: this.$t('group.toolRemoved'), type: 'is-success' })
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
+      }
     }
   }
 }
@@ -155,8 +289,11 @@ export default {
 .conv-head { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .conv-shared { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .6rem 1.25rem; background: #f7f6ff; border-bottom: 1px solid #eee; }
 .conv-shared__label { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.conv-shared__item { display: inline-flex; align-items: center; gap: .3rem; }
 .conv-shared__link { font-size: .82rem; color: var(--brand); background: #fff; border: 1px solid #e7e4fb; border-radius: 999px; padding: .2rem .7rem; }
 .conv-shared__link:hover { background: #efeafe; }
+.conv-shared__remove { font-size: .72rem; color: var(--muted); cursor: pointer; }
+.conv-shared__remove:hover { color: #d63031; text-decoration: underline; }
 .conv-body { flex: 1; padding: 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
 .msg { display: flex; flex-direction: column; align-items: flex-start; }
 .msg--me { align-items: flex-end; }
