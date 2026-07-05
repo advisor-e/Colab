@@ -37,7 +37,7 @@
             span.tag.is-success.is-light.is-medium(v-if="group.joinStatus === 'member'") ✓ {{ $t('group.member') }}
             span.tag.is-warning.is-light.is-medium(v-else-if="group.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}
             b-button(v-else type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
-            b-button(@click="messageGroup") {{ $t('group.message') }}
+            b-button(@click="openGroupChat") {{ $t('group.openGroupChat') }}
 
         //- Manager-only: approve/decline requests to join this group. "Manage" is
         //- approximated as membership (RBAC seam) — see server/data/repository.js.
@@ -54,22 +54,6 @@
               .buttons.mb-0
                 b-button(type="is-success" size="is-small" @click="respondRequest(r, true)") {{ $t('group.approve') }}
                 b-button(size="is-small" @click="respondRequest(r, false)") {{ $t('group.decline') }}
-
-        b-modal(v-model="msgOpen" has-modal-card)
-          .modal-card
-            header.modal-card-head
-              p.modal-card-title {{ $t('group.message') }} · {{ group.name }}
-            section.modal-card-body
-              b-input(type="textarea" v-model="msgText" :placeholder="$t('messages.type')")
-              button.button.is-light.is-small.mt-2(
-                v-if="speechSupported"
-                @click="toggleVoiceInput('msgText')"
-                :class="{ 'is-danger': voiceField === 'msgText' }"
-                title="Voice input"
-              ) 🎤
-            footer.modal-card-foot
-              b-button(type="is-warning" @click="sendGroupMessage") {{ $t('messages.sendBtn') }}
-              b-button(@click="msgOpen = false") {{ $t('common.cancel') }}
 
         //- Add-a-tool picker: search the Advisor-e catalogue and attach a tool to
         //- the group's Shared workspace (collaboration only — not an on-sell).
@@ -103,18 +87,13 @@
 </template>
 
 <script>
-import speechMixin from '~/mixins/speechMixin'
-
 export default {
   name: 'GroupDetailPage',
-  mixins: [speechMixin],
   data () {
     return {
       group: null,
       loading: true,
       joining: false,
-      msgOpen: false,
-      msgText: '',
       joinRequests: [],
       // Add-a-tool picker (reuses the Advisor-e catalogue, like the marketplace).
       toolModalOpen: false,
@@ -187,23 +166,21 @@ export default {
         this.joining = false
       }
     },
-    messageGroup () {
-      this.msgOpen = true
-    },
-    async sendGroupMessage () {
-      const text = (this.msgText || '').trim()
-      if (!text) { return }
+    // One-click: open (lazily create) the group's shared chat room, then jump to
+    // it in Connecting — where the reply box lives. Replaces the old compose-first
+    // modal. Group room = members only under Model A (server enforces at the
+    // SEC-THREAD-ACL seam once real auth lands).
+    async openGroupChat () {
       try {
-        const res = await fetch('/api/people/groups/' + this.group.id + '/message', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+        const res = await fetch('/api/people/groups/' + this.group.id + '/chat', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
         })
         const data = await res.json()
         if (data.success) {
-          this.msgOpen = false
           this.$router.push('/connecting?thread=' + data.threadId)
         }
       } catch (e) {
-        this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     },
     async loadRequests () {

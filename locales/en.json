@@ -108,7 +108,7 @@
     "createdBy": "Created by",
     "about": "What we're doing",
     "members": "Members",
-    "message": "Message the group",
+    "openGroupChat": "Open group chat",
     "name": "Group name",
     "namePlaceholder": "e.g. Seafood Financial Modelling",
     "icon": "Icon",
@@ -308,7 +308,7 @@
       "body": [
         "See who created it, its firms and members, what they're building, and its specialty tags.",
         "‘Request to join’ — membership is always opt-in, so the group owner reviews your request.",
-        "‘Message the group’ to start a conversation with its members."
+        "‘Open group chat’ to jump straight into the group's shared conversation with its members."
       ]
     }
   }

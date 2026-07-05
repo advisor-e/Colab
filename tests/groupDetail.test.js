@@ -6,8 +6,8 @@
 
 /**
  * Component tests for pages/groups/_id.vue — the group detail page: loads the
- * group by route id, join request, and a "message the group" modal that hands
- * off to the messages thread.
+ * group by route id, join request, and the one-click "Open group chat" that
+ * opens (or lazily creates) the group room and routes to it in Connecting.
  */
 
 import { mount, createLocalVue } from '@vue/test-utils'
@@ -34,7 +34,7 @@ tags: ['seafood', 'valuation'],
 function mockApi (groupOk) {
   global.fetch = jest.fn((url) => {
     let payload = {}
-    if (url.includes('/join')) { payload = { success: true } } else if (url.includes('/message')) { payload = { success: true, threadId: 't-grp' } } else { payload = GROUP }
+    if (url.includes('/join')) { payload = { success: true } } else if (url.includes('/chat')) { payload = { success: true, threadId: 't-grp' } } else { payload = GROUP }
     return Promise.resolve({ ok: groupOk !== false, json: () => Promise.resolve(payload) })
   })
 }
@@ -84,18 +84,13 @@ describe('group detail page', () => {
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-success' }))
   })
 
-  test('messageGroup opens the modal; sendGroupMessage posts and routes', async () => {
+  test('openGroupChat opens the room and routes to it in Connecting', async () => {
     mockApi()
     const w = factory()
     await flush()
-    w.vm.messageGroup()
-    expect(w.vm.msgOpen).toBe(true)
-
-    w.vm.msgText = 'Hello team'
-    await w.vm.sendGroupMessage()
+    await w.vm.openGroupChat()
     await flush()
-    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/message', expect.objectContaining({ method: 'POST' }))
-    expect(w.vm.msgOpen).toBe(false)
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/chat', expect.objectContaining({ method: 'POST' }))
     expect(w.vm.$router.push).toHaveBeenCalledWith('/connecting?thread=t-grp')
   })
 
@@ -153,15 +148,6 @@ describe('group detail page', () => {
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/join', expect.objectContaining({ method: 'POST' }))
     expect(w.vm.group.joinStatus).toBe('requested')
-  })
-
-  test('sendGroupMessage does nothing when empty', async () => {
-    mockApi()
-    const w = factory()
-    await flush(); global.fetch.mockClear()
-    w.vm.msgText = '   '
-    await w.vm.sendGroupMessage()
-    expect(global.fetch).not.toHaveBeenCalled()
   })
 
   test('initials and avatarStyle behave', async () => {

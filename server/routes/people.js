@@ -172,6 +172,15 @@ async function messageGroup (req, res) {
   ok(res, { success: true, threadId: t.id })
 }
 
+// Open (or lazily create) the group's shared chat room without posting a
+// message — backs the one-click "Open group chat" on the group page.
+async function openGroupChat (req, res) {
+  const g = await repo.getGroupById(req.params.id)
+  if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
+  const t = await repo.findOrCreateGroupThread(g)
+  ok(res, { success: true, threadId: t.id })
+}
+
 async function sendOutreach (req, res) {
   const body = req.body || {}
   // Purposeful cold-outreach: a reason ("context") is required by design.
@@ -350,6 +359,7 @@ module.exports = {
   declineGroupRequest,
   addSharedPage,
   messageGroup,
+  openGroupChat,
   listMyGroups,
   inviteToGroup,
   acceptInvitation,
