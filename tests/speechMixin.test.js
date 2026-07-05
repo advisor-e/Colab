@@ -183,6 +183,12 @@ isListening: false,
     c.recognition.onresult({ results: [[{ transcript: 'chat message' }]] })
     expect(c.reply).toBe('chat message')
 
+    // Generic voice-field target with one level of nesting (e.g. 'form.summary').
+    c.voiceField = 'form.summary'
+    c.form = { summary: '' }
+    c.recognition.onresult({ results: [[{ transcript: 'nested text' }]] })
+    expect(c.form.summary).toBe('nested text')
+
     // onerror: ignore 'no-speech', stop listening on anything else.
     c.isListening = true
     c.recognition.onerror({ error: 'no-speech' })

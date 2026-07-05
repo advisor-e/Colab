@@ -68,8 +68,20 @@
                 span.tag.is-info.is-light 🔒 {{ $t('market.readOnly') }}
             b-field(:label="$t('market.fTitle')")
               b-input(v-model="form.title")
+            button.button.is-light.is-small.mb-4(
+              v-if="speechSupported"
+              @click="toggleVoiceInput('form.title')"
+              :class="{ 'is-danger': voiceField === 'form.title' }"
+              title="Voice input"
+            ) 🎤
             b-field(:label="$t('market.fSummary')")
               b-input(type="textarea" v-model="form.summary")
+            button.button.is-light.is-small.mb-4(
+              v-if="speechSupported"
+              @click="toggleVoiceInput('form.summary')"
+              :class="{ 'is-danger': voiceField === 'form.summary' }"
+              title="Voice input"
+            ) 🎤
             b-field(:label="$t('market.fTags')")
               b-taginput(v-model="form.tags" ellipsis)
             b-field(:label="$t('market.fPrice')" :message="$t('market.priceHint')")
@@ -80,8 +92,11 @@
 </template>
 
 <script>
+import speechMixin from '~/mixins/speechMixin'
+
 export default {
   name: 'MarketplacePage',
+  mixins: [speechMixin],
   data () {
     return {
       listings: [],
