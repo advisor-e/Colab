@@ -27,6 +27,9 @@ beforeEach(() => {
 })
 
 function mkRes () { return { send: jest.fn() } }
+// A response that also captures Set-Cookie (for the view-as cookie tests).
+function mkResH () { return { send: jest.fn(), setHeader: jest.fn() } }
+function setCookieOf (res) { return (res.setHeader.mock.calls.find(c => c[0] === 'Set-Cookie') || [])[1] || '' }
 // Return [status, body] of the first res.send call.
 function sent (res) { return res.send.mock.calls[0] }
 
@@ -45,7 +48,7 @@ describe('me', () => {
     const [status, body] = sent(res)
     expect(status).toBe(200)
     // The placeholder firm 'Advisor-e' is opted-in, so posture resolves to 'open'.
-    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e', crossOrgPosture: 'open' })
+    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e', crossOrgPosture: 'open', viewingAs: null })
   })
 
   test('updateMe applies advertised-interest fields and returns the updated advisor', async () => {
@@ -917,6 +920,63 @@ describe('firm manager console', () => {
     await route.getFirmConsole({}, res)
     const priya = sent(res)[1].advisers.find(a => a.id === 'priya-nair')
     expect(priya.blocked).toBe(true)
+  })
+
+  test('startViewAs sets the view-as cookie for a valid firm adviser', async () => {
+    const res = mkResH()
+    await route.startViewAs({ body: { advisorId: 'priya-nair' } }, res)
+    expect(sent(res)[0]).toBe(200)
+    expect(sent(res)[1].asName).toBe('Priya Nair')
+    expect(setCookieOf(res)).toMatch(/viewAs=priya-nair/)
+  })
+
+  test('startViewAs refuses a non-manager, a cross-firm adviser, a blocked adviser and self', async () => {
+    const nm = mkResH()
+    await route.startViewAs({ identity: { advisorId: 'bob-lindt' }, body: { advisorId: 'priya-nair' } }, nm)
+    expect(sent(nm)[0]).toBe(403)
+    expect(sent(nm)[1].error.code).toBe('NOT_MANAGER')
+
+    const xfirm = mkResH()
+    await route.startViewAs({ body: { advisorId: 'anna-r' } }, xfirm) // anna-r is BDO Germany, not Advisor-e
+    expect(sent(xfirm)[0]).toBe(404)
+
+    const blocked = mkResH()
+    await route.startViewAs({ body: { advisorId: 'james-obrien' } }, blocked) // James blocks the manager view
+    expect(sent(blocked)[0]).toBe(403)
+    expect(sent(blocked)[1].error.code).toBe('BLOCKED')
+
+    const self = mkResH()
+    await route.startViewAs({ body: { advisorId: 'me' } }, self)
+    expect(sent(self)[0]).toBe(400)
+  })
+
+  test('getMe reflects an active view-as: target profile + viewingAs banner info', async () => {
+    const res = mkResH()
+    await route.getMe({ headers: { cookie: 'viewAs=priya-nair' } }, res)
+    const body = sent(res)[1]
+    expect(body.id).toBe('priya-nair')
+    expect(body.viewingAs).toEqual(expect.objectContaining({ asName: 'Priya Nair', realName: 'Mike Barnes' }))
+  })
+
+  test('a view-as cookie for a blocked adviser is ignored (reverts to the real manager)', async () => {
+    const res = mkResH()
+    await route.getMe({ headers: { cookie: 'viewAs=james-obrien' } }, res)
+    const body = sent(res)[1]
+    expect(body.id).toBe('me')
+    expect(body.viewingAs).toBeNull()
+  })
+
+  test('the identity really switches: manager-only routes are denied while viewing-as a non-manager', async () => {
+    const res = mkResH()
+    await route.getFirmConsole({ headers: { cookie: 'viewAs=priya-nair' } }, res)
+    expect(sent(res)[0]).toBe(403) // effective identity is Priya (not a manager)
+  })
+
+  test('exitViewAs clears the view-as cookie', async () => {
+    const res = mkResH()
+    await route.exitViewAs({}, res)
+    expect(sent(res)[0]).toBe(200)
+    expect(setCookieOf(res)).toMatch(/viewAs=;.*Max-Age=0/)
   })
 
   test('setFirmPosture toggles the firm posture and it shows in the console + activity', async () => {

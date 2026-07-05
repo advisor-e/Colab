@@ -121,6 +121,9 @@ server.get('/api/people/audit', auth, people.getAuditLog)
 // Firm Manager console (RBAC SEAM: manager-gated in the repository).
 server.get('/api/people/firm', auth, people.getFirmConsole)
 server.post('/api/people/firm/posture', auth, people.setFirmPosture)
+// View-as: a manager assumes an adviser's view (gated + re-checked server-side).
+server.post('/api/people/firm/view-as', auth, people.startViewAs)
+server.del('/api/people/firm/view-as', auth, people.exitViewAs)
 server.get('/api/people/marketplace', auth, people.listMarketplace)
 server.post('/api/people/marketplace', auth, people.createListing)
 server.get('/api/people/marketplace/:id', auth, people.getListing)

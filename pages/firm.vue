@@ -54,6 +54,7 @@
                       th {{ $t('firm.colStatus') }}
                       th {{ $t('firm.colGroups') }}
                       th {{ $t('firm.colActive') }}
+                      th {{ $t('firm.colAction') }}
                   tbody
                     tr(v-for="a in filteredAdvisers" :key="a.id")
                       td
@@ -68,6 +69,9 @@
                         span.tag(:class="a.available ? 'is-success is-light' : 'is-light'") {{ a.available ? $t('common.available') : $t('firm.unavailable') }}
                       td {{ a.groupCount }}
                       td.has-text-grey.is-size-7 {{ a.lastActive || '—' }}
+                      td.has-text-right
+                        b-button.is-small.is-light(v-if="!a.isMe && !a.blocked" :loading="viewingId === a.id" @click="viewAs(a)") {{ $t('firm.viewAs') }}
+                        span.has-text-grey.is-size-7(v-else-if="a.blocked") 🔒
 
           //- Pending approvals
           .column
@@ -111,7 +115,7 @@
 export default {
   name: 'FirmConsolePage',
   data () {
-    return { c: null, loading: true, savingPosture: null, advSearch: '' }
+    return { c: null, loading: true, savingPosture: null, advSearch: '', viewingId: null }
   },
   computed: {
     postureOpen () { return !!this.c && this.c.stats.crossOrgPosture === 'open' },
@@ -182,6 +186,30 @@ export default {
         this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-danger' })
       } finally {
         this.savingPosture = null
+      }
+    },
+    // Isolated so tests can stub the reload without a jsdom navigation error.
+    reloadTo (url) { window.location.href = url },
+    // Assume an adviser's view. The server validates (manager, same firm, not
+    // blocked) and sets the view-as cookie; a full reload re-fetches the whole app
+    // as that adviser. The persistent banner (layout) offers the way back.
+    async viewAs (a) {
+      this.viewingId = a.id
+      try {
+        const res = await fetch('/api/people/firm/view-as', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ advisorId: a.id })
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.reloadTo('/')
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('firm.actionFailed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+          this.viewingId = null
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-danger' })
+        this.viewingId = null
       }
     },
     // Reuse the existing group-join approve/decline endpoints, then refresh.

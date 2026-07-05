@@ -94,6 +94,36 @@ describe('firm console page', () => {
     expect(w.vm.filteredAdvisers).toHaveLength(0)
   })
 
+  test('viewAs posts the target and reloads as that adviser', async () => {
+    global.fetch = jest.fn((url) => {
+      const payload = url.includes('/view-as') ? { success: true, asId: 'priya-nair', asName: 'Priya Nair' } : CONSOLE
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush()
+    const reload = jest.spyOn(w.vm, 'reloadTo').mockImplementation(() => {})
+    await w.vm.viewAs({ id: 'priya-nair' })
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/firm/view-as', expect.objectContaining({ method: 'POST' }))
+    expect(reload).toHaveBeenCalledWith('/')
+  })
+
+  test('viewAs surfaces a refusal (e.g. blocked) without reloading', async () => {
+    global.fetch = jest.fn((url) => {
+      const payload = url.includes('/view-as')
+        ? { success: false, error: { code: 'BLOCKED', message: 'blocked' } }
+        : CONSOLE
+      return Promise.resolve({ ok: !url.includes('/view-as'), json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush()
+    const reload = jest.spyOn(w.vm, 'reloadTo').mockImplementation(() => {})
+    await w.vm.viewAs({ id: 'james-obrien' })
+    await flush()
+    expect(reload).not.toHaveBeenCalled()
+    expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-warning' }))
+  })
+
   test('humanize and formatWhen behave', async () => {
     global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(CONSOLE) }))
     const w = factory()
