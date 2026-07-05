@@ -388,6 +388,21 @@ describe('messages & outreach', () => {
     expect(sent(empty)[1].error.code).toBe('EMPTY')
   })
 
+  test('openGroupChat returns the group thread id (create if none yet)', async () => {
+    // tax-automation has no seeded group thread, so this exercises the create path.
+    const res = mkRes()
+    await route.openGroupChat({ params: { id: 'tax-automation' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body).toEqual(expect.objectContaining({ success: true, threadId: expect.any(String) }))
+  })
+
+  test('openGroupChat 404s for an unknown group', async () => {
+    const res = mkRes()
+    await route.openGroupChat({ params: { id: 'no-group' } }, res)
+    expect(sent(res)[0]).toBe(404)
+  })
+
   test('sendOutreach requires a recipient and a reason', async () => {
     const res = mkRes()
     await route.sendOutreach({ body: { toId: 'bob-lindt' } }, res) // no context

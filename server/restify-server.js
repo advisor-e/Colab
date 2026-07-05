@@ -97,6 +97,7 @@ server.post('/api/people/group-requests/:id/accept', auth, people.acceptGroupReq
 server.post('/api/people/group-requests/:id/decline', auth, people.declineGroupRequest)
 server.post('/api/people/groups/:id/shared-pages', auth, people.addSharedPage)
 server.post('/api/people/groups/:id/message', auth, people.messageGroup)
+server.post('/api/people/groups/:id/chat', auth, people.openGroupChat)
 server.post('/api/people/groups/:id/invite', auth, people.inviteToGroup)
 server.post('/api/people/invitations/:id/accept', auth, people.acceptInvitation)
 server.post('/api/people/invitations/:id/decline', auth, people.declineInvitation)
