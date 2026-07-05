@@ -28,6 +28,13 @@
               | {{ advisorProfile.crossOrgPosture === 'open' ? $t('profile.crossOrgOpen') : $t('profile.crossOrgClosed') }}
           p.has-text-grey.is-size-7.mt-1 {{ $t('profile.crossOrgNote') }}
 
+        //- Advisor-controlled privacy: block a firm manager from opening this
+        //- account and seeing it "as" this advisor (Stage 3). Default off = visible.
+        .box
+          p.heading {{ $t('profile.firmManagerHeading') }}
+          b-switch(v-model="advisorProfile.blockFirmManagerView") {{ $t('profile.blockFirmManagerView') }}
+          p.has-text-grey.is-size-7.mt-1 {{ $t('profile.blockFirmManagerNote') }}
+
         b-field(:label="$t('profile.availability')")
           b-switch(v-model="advisorProfile.available") {{ $t('profile.availableToggle') }}
         b-field(:label="$t('profile.strengths')")
@@ -68,6 +75,7 @@ export default {
         timezone: '',
         linkedin: '',
         available: false,
+        blockFirmManagerView: false,
         strengths: [],
         industries: [],
         topics: [],
@@ -97,6 +105,7 @@ export default {
       try {
         const body = {
           available: this.advisorProfile.available,
+          blockFirmManagerView: this.advisorProfile.blockFirmManagerView,
           strengths: this.advisorProfile.strengths,
           industries: this.advisorProfile.industries,
           topics: this.advisorProfile.topics,

@@ -30,6 +30,7 @@ email: 'mike@advisor-e.com',
 phone: '+49 89 5550',
 linkedin: 'https://linkedin.com/in/mb',
   available: true,
+blockFirmManagerView: false,
 strengths: ['tax'],
 industries: ['seafood'],
 topics: ['M&A'],
@@ -96,7 +97,8 @@ describe('profile page', () => {
 
     w.vm.advisorProfile.available = false
     w.vm.advisorProfile.about = 'Updated bio'
-    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ...ME, available: false, about: 'Updated bio' }) }))
+    w.vm.advisorProfile.blockFirmManagerView = true // advisor opts out of manager view
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ ...ME, available: false, about: 'Updated bio', blockFirmManagerView: true }) }))
 
     await w.vm.save()
     await flush()
@@ -104,7 +106,7 @@ describe('profile page', () => {
     expect(global.fetch).toHaveBeenCalledWith('/api/people/me', expect.objectContaining({ method: 'PUT' }))
     const body = JSON.parse(global.fetch.mock.calls[0][1].body)
     expect(body).toEqual({
-      available: false, strengths: ['tax'], industries: ['seafood'], topics: ['M&A'], about: 'Updated bio'
+      available: false, blockFirmManagerView: true, strengths: ['tax'], industries: ['seafood'], topics: ['M&A'], about: 'Updated bio'
     })
     expect(body.name).toBeUndefined() // identity is Advisory's, never written back
     expect(w.vm.saved).toBe(true)

@@ -910,6 +910,15 @@ describe('firm manager console', () => {
     expect(sent(res)[1].error.code).toBe('NOT_MANAGER')
   })
 
+  test('an advisor blocking the manager view (via updateMe) shows as blocked in the console', async () => {
+    // Priya starts unblocked; she switches "Block firm manager view" on.
+    await route.updateMe({ identity: { advisorId: 'priya-nair' }, body: { blockFirmManagerView: true } }, mkRes())
+    const res = mkRes()
+    await route.getFirmConsole({}, res)
+    const priya = sent(res)[1].advisers.find(a => a.id === 'priya-nair')
+    expect(priya.blocked).toBe(true)
+  })
+
   test('setFirmPosture toggles the firm posture and it shows in the console + activity', async () => {
     const closed = mkRes()
     await route.setFirmPosture({ body: { posture: 'closed' } }, closed)
