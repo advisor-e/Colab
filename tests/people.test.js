@@ -432,6 +432,29 @@ describe('messages & outreach', () => {
     expect(sent(repeat)[1].error.code).toBe('ONE_OUTREACH')
   })
 
+  test('sendOutreach blocks reaching an adviser marked unavailable (403)', async () => {
+    // anna-r has available:false; her firm (BDO Germany) is open, so the cross-org
+    // wall passes and we reach the availability guard.
+    const res = mkRes()
+    await route.sendOutreach({ body: { toId: 'anna-r', context: 'Keen to collaborate' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('UNAVAILABLE')
+  })
+
+  test('sendOutreach enforces the daily cap (429 once the limit is reached)', async () => {
+    // Fire outreaches to distinct new recipients up to the cap (20); each succeeds.
+    for (let i = 0; i < 20; i++) {
+      const r = mkRes()
+      await route.sendOutreach({ body: { toId: 'ext-cap-' + i, context: 'Intro ' + i } }, r)
+      expect(sent(r)[0]).toBe(200)
+    }
+    // The next one tips over the daily cap and is blocked.
+    const blocked = mkRes()
+    await route.sendOutreach({ body: { toId: 'ext-cap-final', context: 'One more' } }, blocked)
+    expect(sent(blocked)[0]).toBe(429)
+    expect(sent(blocked)[1].error.code).toBe('RATE_LIMIT')
+  })
+
   test('messageAdvisor opens a direct thread / 404s unknown / reuses on repeat', async () => {
     const okRes = mkRes()
     await route.messageAdvisor({ params: { id: 'sara-okafor' } }, okRes)

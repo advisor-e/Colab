@@ -472,11 +472,21 @@ async function hasOutgoingOutreach (ownerId, toId) {
   return threads.some(t => t.kind === 'outreach' && t.direction === 'outgoing' && t.withId === toId)
 }
 
+// Anti-spam rate-limit (plan §4): how many OUTGOING cold outreaches has this
+// person started since `sinceMs`? Used to enforce the per-day cap. Seeded threads
+// have no `createdAt` and are treated as older than any window.
+async function countOutgoingOutreachSince (ownerId, sinceMs) {
+  // SQL SEAM: SELECT COUNT(*) FROM thread WHERE owner_id=? AND kind='outreach'
+  //   AND direction='outgoing' AND created_at >= ?  (owner scoping arrives with auth+MySQL)
+  return threads.filter(t => t.kind === 'outreach' && t.direction === 'outgoing' && (t.createdAt || 0) >= sinceMs).length
+}
+
 async function createOutreachThread (input) {
   // SQL SEAM: INSERT INTO thread (kind='outreach', direction='outgoing', …); INSERT first message
   const t = {
     id: 't-out-' + (threadSeq++), kind: 'outreach', withId: input.toId, withName: input.toName,
-    status: 'active', direction: 'outgoing', messages: [{ from: 'Me', text: input.text, lang: 'en' }]
+    status: 'active', direction: 'outgoing', createdAt: Date.now(),
+    messages: [{ from: 'Me', text: input.text, lang: 'en' }]
   }
   threads.unshift(t)
   // Notify the recipient of the new incoming outreach.
@@ -753,7 +763,7 @@ module.exports = {
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
   listGroupJoinRequests, respondJoinRequest, addGroupSharedPage,
   listManageableGroups, inviteToGroup, respondInvitation,
-  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
+  listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach, countOutgoingOutreachSince,
   requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,

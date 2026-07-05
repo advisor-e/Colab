@@ -16,6 +16,7 @@ const repo = require('../data/repository')
 const templates = require('../data/advisoryTemplates')
 const ipClass = require('../data/ipClassification')
 const audit = require('../data/auditLog')
+const { OUTREACH } = require('../../config/integration')
 const { sendApiError } = require('../utils/sendError')
 
 function ok (res, data) { res.send(200, data) }
@@ -199,6 +200,20 @@ async function sendOutreach (req, res) {
     return
   }
   const advisor = await repo.getAdvisorById(body.toId)
+  // Respect availability (plan §4): don't cold-outreach someone who has marked
+  // themselves unavailable. Unknown/external recipients are not gated.
+  if (OUTREACH.respectAvailability && advisor && advisor.available === false) {
+    audit.record({ actorId: me.id, action: 'outreach.blocked', targetType: 'advisor', targetId: body.toId, meta: { reason: 'unavailable' } })
+    fail(res, 403, 'UNAVAILABLE', "This adviser isn't taking new outreach right now — try again once they're available.")
+    return
+  }
+  // Daily rate-limit (plan §4): cap NEW cold outreaches per calendar day.
+  const startOfDay = new Date().setHours(0, 0, 0, 0)
+  if (await repo.countOutgoingOutreachSince(me.id, startOfDay) >= OUTREACH.dailyCap) {
+    audit.record({ actorId: me.id, action: 'outreach.blocked', targetType: 'advisor', targetId: body.toId, meta: { reason: 'rate_limit' } })
+    fail(res, 429, 'RATE_LIMIT', 'You have reached your daily outreach limit — please continue tomorrow.')
+    return
+  }
   const text = body.context + (body.ask ? '\n\n' + body.ask : '')
   const t = await repo.createOutreachThread({ toId: body.toId, toName: advisor ? advisor.name : body.toId, text, fromName: me.name })
   audit.record({ actorId: me.id, action: 'outreach.send', targetType: 'advisor', targetId: body.toId })

@@ -70,4 +70,16 @@ const ADVISOR_E = {
   pageBaseUrl: process.env.ADVISOR_E_PAGE_BASE || 'https://app.advisor-e.com/p/'
 }
 
-module.exports = { AUTH, DB, CROSS_ORG, ADVISOR_E }
+// ── Outreach anti-spam guardrails (plan §4) ───────────────────────────────────
+// "One outreach per person" is enforced separately (repo.hasOutgoingOutreach).
+// These two are the remaining plan §4 guards, backend-enforced in sendOutreach:
+//   dailyCap            — the most NEW cold outreaches one advisor may start per
+//                         calendar day (owner policy, 2026-07-06).
+//   respectAvailability — refuse cold outreach to an adviser marked unavailable.
+// Both are tunable here without a rebuild.
+const OUTREACH = {
+  dailyCap: 20,
+  respectAvailability: true
+}
+
+module.exports = { AUTH, DB, CROSS_ORG, ADVISOR_E, OUTREACH }
