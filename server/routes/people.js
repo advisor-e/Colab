@@ -126,6 +126,17 @@ async function addSharedPage (req, res) {
   ok(res, { success: true, sharedPages: r.sharedPages })
 }
 
+// Detach a tool from a group's Shared workspace (members only). Removes only the
+// stored reference — the Advisor-e page itself is untouched. Mirror of addSharedPage.
+async function removeSharedPage (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.removeGroupSharedPage(req.params.id, me.id, req.params.pageId)
+  if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
+  if (r.error === 'NOT_MEMBER') { fail(res, 403, 'NOT_MEMBER', 'Only a group member can remove a tool.'); return }
+  audit.record({ actorId: me.id, action: 'group.shared_page_removed', targetType: 'group', targetId: req.params.id, meta: { pageId: req.params.pageId } })
+  ok(res, { success: true, sharedPages: r.sharedPages })
+}
+
 // Groups the viewer can invite people into (owner/manager).
 async function listMyGroups (req, res) {
   const me = await currentAdvisor(req)
@@ -257,6 +268,31 @@ async function replyThread (req, res) {
   ok(res, t)
 }
 
+// Attach a catalogue tool to a 1:1 conversation's Shared workspace (thread-level
+// mirror of addSharedPage). 1:1 only — group tools are managed on the group page.
+async function addThreadSharedPage (req, res) {
+  const me = await currentAdvisor(req)
+  const body = req.body || {}
+  if (!(body.pageId || '').trim()) { fail(res, 400, 'MISSING_TOOL', 'Choose a tool to add.'); return }
+  if (!(await templates.exists(body.pageId))) { fail(res, 400, 'UNKNOWN_TOOL', 'That tool is not in the Advisor-e catalogue.'); return }
+  const r = await repo.addThreadSharedPage(req.params.id, body)
+  if (r.error === 'THREAD_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Conversation not found.'); return }
+  if (r.error === 'NOT_DIRECT') { fail(res, 400, 'NOT_DIRECT', 'Tools can be shared on a 1:1 conversation; group tools live on the group page.'); return }
+  audit.record({ actorId: me.id, action: 'thread.shared_page_added', targetType: 'thread', targetId: req.params.id, meta: { pageId: body.pageId } })
+  ok(res, { success: true, sharedPages: r.sharedPages })
+}
+
+// Detach a tool from a 1:1 conversation's Shared workspace. Removes only the
+// stored reference — nothing in Advisor-e is deleted.
+async function removeThreadSharedPage (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.removeThreadSharedPage(req.params.id, req.params.pageId)
+  if (r.error === 'THREAD_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Conversation not found.'); return }
+  if (r.error === 'NOT_DIRECT') { fail(res, 400, 'NOT_DIRECT', 'Group tools live on the group page.'); return }
+  audit.record({ actorId: me.id, action: 'thread.shared_page_removed', targetType: 'thread', targetId: req.params.id, meta: { pageId: req.params.pageId } })
+  ok(res, { success: true, sharedPages: r.sharedPages })
+}
+
 async function listNotifications (req, res) {
   const me = await currentAdvisor(req)
   ok(res, await repo.listNotifications(me.id))
@@ -373,6 +409,7 @@ module.exports = {
   acceptGroupRequest,
   declineGroupRequest,
   addSharedPage,
+  removeSharedPage,
   messageGroup,
   openGroupChat,
   listMyGroups,
@@ -384,6 +421,8 @@ module.exports = {
   listMessages,
   getThread,
   replyThread,
+  addThreadSharedPage,
+  removeThreadSharedPage,
   listConnections,
   listConnecting,
   connect,

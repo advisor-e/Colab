@@ -87,7 +87,9 @@
     "sendBtn": "Send",
     "noMessages": "No messages yet — say hello.",
     "groupTag": "Group",
-    "translate": "Translate"
+    "translate": "Translate",
+    "addToolHint": "Search the Advisor-e catalogue and pick a tool for the two of you to work on together. (This is for collaboration — selling it on the marketplace is separate.)",
+    "removeToolConfirm": "Remove ‘{title}’ from this shared workspace? This detaches the link only — it doesn't delete anything in Advisor-e."
   },
   "invite": {
     "title": "Invite to group",
@@ -129,6 +131,9 @@
     "addTool": "Add a tool",
     "addToolHint": "Search the Advisor-e catalogue and pick a tool for the group to work on together. (This is for collaboration — selling it on the marketplace is separate.)",
     "toolAdded": "Tool added to the workspace.",
+    "removeTool": "Remove",
+    "removeToolConfirm": "Remove ‘{title}’ from this group's shared workspace? This detaches the link only — it doesn't delete anything in Advisor-e.",
+    "toolRemoved": "Tool removed from the workspace.",
     "approve": "Approve",
     "decline": "Decline",
     "approvedToast": "Added to the group.",

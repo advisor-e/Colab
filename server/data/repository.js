@@ -301,6 +301,19 @@ async function addGroupSharedPage (groupId, memberId, page) {
   return { success: true, sharedPages: enrichShared(g).sharedPages }
 }
 
+// Detach a tool from a group's Shared workspace — the mirror of the add. Removes
+// ONLY the stored reference; it does not touch the Advisor-e page itself. Any
+// member may remove (the same "member manages" approximation; RBAC SEAM).
+async function removeGroupSharedPage (groupId, memberId, pageId) {
+  // SQL SEAM: verify membership; DELETE FROM group_shared_page WHERE group_id=? AND page_id=?
+  const g = groups.find(x => x.id === groupId)
+  if (!g) { return { error: 'GROUP_NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === memberId)) { return { error: 'NOT_MEMBER' } }
+  const id = (pageId || '').trim()
+  if (g.sharedPages) { g.sharedPages = g.sharedPages.filter(p => p.pageId !== id) }
+  return { success: true, sharedPages: enrichShared(g).sharedPages }
+}
+
 async function createGroup (input, creator) {
   // SQL SEAM: INSERT INTO `group` (…); INSERT group_tag rows; INSERT group_member (owner)
   const name = (input.name || '').trim()
@@ -515,6 +528,35 @@ async function findOrCreateGroupThread (group) {
     threads.unshift(t)
   }
   return t
+}
+
+// Attach/detach an Advisor-e catalogue tool to a 1:1 conversation's Shared
+// workspace — the thread-level mirror of the group functions. Allowed on 1:1
+// (kind 'outreach') threads only; group tools are managed on the group page.
+// Stores only the reference. AUTH SEAM (SEC-THREAD-ACL): the real query must
+// confirm the caller is one of the two parties before mutating.
+async function addThreadSharedPage (threadId, page) {
+  // SQL SEAM: verify caller is a party; INSERT INTO thread_shared_page (thread_id, page_id, title)
+  const t = threads.find(x => x.id === threadId)
+  if (!t) { return { error: 'THREAD_NOT_FOUND' } }
+  if (t.kind !== 'outreach') { return { error: 'NOT_DIRECT' } }
+  const pageId = ((page && page.pageId) || '').trim()
+  if (!pageId) { return { error: 'MISSING_TOOL' } }
+  if (!t.sharedPages) { t.sharedPages = [] }
+  if (!t.sharedPages.some(p => p.pageId === pageId)) {
+    t.sharedPages.push({ pageId: pageId, title: ((page.title || '').trim()) || pageId })
+  }
+  return { success: true, sharedPages: enrichShared(t).sharedPages }
+}
+
+async function removeThreadSharedPage (threadId, pageId) {
+  // SQL SEAM: verify caller is a party; DELETE FROM thread_shared_page WHERE thread_id=? AND page_id=?
+  const t = threads.find(x => x.id === threadId)
+  if (!t) { return { error: 'THREAD_NOT_FOUND' } }
+  if (t.kind !== 'outreach') { return { error: 'NOT_DIRECT' } }
+  const id = (pageId || '').trim()
+  if (t.sharedPages) { t.sharedPages = t.sharedPages.filter(p => p.pageId !== id) }
+  return { success: true, sharedPages: enrichShared(t).sharedPages }
 }
 
 // ── Connections (1:1, mutual accept) ─────────────────────────────────────────
@@ -761,9 +803,10 @@ async function markNotificationsRead (userId) {
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
-  listGroupJoinRequests, respondJoinRequest, addGroupSharedPage,
+  listGroupJoinRequests, respondJoinRequest, addGroupSharedPage, removeGroupSharedPage,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach, countOutgoingOutreachSince,
+  addThreadSharedPage, removeThreadSharedPage,
   requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,

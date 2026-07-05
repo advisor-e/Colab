@@ -46,7 +46,7 @@ function factory () {
       $t: key => key,
       $route: { params: { id: 'seafood' } },
       $router: { push: jest.fn(), back: jest.fn() },
-      $buefy: { toast: { open: jest.fn() } }
+      $buefy: { toast: { open: jest.fn() }, dialog: { confirm: opts => opts.onConfirm() } }
     }
   })
 }
@@ -125,6 +125,21 @@ describe('group detail page', () => {
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/shared-pages', expect.objectContaining({ method: 'POST' }))
     expect(w.vm.group.sharedPages[0].pageId).toBe('id-x')
+  })
+
+  test('a member can remove a tool from the shared workspace (confirm then DELETE)', async () => {
+    global.fetch = jest.fn((url, opts) => {
+      let payload = {}
+      if (url.includes('/shared-pages/') && opts && opts.method === 'DELETE') { payload = { success: true, sharedPages: [] } } else if (url.endsWith('/requests')) { payload = { requests: [] } } else { payload = Object.assign({}, GROUP, { joinStatus: 'member', sharedPages: [{ pageId: 'ae-x', title: 'Cashflow Model', openUrl: 'https://app.advisor-e.com/p/ae-x' }] }) }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.group.sharedPages).toHaveLength(1)
+    await w.vm.removeTool({ pageId: 'ae-x', title: 'Cashflow Model' })
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/shared-pages/ae-x', expect.objectContaining({ method: 'DELETE' }))
+    expect(w.vm.group.sharedPages).toHaveLength(0)
   })
 
   test('renders the shared workspace links to Advisor-e', async () => {

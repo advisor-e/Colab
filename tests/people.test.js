@@ -168,6 +168,28 @@ describe('groups', () => {
     expect(sent(notMember)[1].error.code).toBe('NOT_MEMBER')
   })
 
+  test('a member can remove a tool from the group Shared workspace', async () => {
+    // Add it, then remove it — the remove leaves it gone from the list.
+    await route.addSharedPage({ params: { id: 'seafood-modelling' }, body: { pageId: KNOWN_PAGE_ID, title: 'Temp Tool' } }, mkRes())
+    const res = mkRes()
+    await route.removeSharedPage({ params: { id: 'seafood-modelling', pageId: KNOWN_PAGE_ID } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    expect(body.sharedPages.some(p => p.pageId === KNOWN_PAGE_ID)).toBe(false)
+  })
+
+  test('removeSharedPage 404s for unknown group and 403s for a non-member', async () => {
+    const missing = mkRes()
+    await route.removeSharedPage({ params: { id: 'no-group', pageId: KNOWN_PAGE_ID } }, missing)
+    expect(sent(missing)[0]).toBe(404)
+
+    const notMember = mkRes()
+    // me is not a member of tax-automation.
+    await route.removeSharedPage({ params: { id: 'tax-automation', pageId: KNOWN_PAGE_ID } }, notMember)
+    expect(sent(notMember)[0]).toBe(403)
+    expect(sent(notMember)[1].error.code).toBe('NOT_MEMBER')
+  })
+
   test('createGroup requires a name', async () => {
     const res = mkRes()
     await route.createGroup({ body: { name: '   ' } }, res)
@@ -401,6 +423,41 @@ describe('messages & outreach', () => {
     const res = mkRes()
     await route.openGroupChat({ params: { id: 'no-group' } }, res)
     expect(sent(res)[0]).toBe(404)
+  })
+
+  test('addThreadSharedPage attaches a tool to a 1:1 conversation', async () => {
+    const res = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: KNOWN_PAGE_ID, title: 'Joint Tool' } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    const added = body.sharedPages.find(p => p.pageId === KNOWN_PAGE_ID)
+    expect(added).toBeTruthy()
+    expect(added.openUrl).toContain(KNOWN_PAGE_ID) // real deep-link
+  })
+
+  test('addThreadSharedPage rejects a group thread (NOT_DIRECT), an unknown tool, and a missing thread', async () => {
+    const group = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-seafood-grp' }, body: { pageId: KNOWN_PAGE_ID } }, group)
+    expect(sent(group)[0]).toBe(400)
+    expect(sent(group)[1].error.code).toBe('NOT_DIRECT')
+
+    const unknown = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: 'id-0000000000' } }, unknown)
+    expect(sent(unknown)[0]).toBe(400)
+    expect(sent(unknown)[1].error.code).toBe('UNKNOWN_TOOL')
+
+    const missing = mkRes()
+    await route.addThreadSharedPage({ params: { id: 'no-thread' }, body: { pageId: KNOWN_PAGE_ID } }, missing)
+    expect(sent(missing)[0]).toBe(404)
+  })
+
+  test('removeThreadSharedPage detaches a tool from a 1:1 conversation', async () => {
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: KNOWN_PAGE_ID, title: 'Temp' } }, mkRes())
+    const res = mkRes()
+    await route.removeThreadSharedPage({ params: { id: 't-anna', pageId: KNOWN_PAGE_ID } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    expect(body.sharedPages.some(p => p.pageId === KNOWN_PAGE_ID)).toBe(false)
   })
 
   test('sendOutreach requires a recipient and a reason', async () => {

@@ -17,7 +17,7 @@ import ConversationPane from '../components/shared/ConversationPane.vue'
 
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
-;['b-message', 'b-tag', 'b-switch', 'b-button'].forEach(n => localVue.component(n, Stub))
+;['b-message', 'b-tag', 'b-switch', 'b-button', 'b-modal', 'b-field', 'b-autocomplete'].forEach(n => localVue.component(n, Stub))
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -39,7 +39,7 @@ function factory (threadId) {
     mocks: {
       $t: key => key,
       $i18n: { locale: 'en' },
-      $buefy: { toast: { open: jest.fn() } }
+      $buefy: { toast: { open: jest.fn() }, dialog: { confirm: opts => opts.onConfirm() } }
     }
   })
 }
@@ -121,6 +121,49 @@ describe('ConversationPane', () => {
     await flush(); await w.vm.$nextTick()
     expect(w.text()).toContain('Joint Forecast')
     expect(w.find('a[href="https://app.advisor-e.com/p/ae-x"]').exists()).toBe(true)
+  })
+
+  test('canShareTools is true on a 1:1 thread, false on a group thread', async () => {
+    mockApi()
+    const w = factory()
+    await flush()
+    w.vm.current = { id: 'g', kind: 'group', messages: [] }
+    expect(w.vm.canShareTools).toBe(false)
+    w.vm.current = { id: 'd', kind: 'outreach', messages: [] }
+    expect(w.vm.canShareTools).toBe(true)
+  })
+
+  test('addTool attaches a catalogue tool to the 1:1 shared workspace', async () => {
+    global.fetch = jest.fn((url, opts) => {
+      let payload = {}
+      if (url === '/api/templates') { payload = [{ pageId: 'id-1', title: 'Tool One', subSection: 'Finance' }] } else if (url.includes('/shared-pages') && opts && opts.method === 'POST') { payload = { success: true, sharedPages: [{ pageId: 'id-1', title: 'Tool One', openUrl: 'https://app.advisor-e.com/p/id-1' }] } } else { payload = CURRENT }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory('t-bob')
+    await flush(); await w.vm.$nextTick()
+    await w.vm.openToolPicker()
+    await flush()
+    expect(w.vm.tools).toHaveLength(1)
+    w.vm.onToolSelect({ pageId: 'id-1', title: 'Tool One' })
+    await w.vm.addTool()
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/messages/t-bob/shared-pages', expect.objectContaining({ method: 'POST' }))
+    expect(w.vm.current.sharedPages[0].pageId).toBe('id-1')
+  })
+
+  test('removeTool detaches a tool after confirm (DELETE)', async () => {
+    global.fetch = jest.fn((url, opts) => {
+      let payload = {}
+      if (url.includes('/shared-pages/') && opts && opts.method === 'DELETE') { payload = { success: true, sharedPages: [] } } else { payload = Object.assign({}, CURRENT, { sharedPages: [{ pageId: 'id-1', title: 'Tool One', openUrl: 'https://app.advisor-e.com/p/id-1' }] }) }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory('t-bob')
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.current.sharedPages).toHaveLength(1)
+    await w.vm.removeTool({ pageId: 'id-1', title: 'Tool One' })
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/messages/t-bob/shared-pages/id-1', expect.objectContaining({ method: 'DELETE' }))
+    expect(w.vm.current.sharedPages).toHaveLength(0)
   })
 
   test('isForeign flags a message only when its lang differs from the reader', async () => {
