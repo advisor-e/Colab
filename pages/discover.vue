@@ -89,6 +89,7 @@
             ) 🎤
           footer.modal-card-foot
             b-button(type="is-primary" @click="sendOutreach") {{ $t('outreach.send') }}
+            b-button(@click="outreachOpen = false") {{ $t('common.cancel') }}
             span.has-text-grey.is-size-7.ml-2 {{ $t('outreach.onePerPerson') }}
 
       b-modal(v-model="inviteOpen" has-modal-card)
@@ -107,6 +108,7 @@
                 b-input(type="textarea" v-model="invite.note")
           footer.modal-card-foot
             b-button(type="is-primary" :disabled="!invite.groupId" @click="sendInvite") {{ $t('invite.send') }}
+            b-button(@click="inviteOpen = false") {{ $t('common.cancel') }}
 </template>
 
 <script>
