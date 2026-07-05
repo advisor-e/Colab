@@ -403,6 +403,41 @@ describe('messages & outreach', () => {
     expect(sent(res)[0]).toBe(404)
   })
 
+  test('addThreadSharedPage attaches a tool to a 1:1 conversation', async () => {
+    const res = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: KNOWN_PAGE_ID, title: 'Joint Tool' } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    const added = body.sharedPages.find(p => p.pageId === KNOWN_PAGE_ID)
+    expect(added).toBeTruthy()
+    expect(added.openUrl).toContain(KNOWN_PAGE_ID) // real deep-link
+  })
+
+  test('addThreadSharedPage rejects a group thread (NOT_DIRECT), an unknown tool, and a missing thread', async () => {
+    const group = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-seafood-grp' }, body: { pageId: KNOWN_PAGE_ID } }, group)
+    expect(sent(group)[0]).toBe(400)
+    expect(sent(group)[1].error.code).toBe('NOT_DIRECT')
+
+    const unknown = mkRes()
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: 'id-0000000000' } }, unknown)
+    expect(sent(unknown)[0]).toBe(400)
+    expect(sent(unknown)[1].error.code).toBe('UNKNOWN_TOOL')
+
+    const missing = mkRes()
+    await route.addThreadSharedPage({ params: { id: 'no-thread' }, body: { pageId: KNOWN_PAGE_ID } }, missing)
+    expect(sent(missing)[0]).toBe(404)
+  })
+
+  test('removeThreadSharedPage detaches a tool from a 1:1 conversation', async () => {
+    await route.addThreadSharedPage({ params: { id: 't-anna' }, body: { pageId: KNOWN_PAGE_ID, title: 'Temp' } }, mkRes())
+    const res = mkRes()
+    await route.removeThreadSharedPage({ params: { id: 't-anna', pageId: KNOWN_PAGE_ID } }, res)
+    const body = sent(res)[1]
+    expect(body.success).toBe(true)
+    expect(body.sharedPages.some(p => p.pageId === KNOWN_PAGE_ID)).toBe(false)
+  })
+
   test('sendOutreach requires a recipient and a reason', async () => {
     const res = mkRes()
     await route.sendOutreach({ body: { toId: 'bob-lindt' } }, res) // no context
