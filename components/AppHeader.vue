@@ -8,6 +8,7 @@
         nuxt-link.navbar-item.nav-link.nav--connecting(to="/connecting") {{ $t('nav.connecting') }}
         nuxt-link.navbar-item.nav-link.nav--market(to="/marketplace") {{ $t('nav.marketplace') }}
         nuxt-link.navbar-item.nav-link.nav--profile(to="/profile") {{ $t('nav.profile') }}
+        nuxt-link.navbar-item.nav-link.nav--firm(v-if="firmManager" to="/firm") {{ $t('nav.firm') }}
       .navbar-end
         .navbar-item
           .notif-bell(ref="notifBell")
@@ -45,10 +46,11 @@ export default {
   name: 'AppHeader',
   mixins: [localeMixin],
   data () {
-    return { notifOpen: false, notifications: [], unreadCount: 0 }
+    return { notifOpen: false, notifications: [], unreadCount: 0, firmManager: false }
   },
   mounted () {
     this.loadNotifications()
+    this.loadMe()
     // Independent outside-click handler for the bell (localeMixin has its own for
     // the language picker; Vue runs both merged mounted hooks).
     this._onDocClickNotif = (e) => {
@@ -66,6 +68,19 @@ export default {
     // English string is stored server-side (CLAUDE.md §Internationalisation).
     notifText (n) {
       return this.$t('notif.' + n.type, n.params || {})
+    },
+    // Show the manager-only "Firm" nav link when the signed-in user is a firm
+    // manager. RBAC SEAM: this flag comes from the mock today; a real role once
+    // FEAT-RBAC lands. Degrade quietly (no link) if the call fails.
+    async loadMe () {
+      try {
+        const res = await fetch('/api/people/me')
+        if (!res.ok) { return }
+        const me = await res.json()
+        this.firmManager = !!me.firmManager
+      } catch (e) {
+        this.firmManager = false
+      }
     },
     async loadNotifications () {
       // Passive background load in the global header — degrade quietly if the
