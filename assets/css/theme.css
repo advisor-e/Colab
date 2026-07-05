@@ -185,8 +185,8 @@ a { color: var(--brand); }
 .pillar--messages .pillar__icon { background: #ffe9f1; }
 .pillar--groups   { border-top-color: var(--amber); }
 .pillar--groups .pillar__icon { background: #fff3da; }
-.pillar--connections { border-top-color: var(--teal); }
-.pillar--connections .pillar__icon { background: #d9f8f1; }
+.pillar--connections { border-top-color: #002b64; }
+.pillar--connections .pillar__icon { background: #dbe6f5; }
 .pillar--profile { border-top-color: #7fd3ff; }
 .pillar--market { border-top-color: #0000FF; }
 .pillar--market .pillar__icon { background: #ffe8e0; }
@@ -221,7 +221,7 @@ a { color: var(--brand); }
 .section-banner--groups   { background: linear-gradient(120deg, var(--amber), #ffc24f); }
 .section-banner--groups h1 { color: #4a3200; }
 .section-banner--connections { background: linear-gradient(120deg, var(--teal), #1ad3b2); }
-.section-banner--connecting { background: linear-gradient(120deg, #0057d9, #00b1e0); }
+.section-banner--connecting { background: #002b64; }
 .section-banner--market { background: #0000FF; }
 
 /* ===== Group detail ===== */

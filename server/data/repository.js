@@ -301,6 +301,19 @@ async function addGroupSharedPage (groupId, memberId, page) {
   return { success: true, sharedPages: enrichShared(g).sharedPages }
 }
 
+// Detach a tool from a group's Shared workspace — the mirror of the add. Removes
+// ONLY the stored reference; it does not touch the Advisor-e page itself. Any
+// member may remove (the same "member manages" approximation; RBAC SEAM).
+async function removeGroupSharedPage (groupId, memberId, pageId) {
+  // SQL SEAM: verify membership; DELETE FROM group_shared_page WHERE group_id=? AND page_id=?
+  const g = groups.find(x => x.id === groupId)
+  if (!g) { return { error: 'GROUP_NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === memberId)) { return { error: 'NOT_MEMBER' } }
+  const id = (pageId || '').trim()
+  if (g.sharedPages) { g.sharedPages = g.sharedPages.filter(p => p.pageId !== id) }
+  return { success: true, sharedPages: enrichShared(g).sharedPages }
+}
+
 async function createGroup (input, creator) {
   // SQL SEAM: INSERT INTO `group` (…); INSERT group_tag rows; INSERT group_member (owner)
   const name = (input.name || '').trim()
@@ -780,7 +793,7 @@ async function markNotificationsRead (userId) {
 module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
-  listGroupJoinRequests, respondJoinRequest, addGroupSharedPage,
+  listGroupJoinRequests, respondJoinRequest, addGroupSharedPage, removeGroupSharedPage,
   listManageableGroups, inviteToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach,
   addThreadSharedPage, removeThreadSharedPage,

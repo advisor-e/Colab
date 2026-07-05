@@ -125,6 +125,17 @@ async function addSharedPage (req, res) {
   ok(res, { success: true, sharedPages: r.sharedPages })
 }
 
+// Detach a tool from a group's Shared workspace (members only). Removes only the
+// stored reference — the Advisor-e page itself is untouched. Mirror of addSharedPage.
+async function removeSharedPage (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.removeGroupSharedPage(req.params.id, me.id, req.params.pageId)
+  if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
+  if (r.error === 'NOT_MEMBER') { fail(res, 403, 'NOT_MEMBER', 'Only a group member can remove a tool.'); return }
+  audit.record({ actorId: me.id, action: 'group.shared_page_removed', targetType: 'group', targetId: req.params.id, meta: { pageId: req.params.pageId } })
+  ok(res, { success: true, sharedPages: r.sharedPages })
+}
+
 // Groups the viewer can invite people into (owner/manager).
 async function listMyGroups (req, res) {
   const me = await currentAdvisor(req)
@@ -383,6 +394,7 @@ module.exports = {
   acceptGroupRequest,
   declineGroupRequest,
   addSharedPage,
+  removeSharedPage,
   messageGroup,
   openGroupChat,
   listMyGroups,
