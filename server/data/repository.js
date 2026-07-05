@@ -293,7 +293,7 @@ async function updateAdvisorInterest (id, fields) {
   // SQL SEAM: UPSERT advisor_interest(available, about); REPLACE advisor_tag rows for strengths/industries/topics
   const a = advisors.find(x => x.id === id)
   if (!a) { return null }
-  ;['available', 'strengths', 'industries', 'topics', 'about'].forEach((k) => {
+  ;['available', 'strengths', 'industries', 'topics', 'about', 'blockFirmManagerView'].forEach((k) => {
     if (Object.prototype.hasOwnProperty.call(fields, k)) { a[k] = fields[k] }
   })
   return a

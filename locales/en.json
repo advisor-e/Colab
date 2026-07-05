@@ -97,7 +97,10 @@
     "crossOrg": "Cross-firm collaboration",
     "crossOrgOpen": "Open — you can discover and collaborate with advisers at other firms",
     "crossOrgClosed": "Closed — limited to advisers within your own firm",
-    "crossOrgNote": "Set by your firm manager."
+    "crossOrgNote": "Set by your firm manager.",
+    "firmManagerHeading": "Firm manager access",
+    "blockFirmManagerView": "Block firm manager view",
+    "blockFirmManagerNote": "When on, your firm manager can't open your account and view it as you. Off (the default) means they can — the standard practice within your firm."
   },
   "discover": {
     "title": "Discover",
