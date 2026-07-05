@@ -54,8 +54,17 @@ export default {
         } else if (this.reviewRecordingField) {
           this.$set(this.reviewDraft, this.reviewRecordingField, transcript)
         } else if (this.voiceField) {
-          // Generic: dictate into a top-level data field (e.g. a message box).
-          this[this.voiceField] = transcript
+          // Generic: dictate into a data field. Supports a top-level field
+          // (e.g. 'reply') or one level of nesting (e.g. 'form.summary' /
+          // 'outreach.context'), set via $set so a nested write stays reactive.
+          const dot = this.voiceField.indexOf('.')
+          if (dot === -1) {
+            this[this.voiceField] = transcript
+          } else {
+            const parent = this.voiceField.slice(0, dot)
+            const child = this.voiceField.slice(dot + 1)
+            this.$set(this[parent], child, transcript)
+          }
         } else {
           this.inputText = transcript
         }
