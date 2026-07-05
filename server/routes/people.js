@@ -23,17 +23,79 @@ function ok (res, data) { res.send(200, data) }
 // Standard error envelope (incl. the mandated timestamp) — see server/utils/sendError.js.
 function fail (res, status, code, message) { sendApiError(res, status, code, message) }
 
-// Resolve the logged-in advisor (dev identity = 'me' under ALLOW_DEV_AUTH).
+// The REAL signed-in advisor id (never the view-as target). The auth middleware
+// sets req.identity from the token/dev; only currentAdvisor() applies view-as, so
+// this always yields the true caller — safe to authorise a view-as against.
+function realAdvisorId (req) {
+  return (req.identity && req.identity.advisorId) || 'me'
+}
+
+// Read a cookie value from the request header.
+function readCookie (req, name) {
+  const raw = (req.headers && req.headers.cookie) || ''
+  const m = raw.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'))
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+// A firm manager "viewing as" one of their advisers. Returns { realId, realName,
+// target } when a VALID view-as is active, else null.
+//
+// SECURITY: this is re-checked on EVERY request (currentAdvisor calls it), so the
+// button is never the gate — a tampered cookie, a cross-firm id, a non-manager, or
+// an adviser who has since switched on "Block firm manager view" all resolve to
+// null and the caller silently reverts to their own identity. See SEC-THREAD-ACL /
+// design/ACTIONS.md for the parallel message-ACL seam.
+async function viewAsContext (req) {
+  const realId = realAdvisorId(req)
+  const asId = readCookie(req, 'viewAs')
+  if (!asId || asId === realId) { return null }
+  const manager = await repo.getAdvisorById(realId)
+  if (!manager || !repo.isFirmManager(realId)) { return null }
+  const target = await repo.getAdvisorById(asId)
+  if (!target || target.firm !== manager.firm || target.blockFirmManagerView) { return null }
+  return { realId, realName: manager.name, target }
+}
+
+// Resolve the EFFECTIVE advisor for the request: the view-as target when a manager
+// is validly viewing as them, otherwise the real signed-in advisor (dev = 'me').
 async function currentAdvisor (req) {
-  const id = (req.identity && req.identity.advisorId) || 'me'
+  const ctx = await viewAsContext(req)
+  if (ctx) { return ctx.target }
+  const id = realAdvisorId(req)
   return (await repo.getAdvisorById(id)) || { id, name: 'You', firm: 'Advisor-e' }
 }
 
 async function getMe (req, res) {
-  const me = await currentAdvisor(req)
-  // Attach the firm's cross-org posture (read-only on the profile; the manager
-  // toggle is deferred with FEAT-RBAC — see design/ACTIONS.md).
-  ok(res, Object.assign({}, me, { crossOrgPosture: await repo.getOrgPosture(me.firm) }))
+  const ctx = await viewAsContext(req)
+  const me = ctx ? ctx.target : await currentAdvisor(req)
+  // When viewing-as, tell the frontend so it can show the persistent banner.
+  const viewingAs = ctx ? { realName: ctx.realName, asName: ctx.target.name, asId: ctx.target.id } : null
+  ok(res, Object.assign({}, me, { crossOrgPosture: await repo.getOrgPosture(me.firm), viewingAs }))
+}
+
+// Start viewing as one of the manager's advisers. Validates against the REAL
+// caller (a firm manager, same firm, target hasn't blocked) then sets the viewAs
+// cookie; every subsequent request re-validates in viewAsContext.
+async function startViewAs (req, res) {
+  const realId = realAdvisorId(req)
+  const manager = await repo.getAdvisorById(realId)
+  if (!manager || !repo.isFirmManager(realId)) { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can view as an adviser.'); return }
+  const asId = (req.body || {}).advisorId
+  const target = await repo.getAdvisorById(asId)
+  if (!target || target.firm !== manager.firm) { fail(res, 404, 'NOT_FOUND', 'That adviser is not in your firm.'); return }
+  if (target.id === realId) { fail(res, 400, 'SELF', "That's your own account."); return }
+  if (target.blockFirmManagerView) { fail(res, 403, 'BLOCKED', 'This adviser has blocked the firm manager view.'); return }
+  res.setHeader('Set-Cookie', 'viewAs=' + encodeURIComponent(target.id) + '; Path=/; SameSite=Lax; HttpOnly')
+  audit.record({ actorId: realId, action: 'firm.view_as_start', targetType: 'advisor', targetId: target.id })
+  ok(res, { success: true, asId: target.id, asName: target.name })
+}
+
+// Stop viewing-as: clear the cookie. Returns to the manager's own view.
+// eslint-disable-next-line require-await -- async signature required by the Restify 9 handler contract
+async function exitViewAs (req, res) {
+  res.setHeader('Set-Cookie', 'viewAs=; Path=/; Max-Age=0; SameSite=Lax; HttpOnly')
+  audit.record({ actorId: realAdvisorId(req), action: 'firm.view_as_exit' })
+  ok(res, { success: true })
 }
 
 async function updateMe (req, res) {
@@ -429,6 +491,8 @@ async function setFirmPosture (req, res) {
 module.exports = {
   getFirmConsole,
   setFirmPosture,
+  startViewAs,
+  exitViewAs,
   getMe,
   updateMe,
   listAdvisors,
