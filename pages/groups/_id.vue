@@ -31,7 +31,9 @@
           p.has-text-grey.is-size-7(v-if="!(group.sharedPages || []).length") {{ $t('group.noSharedPages') }}
           .is-flex.is-align-items-center.is-justify-content-space-between.mb-2(v-for="p in (group.sharedPages || [])" :key="p.pageId")
             span 📄 {{ p.title }}
-            a.button.is-small.is-light(:href="p.openUrl" target="_blank" rel="noopener") {{ $t('group.openInAdvisorE') }} ↗
+            .buttons.mb-0
+              a.button.is-small.is-light(:href="p.openUrl" target="_blank" rel="noopener") {{ $t('group.openInAdvisorE') }} ↗
+              b-button.is-small.is-light(v-if="group.joinStatus === 'member'" @click="removeTool(p)") {{ $t('group.removeTool') }}
 
           .buttons.mt-5
             span.tag.is-success.is-light.is-medium(v-if="group.joinStatus === 'member'") ✓ {{ $t('group.member') }}
@@ -225,6 +227,34 @@ export default {
           this.toolModalOpen = false
           this.selectedTool = null
           this.toolQuery = ''
+        } else {
+          const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
+          this.$buefy.toast.open({ message: msg, type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
+      }
+    },
+    // Confirm, then detach a tool from the Shared workspace. Removes only the
+    // stored reference — nothing in Advisor-e is deleted (message says so).
+    removeTool (p) {
+      this.$buefy.dialog.confirm({
+        message: this.$t('group.removeToolConfirm', { title: p.title }),
+        confirmText: this.$t('group.removeTool'),
+        cancelText: this.$t('common.cancel'),
+        type: 'is-danger',
+        onConfirm: () => this.doRemoveTool(p)
+      })
+    },
+    async doRemoveTool (p) {
+      try {
+        const res = await fetch('/api/people/groups/' + this.group.id + '/shared-pages/' + encodeURIComponent(p.pageId), {
+          method: 'DELETE'
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.$set(this.group, 'sharedPages', data.sharedPages)
+          this.$buefy.toast.open({ message: this.$t('group.toolRemoved'), type: 'is-success' })
         } else {
           const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })
