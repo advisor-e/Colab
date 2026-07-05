@@ -32,7 +32,10 @@ const advisors = [
     city: 'Munich', country: 'DE', timezone: 'CET',
     linkedin: 'https://linkedin.com/in/mikebarnes', email: 'mike@advisor-e.com', phone: '+49 89 5550 1234',
     available: true, strengths: ['capital raising', 'tax'], industries: ['seafood', 'hospitality'],
-    topics: ['M&A', 'valuations'], about: '20 yrs helping owner-managed firms with growth and exit.'
+    topics: ['M&A', 'valuations'], about: '20 yrs helping owner-managed firms with growth and exit.',
+    // RBAC SEAM: the dev user is the Firm Manager of Advisor-e. Real role comes from
+    // the Advisory JWT (AUTH.managerRole) once FEAT-RBAC lands — see design/ACTIONS.md.
+    firmManager: true
   },
   {
     id: 'bob-lindt', name: 'Bob Lindt', title: 'Partner', firm: 'Lindt & Co',
@@ -51,6 +54,45 @@ const advisors = [
     city: 'Dublin', country: 'IE', timezone: 'GMT', linkedin: '',
     available: true, strengths: ['business coaching', 'succession'], industries: ['hospitality', 'retail'],
     topics: ['exit planning'], about: 'Coaches owner-managers through scale-up and succession.'
+  },
+  // ── Advisor-e colleagues (same firm as the dev user) — populate the Firm Manager
+  //    console + the "view as adviser" demo. `blockFirmManagerView` is the advisor's
+  //    opt-out; James has switched it on to show the blocked state. `lastActive` is
+  //    demo text (real activity timestamps are a MySQL seam — no timestamps in mock).
+  {
+    id: 'priya-nair', name: 'Priya Nair', title: 'Senior Adviser', firm: 'Advisor-e',
+    city: 'Munich', country: 'DE', timezone: 'CET', linkedin: '',
+    available: true, strengths: ['restructuring', 'cashflow'], industries: ['retail', 'manufacturing'],
+    topics: ['turnaround'], about: 'Hands-on restructuring and 13-week cashflow work.',
+    blockFirmManagerView: false, lastActive: 'Today'
+  },
+  {
+    id: 'tom-fischer', name: 'Tom Fischer', title: 'Adviser', firm: 'Advisor-e',
+    city: 'Berlin', country: 'DE', timezone: 'CET', linkedin: '',
+    available: false, strengths: ['tax', 'compliance'], industries: ['professional services'],
+    topics: ['tax automation'], about: 'Tax and compliance adviser; building automation workflows.',
+    blockFirmManagerView: false, lastActive: '2 days ago'
+  },
+  {
+    id: 'sofia-marchetti', name: 'Sofia Marchetti', title: 'Adviser', firm: 'Advisor-e',
+    city: 'Milan', country: 'IT', timezone: 'CET', linkedin: '',
+    available: true, strengths: ['valuation', 'M&A'], industries: ['food production', 'hospitality'],
+    topics: ['valuations'], about: 'Valuation and deal support across food & hospitality.',
+    blockFirmManagerView: false, lastActive: 'Today'
+  },
+  {
+    id: 'james-obrien', name: "James O'Brien", title: 'Associate', firm: 'Advisor-e',
+    city: 'Dublin', country: 'IE', timezone: 'GMT', linkedin: '',
+    available: false, strengths: ['bookkeeping', 'onboarding'], industries: ['retail'],
+    topics: ['client onboarding'], about: 'Associate supporting onboarding and client setup.',
+    blockFirmManagerView: true, lastActive: '1 week ago'
+  },
+  {
+    id: 'lena-vogel', name: 'Lena Vogel', title: 'Adviser', firm: 'Advisor-e',
+    city: 'Hamburg', country: 'DE', timezone: 'CET', linkedin: '',
+    available: true, strengths: ['forecasting', 'reporting'], industries: ['seafood', 'logistics'],
+    topics: ['forecasting'], about: 'Forecasting and management reporting specialist.',
+    blockFirmManagerView: false, lastActive: 'Yesterday'
   }
 ]
 
@@ -87,11 +129,11 @@ const groups = [
   // demonstrable in the show-home (a pending request is seeded below).
   {
     id: 'cashflow-clinic', name: 'Cashflow Clinic', icon: '💧',
-    createdBy: 'Mike Barnes (Advisor-e)', firms: 1, memberCount: 1,
+    createdBy: 'Mike Barnes (Advisor-e)', firms: 1, memberCount: 3,
     visibility: 'listed', joinPolicy: 'request-approval',
     tags: ['cashflow', 'forecasting'],
     summary: 'A small working group building a shared 13-week cashflow toolkit.',
-    members: [{ id: 'me', name: 'Mike Barnes' }],
+    members: [{ id: 'me', name: 'Mike Barnes' }, { id: 'priya-nair', name: 'Priya Nair' }, { id: 'sofia-marchetti', name: 'Sofia Marchetti' }],
     sharedPages: [{ pageId: 'ae-cashflow-13week-01', title: '13-Week Cashflow Model' }, { pageId: 'ae-onboarding-checklist-02', title: 'Client Onboarding Checklist' }]
   }
 ]
@@ -117,7 +159,8 @@ let connSeq = 1
 // SQL SEAM: a `group_join_request` table. The seed row lets the dev user (owner of
 // "Cashflow Clinic") see the approval UI in the show-home; production starts empty.
 const groupJoinRequests = [
-  { id: 'gjr-seed-1', groupId: 'cashflow-clinic', advisorId: 'anna-r', status: 'requested' }
+  { id: 'gjr-seed-1', groupId: 'cashflow-clinic', advisorId: 'anna-r', status: 'requested' },
+  { id: 'gjr-seed-2', groupId: 'cashflow-clinic', advisorId: 'bob-lindt', status: 'requested' }
 ]
 let gjrSeq = 1
 
@@ -584,6 +627,66 @@ async function setOrgPosture (firm, posture) {
   return { firm: firm, posture: posture }
 }
 
+// ── Firm Manager ─────────────────────────────────────────────────────────────
+// RBAC SEAM: "is this advisor a Firm Manager?" In the mock it's the `firmManager`
+// seed flag; in production it comes from the Advisory JWT role (AUTH.managerRole)
+// once FEAT-RBAC lands (Q-ROLES). Everything manager-gated funnels through here.
+function isFirmManager (advisorId) {
+  const a = advisors.find(x => x.id === advisorId)
+  return !!(a && a.firmManager)
+}
+
+// The Firm Manager console payload: the manager's firm, its advisers (with each
+// one's availability + whether they've blocked the manager view), headline stats,
+// and the pending join requests to the firm's groups. Read-only assembly over the
+// in-memory store; activity/audit is added by the route from server/data/auditLog.
+async function getFirmConsole (managerId) {
+  // SQL SEAM: JOINs over advisor(+interest), group_member, group_join_request scoped
+  // to the manager's firm. Guarded to Firm Managers (RBAC SEAM above).
+  const me = advisors.find(a => a.id === managerId)
+  if (!me) { return { error: 'NOT_FOUND' } }
+  if (!me.firmManager) { return { error: 'NOT_MANAGER' } }
+  const firm = me.firm
+  const firmAdvisors = advisors.filter(a => a.firm === firm)
+  const firmIds = new Set(firmAdvisors.map(a => a.id))
+  const firmGroups = groups.filter(g => (g.members || []).some(m => firmIds.has(m.id)))
+  const firmGroupIds = new Set(firmGroups.map(g => g.id))
+  const groupCountFor = id => groups.filter(g => (g.members || []).some(m => m.id === id)).length
+  const approvals = groupJoinRequests
+    .filter(r => r.status === 'requested' && firmGroupIds.has(r.groupId))
+    .map((r) => {
+      const adv = advisors.find(a => a.id === r.advisorId) || { id: r.advisorId, name: r.advisorId, firm: '' }
+      const g = groups.find(x => x.id === r.groupId)
+      return { id: r.id, advisor: { id: adv.id, name: adv.name, firm: adv.firm }, groupId: r.groupId, groupName: g ? g.name : r.groupId }
+    })
+  return {
+    firm,
+    manager: { id: me.id, name: me.name },
+    stats: {
+      advisers: firmAdvisors.length,
+      groups: firmGroups.length,
+      pendingApprovals: approvals.length,
+      crossOrgPosture: orgPostureFor(firm)
+    },
+    advisers: firmAdvisors.map(a => ({
+      id: a.id, name: a.name, title: a.title, available: !!a.available,
+      blocked: !!a.blockFirmManagerView, isMe: a.id === managerId,
+      groupCount: groupCountFor(a.id), lastActive: a.lastActive || null
+    })),
+    approvals
+  }
+}
+
+// Manager sets their own firm's cross-org posture (the console toggle). Reuses the
+// posture seam; guarded to a Firm Manager of that firm.
+async function setFirmPosture (managerId, posture) {
+  const me = advisors.find(a => a.id === managerId)
+  if (!me || !me.firmManager) { return { error: 'NOT_MANAGER' } }
+  const r = await setOrgPosture(me.firm, posture)
+  if (r.error) { return r }
+  return { success: true, firm: me.firm, crossOrgPosture: posture }
+}
+
 async function requestConnection (fromId, toId) {
   // SQL SEAM: INSERT INTO connection (requester_id, addressee_id, 'pending') ON DUPLICATE KEY UPDATE …
   if (fromId === toId) { return null }
@@ -810,5 +913,6 @@ module.exports = {
   requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
-  canReachAdvisor, getOrgPosture, setOrgPosture
+  canReachAdvisor, getOrgPosture, setOrgPosture,
+  isFirmManager, getFirmConsole, setFirmPosture
 }

@@ -887,3 +887,51 @@ describe('audit trail', () => {
     expect(sent(filtered)[1].entries.every(e => e.action === 'group.create')).toBe(true)
   })
 })
+
+describe('firm manager console', () => {
+  test('getFirmConsole returns the firm, advisers, stats and approvals for a manager', async () => {
+    const res = mkRes()
+    await route.getFirmConsole({}, res) // dev identity = 'me' (a firm manager)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.firm).toBe('Advisor-e')
+    expect(body.advisers.some(a => a.id === 'me' && a.isMe)).toBe(true)
+    // James has switched on "block firm manager view".
+    expect(body.advisers.some(a => a.id === 'james-obrien' && a.blocked)).toBe(true)
+    expect(body.stats.advisers).toBeGreaterThanOrEqual(6)
+    expect(Array.isArray(body.approvals)).toBe(true)
+    expect(Array.isArray(body.activity)).toBe(true)
+  })
+
+  test('getFirmConsole 403s for a non-manager', async () => {
+    const res = mkRes()
+    await route.getFirmConsole({ identity: { advisorId: 'bob-lindt' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('NOT_MANAGER')
+  })
+
+  test('setFirmPosture toggles the firm posture and it shows in the console + activity', async () => {
+    const closed = mkRes()
+    await route.setFirmPosture({ body: { posture: 'closed' } }, closed)
+    expect(sent(closed)[0]).toBe(200)
+    expect(sent(closed)[1].crossOrgPosture).toBe('closed')
+
+    const res = mkRes()
+    await route.getFirmConsole({}, res)
+    expect(sent(res)[1].stats.crossOrgPosture).toBe('closed')
+    // The posture change was audited and surfaces in the firm activity feed.
+    expect(sent(res)[1].activity.some(e => e.action === 'firm.posture_set')).toBe(true)
+  })
+
+  test('setFirmPosture rejects a bad posture (400) and a non-manager (403)', async () => {
+    const bad = mkRes()
+    await route.setFirmPosture({ body: { posture: 'sideways' } }, bad)
+    expect(sent(bad)[0]).toBe(400)
+    expect(sent(bad)[1].error.code).toBe('BAD_POSTURE')
+
+    const nm = mkRes()
+    await route.setFirmPosture({ identity: { advisorId: 'bob-lindt' }, body: { posture: 'open' } }, nm)
+    expect(sent(nm)[0]).toBe(403)
+    expect(sent(nm)[1].error.code).toBe('NOT_MANAGER')
+  })
+})

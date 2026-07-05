@@ -86,6 +86,8 @@ a { color: var(--brand); }
 .navbar.is-light a.nav--connecting:hover, .navbar.is-light a.nav--connecting.nuxt-link-active { background: #002b64 !important; color:#fff !important; }
 .navbar.is-light .nav--market { color: #0000FF !important; }
 .navbar.is-light a.nav--market:hover, .navbar.is-light a.nav--market.nuxt-link-active { background: #0000FF !important; color:#fff !important; }
+.navbar.is-light .nav--firm { color: #123a76 !important; }
+.navbar.is-light a.nav--firm:hover, .navbar.is-light a.nav--firm.nuxt-link-active { background: #123a76 !important; color:#fff !important; }
 
 /* ===== Buttons ===== */
 .button {

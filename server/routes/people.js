@@ -396,7 +396,39 @@ async function getAuditLog (req, res) {
   ok(res, { entries: await audit.list({ actorId: q.actorId, action: q.action, limit }) })
 }
 
+// ── Firm Manager console ─────────────────────────────────────────────────────
+// The manager's firm dashboard: advisers (with availability + whether they've
+// blocked the manager view), headline stats, pending join requests, and a recent
+// activity feed drawn from the (real) audit trail, scoped to the firm's advisers.
+// Gated to a Firm Manager (RBAC SEAM in repo.getFirmConsole).
+async function getFirmConsole (req, res) {
+  const me = await currentAdvisor(req)
+  const data = await repo.getFirmConsole(me.id)
+  if (data.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can open the firm console.'); return }
+  if (data.error) { fail(res, 404, 'NOT_FOUND', 'Firm not found.'); return }
+  const nameById = {}
+  const firmIds = new Set(data.advisers.map((a) => { nameById[a.id] = a.name; return a.id }))
+  const activity = (await audit.list({ limit: 100 }))
+    .filter(e => firmIds.has(e.actorId))
+    .slice(0, 8)
+    .map(e => ({ at: e.at, actorName: nameById[e.actorId] || e.actorId, action: e.action, meta: e.meta }))
+  ok(res, Object.assign({}, data, { activity }))
+}
+
+// Firm Manager sets their own firm's cross-org posture (the console toggle).
+async function setFirmPosture (req, res) {
+  const me = await currentAdvisor(req)
+  const posture = (req.body || {}).posture
+  const r = await repo.setFirmPosture(me.id, posture)
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can change this.'); return }
+  if (r.error === 'BAD_POSTURE') { fail(res, 400, 'BAD_POSTURE', 'Posture must be "open" or "closed".'); return }
+  audit.record({ actorId: me.id, action: 'firm.posture_set', targetType: 'firm', targetId: r.firm, meta: { posture } })
+  ok(res, r)
+}
+
 module.exports = {
+  getFirmConsole,
+  setFirmPosture,
   getMe,
   updateMe,
   listAdvisors,
