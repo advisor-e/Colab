@@ -50,9 +50,11 @@ async function viewAsContext (req) {
   const asId = readCookie(req, 'viewAs')
   if (!asId || asId === realId) { return null }
   const manager = await repo.getAdvisorById(realId)
-  if (!manager || !repo.isFirmManager(realId)) { return null }
+  if (!manager || !repo.isManager(realId)) { return null }
   const target = await repo.getAdvisorById(asId)
-  if (!target || target.firm !== manager.firm || target.blockFirmManagerView) { return null }
+  // A manager may view-as only within their own scope (roles.canManage: firm for a
+  // Firm Manager, country for a Group Manager, all for Global/Mentor) — Q-ROLES.
+  if (!target || !repo.canManage(manager, target) || target.blockFirmManagerView) { return null }
   return { realId, realName: manager.name, target }
 }
 
@@ -79,10 +81,11 @@ async function getMe (req, res) {
 async function startViewAs (req, res) {
   const realId = realAdvisorId(req)
   const manager = await repo.getAdvisorById(realId)
-  if (!manager || !repo.isFirmManager(realId)) { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can view as an adviser.'); return }
+  if (!manager || !repo.isManager(realId)) { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can view as an adviser.'); return }
   const asId = (req.body || {}).advisorId
   const target = await repo.getAdvisorById(asId)
-  if (!target || target.firm !== manager.firm) { fail(res, 404, 'NOT_FOUND', 'That adviser is not in your firm.'); return }
+  // Scope check (Q-ROLES): a manager may only view-as someone within their branch.
+  if (!target || !repo.canManage(manager, target)) { fail(res, 404, 'NOT_FOUND', 'That adviser is not in your firm.'); return }
   if (target.id === realId) { fail(res, 400, 'SELF', "That's your own account."); return }
   if (target.blockFirmManagerView) { fail(res, 403, 'BLOCKED', 'This adviser has blocked the firm manager view.'); return }
   res.setHeader('Set-Cookie', 'viewAs=' + encodeURIComponent(target.id) + '; Path=/; SameSite=Lax; HttpOnly')
@@ -477,6 +480,22 @@ async function getFirmConsole (req, res) {
   ok(res, Object.assign({}, data, { activity }))
 }
 
+// Console PREVIEW (show-home only): render a given tier's console as a seeded demo
+// manager, so each tier's view can be seen without a real login. DEV-ONLY — refused
+// in production, where the single role-gated /firm page serves every tier by login.
+async function getConsolePreview (req, res) {
+  if (process.env.ALLOW_DEV_AUTH !== 'true') { fail(res, 404, 'NOT_FOUND', 'Not found.'); return }
+  const data = await repo.getConsolePreview(req.params.tier)
+  if (data.error) { fail(res, 404, 'NOT_FOUND', 'Unknown preview.'); return }
+  const nameById = {}
+  const ids = new Set(data.advisers.map((a) => { nameById[a.id] = a.name; return a.id }))
+  const activity = (await audit.list({ limit: 100 }))
+    .filter(e => ids.has(e.actorId))
+    .slice(0, 8)
+    .map(e => ({ at: e.at, actorName: nameById[e.actorId] || e.actorId, action: e.action, meta: e.meta }))
+  ok(res, Object.assign({}, data, { activity, preview: true }))
+}
+
 // Firm Manager sets their own firm's cross-org posture (the console toggle).
 async function setFirmPosture (req, res) {
   const me = await currentAdvisor(req)
@@ -490,6 +509,7 @@ async function setFirmPosture (req, res) {
 
 module.exports = {
   getFirmConsole,
+  getConsolePreview,
   setFirmPosture,
   startViewAs,
   exitViewAs,

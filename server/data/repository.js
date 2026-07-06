@@ -23,6 +23,7 @@
 // const pool = require('../utils/db')   // <-- uncomment when wiring SQL
 
 const { CROSS_ORG, ADVISOR_E } = require('../../config/integration')
+const roles = require('./roles') // role/tier resolver (Q-ROLES) — the RBAC seam
 
 // ── In-memory dev store ──────────────────────────────────────────────────────
 
@@ -627,33 +628,55 @@ async function setOrgPosture (firm, posture) {
   return { firm: firm, posture: posture }
 }
 
-// ── Firm Manager ─────────────────────────────────────────────────────────────
-// RBAC SEAM: "is this advisor a Firm Manager?" In the mock it's the `firmManager`
-// seed flag; in production it comes from the Advisory JWT role (AUTH.managerRole)
-// once FEAT-RBAC lands (Q-ROLES). Everything manager-gated funnels through here.
+// ── Managers (role hierarchy · Q-ROLES) ──────────────────────────────────────
+// RBAC SEAM (Q-ROLES demo): designate a Group (country) Manager for Germany so the
+// higher-tier scope is demonstrable. Anna Richter (country DE) then manages every
+// DE adviser ACROSS firms (Advisor-e + BDO Germany), not just her own firm —
+// proving the Group tier spans firms within a country. Interim override; the real
+// designation comes from the Advisory JWT role (AUTH.roleClaim). Admin-set only
+// (no self-promotion). Illustrative demo data. See server/data/roles.js.
+roles.setOverride('anna-r', 'group_manager')
+
+// RBAC SEAM: "is this advisor a Firm Manager?" Kept for back-compat; the console
+// and view-as now gate on isManager (any managing tier) via the roles resolver.
 function isFirmManager (advisorId) {
   const a = advisors.find(x => x.id === advisorId)
   return !!(a && a.firmManager)
+}
+
+// "Is this advisor a manager of anyone?" — true for any managing tier
+// (mentor/global/group/firm), resolved through roles.js (Q-ROLES). Everything
+// manager-gated (the console, view-as) funnels through here.
+function isManager (advisorId) {
+  const a = advisors.find(x => x.id === advisorId)
+  return roles.isManagerTier(roles.resolveTier(a))
+}
+
+// May `manager` see/act on `target` per the resolved hierarchy + scope (roles.js)?
+// `manager`/`target` are advisor RECORDS (the routes already hold them). Firm
+// Manager ⇒ same firm; Group Manager ⇒ same country; Global/Mentor ⇒ all.
+function canManage (manager, target) {
+  return roles.canManage(manager, target)
 }
 
 // The Firm Manager console payload: the manager's firm, its advisers (with each
 // one's availability + whether they've blocked the manager view), headline stats,
 // and the pending join requests to the firm's groups. Read-only assembly over the
 // in-memory store; activity/audit is added by the route from server/data/auditLog.
-async function getFirmConsole (managerId) {
-  // SQL SEAM: JOINs over advisor(+interest), group_member, group_join_request scoped
-  // to the manager's firm. Guarded to Firm Managers (RBAC SEAM above).
-  const me = advisors.find(a => a.id === managerId)
-  if (!me) { return { error: 'NOT_FOUND' } }
-  if (!me.firmManager) { return { error: 'NOT_MANAGER' } }
+// Assemble the console payload for a given manager record. Scope = the advisers the
+// manager oversees (roles.canManage — firm for a Firm Manager, country for a Group
+// Manager, all for Global/Mentor). ONE shape serves every tier; the frontend labels
+// itself from `scope.tier`. `me` may be a real advisor OR a synthetic demo manager
+// (preview) — it only needs id/name/firm/country/tier.
+function buildConsole (me) {
   const firm = me.firm
-  const firmAdvisors = advisors.filter(a => a.firm === firm)
-  const firmIds = new Set(firmAdvisors.map(a => a.id))
-  const firmGroups = groups.filter(g => (g.members || []).some(m => firmIds.has(m.id)))
-  const firmGroupIds = new Set(firmGroups.map(g => g.id))
+  const managed = advisors.filter(a => roles.canManage(me, a))
+  const managedIds = new Set(managed.map(a => a.id))
+  const managedGroups = groups.filter(g => (g.members || []).some(m => managedIds.has(m.id)))
+  const managedGroupIds = new Set(managedGroups.map(g => g.id))
   const groupCountFor = id => groups.filter(g => (g.members || []).some(m => m.id === id)).length
   const approvals = groupJoinRequests
-    .filter(r => r.status === 'requested' && firmGroupIds.has(r.groupId))
+    .filter(r => r.status === 'requested' && managedGroupIds.has(r.groupId))
     .map((r) => {
       const adv = advisors.find(a => a.id === r.advisorId) || { id: r.advisorId, name: r.advisorId, firm: '' }
       const g = groups.find(x => x.id === r.groupId)
@@ -661,27 +684,58 @@ async function getFirmConsole (managerId) {
     })
   return {
     firm,
+    // The manager's tier + the scope this console is showing (Q-ROLES). The frontend
+    // uses `scope.tier` to pick the title / scope chip / subtitle for the view.
+    scope: { tier: roles.resolveTier(me), firm: me.firm, country: me.country },
     manager: { id: me.id, name: me.name },
     stats: {
-      advisers: firmAdvisors.length,
-      groups: firmGroups.length,
+      advisers: managed.length,
+      groups: managedGroups.length,
       pendingApprovals: approvals.length,
       crossOrgPosture: orgPostureFor(firm)
     },
-    advisers: firmAdvisors.map(a => ({
+    advisers: managed.map(a => ({
       id: a.id, name: a.name, title: a.title, available: !!a.available,
-      blocked: !!a.blockFirmManagerView, isMe: a.id === managerId,
+      blocked: !!a.blockFirmManagerView, isMe: a.id === me.id,
       groupCount: groupCountFor(a.id), lastActive: a.lastActive || null
     })),
     approvals
   }
 }
 
+async function getFirmConsole (managerId) {
+  // SQL SEAM: JOINs over advisor(+interest), group_member, group_join_request scoped
+  // to the manager's managed set. Guarded to a managing tier (Q-ROLES).
+  const me = advisors.find(a => a.id === managerId)
+  if (!me) { return { error: 'NOT_FOUND' } }
+  if (!roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_MANAGER' } }
+  return buildConsole(me)
+}
+
+// ── Console previews (show-home only; the route is dev-gated) ─────────────────
+// Render the console AS a seeded demo manager of a given tier, so each tier's view
+// can be previewed without a real login. PRODUCTION collapses to the single
+// role-gated page (getFirmConsole) — these demo personas are never reachable there.
+// Fixed personas only (never an arbitrary id): group = the real DE Group Manager;
+// global/mentor = synthetic managers over the whole mock network.
+const DEMO_MANAGERS = {
+  group: () => advisors.find(a => a.id === 'anna-r'),
+  global: () => ({ id: 'demo-global', name: 'Demo Global Manager', title: 'Global Manager', firm: 'Advisor-e', country: 'DE', tier: 'global_manager' }),
+  mentor: () => ({ id: 'demo-mentor', name: 'Demo Mentor', title: 'Mentor', firm: 'Advisor-e', country: 'DE', tier: 'mentor' })
+}
+
+async function getConsolePreview (tier) {
+  const resolver = DEMO_MANAGERS[tier]
+  const me = resolver ? resolver() : null
+  if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_FOUND' } }
+  return buildConsole(me)
+}
+
 // Manager sets their own firm's cross-org posture (the console toggle). Reuses the
 // posture seam; guarded to a Firm Manager of that firm.
 async function setFirmPosture (managerId, posture) {
   const me = advisors.find(a => a.id === managerId)
-  if (!me || !me.firmManager) { return { error: 'NOT_MANAGER' } }
+  if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_MANAGER' } }
   const r = await setOrgPosture(me.firm, posture)
   if (r.error) { return r }
   return { success: true, firm: me.firm, crossOrgPosture: posture }
@@ -914,5 +968,5 @@ module.exports = {
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
   canReachAdvisor, getOrgPosture, setOrgPosture,
-  isFirmManager, getFirmConsole, setFirmPosture
+  isFirmManager, isManager, canManage, getFirmConsole, getConsolePreview, setFirmPosture
 }

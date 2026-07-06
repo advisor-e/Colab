@@ -1004,3 +1004,95 @@ describe('firm manager console', () => {
     expect(sent(nm)[1].error.code).toBe('NOT_MANAGER')
   })
 })
+
+describe('role hierarchy (Q-ROLES) — Group (country) Manager scope', () => {
+  // Anna Richter (BDO Germany, country DE) is seeded as the demo Group Manager for
+  // Germany (server/data/repository.js → roles.setOverride). Her console therefore
+  // spans EVERY German adviser across firms — the higher tier reusing the same
+  // console the Firm tier uses, with a wider scope.
+  test('getFirmConsole for a Group Manager spans every firm in the country', async () => {
+    const res = mkRes()
+    await route.getFirmConsole({ identity: { advisorId: 'anna-r' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.scope.tier).toBe('group_manager')
+    const ids = body.advisers.map(a => a.id)
+    // Cross-firm: Anna (BDO Germany) + Mike & Priya (Advisor-e) — all German.
+    expect(ids).toEqual(expect.arrayContaining(['anna-r', 'me', 'priya-nair']))
+    // Country-scoped: no IE / CH / IT advisers leak in.
+    expect(ids).not.toContain('sara-okafor') // IE
+    expect(ids).not.toContain('bob-lindt') // CH
+    expect(ids).not.toContain('sofia-marchetti') // IT
+    expect(body.stats.advisers).toBe(5) // exactly the five German advisers
+  })
+
+  test('a Firm Manager still sees ONLY their own firm (the Group tier does not leak down)', async () => {
+    const res = mkRes()
+    await route.getFirmConsole({}, res) // dev identity = 'me' (Advisor-e firm manager)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.scope.tier).toBe('firm_manager')
+    const ids = body.advisers.map(a => a.id)
+    expect(ids).toContain('priya-nair') // same firm (Advisor-e)
+    expect(ids).not.toContain('anna-r') // BDO Germany — a different firm
+  })
+
+  test('a Group Manager can view-as an adviser in ANOTHER firm in the same country', async () => {
+    const res = mkResH()
+    await route.startViewAs({ identity: { advisorId: 'anna-r' }, body: { advisorId: 'priya-nair' } }, res)
+    expect(sent(res)[0]).toBe(200) // Priya is Advisor-e, but same country (DE)
+    expect(setCookieOf(res)).toMatch(/viewAs=priya-nair/)
+  })
+
+  test('a Group Manager cannot view-as an adviser in another country', async () => {
+    const res = mkResH()
+    await route.startViewAs({ identity: { advisorId: 'anna-r' }, body: { advisorId: 'sara-okafor' } }, res) // IE
+    expect(sent(res)[0]).toBe(404)
+  })
+})
+
+describe('console previews (show-home, dev-gated)', () => {
+  const orig = process.env.ALLOW_DEV_AUTH
+  afterEach(() => {
+    if (orig === undefined) { delete process.env.ALLOW_DEV_AUTH } else { process.env.ALLOW_DEV_AUTH = orig }
+  })
+
+  test('a preview is refused (404) unless dev-auth is on (hidden in production)', async () => {
+    delete process.env.ALLOW_DEV_AUTH
+    const res = mkRes()
+    await route.getConsolePreview({ params: { tier: 'group' } }, res)
+    expect(sent(res)[0]).toBe(404)
+  })
+
+  test('the group preview renders the country-manager view across firms', async () => {
+    process.env.ALLOW_DEV_AUTH = 'true'
+    const res = mkRes()
+    await route.getConsolePreview({ params: { tier: 'group' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.preview).toBe(true)
+    expect(body.scope.tier).toBe('group_manager')
+    const ids = body.advisers.map(a => a.id)
+    expect(ids).toEqual(expect.arrayContaining(['anna-r', 'me', 'priya-nair'])) // BDO + Advisor-e
+    expect(ids).not.toContain('sara-okafor') // IE — out of the country scope
+  })
+
+  test('the global and mentor previews span the whole network', async () => {
+    process.env.ALLOW_DEV_AUTH = 'true'
+    for (const tier of ['global', 'mentor']) {
+      const res = mkRes()
+      await route.getConsolePreview({ params: { tier } }, res)
+      const [status, body] = sent(res)
+      expect(status).toBe(200)
+      expect(body.scope.tier).toBe(tier === 'global' ? 'global_manager' : 'mentor')
+      expect(body.advisers.length).toBe(9) // everyone in the mock network
+    }
+  })
+
+  test('an unknown preview tier is 404', async () => {
+    process.env.ALLOW_DEV_AUTH = 'true'
+    const res = mkRes()
+    await route.getConsolePreview({ params: { tier: 'nope' } }, res)
+    expect(sent(res)[0]).toBe(404)
+  })
+})
