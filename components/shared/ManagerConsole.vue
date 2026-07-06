@@ -35,15 +35,24 @@
             .v
               span.tag.is-medium(:class="postureOpen ? 'is-success is-light' : 'is-danger is-light'") {{ postureOpen ? $t('firm.open') : $t('firm.closed') }}
 
-        //- Cross-firm collaboration toggle — only the Firm tier owns this control.
-        //- Higher tiers set the ceiling in a later slice (FEAT-CROSSORG-GROUPS).
-        .box(v-if="isFirm")
+        //- Cross-org collaboration toggle — each manager tier sets its OWN level
+        //- (Firm→branch, Group→country, Global→brand). A lower level may only
+        //- tighten; a stricter level above CAPS an Open choice, which we show
+        //- rather than hide (owner's Option A). Ceiling model lives in the backend.
+        .box(v-if="crossOrg")
           p.label {{ $t('firm.collabTitle') }}
           p.has-text-grey.is-size-7.mb-3 {{ $t('firm.collabSub') }}
+          //- The ceiling handed down from the level(s) above (read-only context).
+          p.co-ceiling.mb-2(v-if="hasCeiling")
+            span.has-text-grey.is-size-7 {{ $t('console.crossOrg.ceilingLabel') }}
+            span.tag.ml-2(:class="crossOrg.ceiling === 'open' ? 'is-success is-light' : 'is-danger is-light'") {{ crossOrg.ceiling === 'open' ? $t('firm.open') : $t('firm.closed') }}
           .buttons.has-addons.mb-1
-            b-button(:type="postureOpen ? 'is-success' : ''" :loading="savingPosture === 'open'" @click="setPosture('open')") {{ $t('firm.open') }}
-            b-button(:type="!postureOpen ? 'is-danger' : ''" :loading="savingPosture === 'closed'" @click="setPosture('closed')") {{ $t('firm.closed') }}
-          p.has-text-grey.is-size-7 {{ postureOpen ? $t('firm.openHint') : $t('firm.closedHint') }}
+            b-button(:type="ownOpen ? 'is-success' : ''" :loading="savingPosture === 'open'" @click="setPosture('open')") {{ $t('firm.open') }}
+            b-button(:type="!ownOpen ? 'is-danger' : ''" :loading="savingPosture === 'closed'" @click="setPosture('closed')") {{ $t('firm.closed') }}
+          //- Option A: if a stricter level above is overriding an Open choice, say
+          //- so plainly instead of disabling the control.
+          b-message.co-capped.mt-2(v-if="crossOrg.cappedBy" type="is-warning") {{ cappedNote }}
+          p.has-text-grey.is-size-7(v-else) {{ ownOpen ? $t('console.crossOrg.hintOpen') : $t('console.crossOrg.hintClosed') }}
 
         .columns
           .column.is-two-thirds
@@ -198,6 +207,22 @@ export default {
       return this.$t('console.breakdownSub', { level: this.$t('console.levelPlural.' + top) })
     },
     postureOpen () { return !!this.c && this.c.stats.crossOrgPosture === 'open' },
+    // The three-level cross-org control state (own level / inherited ceiling /
+    // effective / cappedBy) for THIS manager's tier. Null if the payload predates it.
+    crossOrg () { return (this.c && this.c.crossOrg) || null },
+    // The toggle reflects the manager's OWN choice (which may sit under a cap).
+    // Falls back to the effective posture for payloads without the crossOrg block.
+    ownOpen () { return this.crossOrg ? this.crossOrg.own === 'open' : this.postureOpen },
+    // Firm + Group tiers inherit a ceiling from above; Global/Mentor sit at the top.
+    hasCeiling () { return !!this.crossOrg && this.crossOrg.level !== 'global' },
+    // Option-A note: which level above is currently overriding an Open choice.
+    cappedNote () {
+      if (!this.crossOrg || !this.crossOrg.cappedBy) { return '' }
+      return this.$t('console.crossOrg.capped', {
+        scope: this.$t('console.crossOrg.scopeName.' + this.crossOrg.level),
+        above: this.$t('console.crossOrg.aboveName.' + this.crossOrg.cappedBy)
+      })
+    },
     // Client-side search so a large scope (100+ advisers) stays navigable. For very
     // large sets this becomes server-side search + pagination — a repository seam
     // (the console endpoint would take q/offset/limit); the list stays scrollable.
@@ -247,7 +272,9 @@ export default {
       return isNaN(d.getTime()) ? '' : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
     },
     async setPosture (posture) {
-      if (this.savingPosture || (posture === 'open') === this.postureOpen) { return }
+      // Compare against the manager's OWN choice — they may set Open even while
+      // capped by a stricter level above (Option A), so don't gate on effective.
+      if (this.savingPosture || (posture === 'open') === this.ownOpen) { return }
       this.savingPosture = posture
       try {
         const res = await fetch('/api/people/firm/posture', {
@@ -256,6 +283,7 @@ export default {
         const data = await res.json()
         if (data.success) {
           this.$set(this.c.stats, 'crossOrgPosture', data.crossOrgPosture)
+          if (data.crossOrg) { this.$set(this.c, 'crossOrg', data.crossOrg) }
           this.$buefy.toast.open({ message: this.$t('firm.postureUpdated'), type: 'is-success' })
         } else {
           this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-warning' })

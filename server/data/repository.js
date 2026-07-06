@@ -232,36 +232,116 @@ function pushNotification (userId, type, params, link) {
   pushNotification('me', 'group_join_request', { name: 'Anna Richter', group: 'Cashflow Clinic' }, '/groups/cashflow-clinic')
 }())
 
-// ── Cross-org engagement postures (per office/firm) ──────────────────────────
-// Keyed by the advisor's `firm` (= office/branch, Q6). The default is CLOSED /
-// opt-in (config/integration.js → CROSS_ORG.defaultPosture, D1). The demo firms
-// below have OPTED IN so the show-home network is navigable; an unknown firm
-// falls back to the closed default.
+// ── Cross-org engagement postures — three-level ceiling (plan §8; D1/Q6; Q-ROLES) ─
+// The open/closed control exists at THREE stacked levels; a lower level may only
+// ever TIGHTEN, never loosen — the "ceiling" model (owner decision, 2026-07-07):
+//   • global[brand]                — set by a Global Manager (or the Mentor)
+//   • country[brand '||' country]  — set by a Group (country) Manager
+//   • firm[branch]                 — set by a Firm Manager
+// A branch's EFFECTIVE posture = MOST-CLOSED-WINS across the three: open only when
+// all three are open; any one level closed ⇒ closed. Each manager writes exactly
+// ONE key at their own level (O(1)), and a reachability check is three lookups —
+// so this holds at a brand with ~1,700 branches without ever iterating the tree.
+// Default at every level is CLOSED / opt-in (config/integration.js → D1).
 //
-// SQL SEAM: a per-org row (org_id, posture); the manager UI to flip it is
-// deferred with FEAT-RBAC (see design/ACTIONS.md). Group/space-level cross-org
-// gating (plan §8) is also future work — the wall here covers the person-to-person
-// surfaces (discovery, connection, outreach).
-const orgPostures = {
-  'Advisor-e Munich': 'open',
-  'Advisor-e Berlin': 'open',
-  'Advisor-e Hamburg': 'open',
-  'Advisor-e Milan': 'open',
-  'Advisor-e Dublin': 'open',
-  'BDO Hamburg': 'open',
-  'Lindt Zürich': 'open'
+// SQL SEAM: three small tables keyed by scope (org_posture_global / _country /
+// _firm). The demo below OPTS IN the show-home brands/countries/branches at every
+// level so the network stays navigable; anything unseeded falls back to closed.
+const postures = {
+  global: {
+    'Advisor-e': 'open',
+    BDO: 'open',
+    'Lindt & Co': 'open'
+  },
+  country: {
+    'Advisor-e||DE': 'open',
+    'Advisor-e||IT': 'open',
+    'Advisor-e||IE': 'open',
+    'BDO||DE': 'open',
+    'Lindt & Co||CH': 'open'
+  },
+  firm: {
+    'Advisor-e Munich': 'open',
+    'Advisor-e Berlin': 'open',
+    'Advisor-e Hamburg': 'open',
+    'Advisor-e Milan': 'open',
+    'Advisor-e Dublin': 'open',
+    'BDO Hamburg': 'open',
+    'Lindt Zürich': 'open'
+  }
 }
 
+// The composite key for the country level: a brand's country unit (Advisor-e
+// Germany ≠ BDO Germany — see the console "Groups" tile).
+const countryKey = (brand, country) => (brand || '') + '||' + (country || '')
+
+// Posture stored at one level for one key, defaulting to the opt-in default (D1).
+function postureAt (level, key) {
+  return (postures[level] && postures[level][key]) || CROSS_ORG.defaultPosture
+}
+
+// Firm-level accessor kept for back-compat (the Profile posture indicator + the
+// existing wall tests read/write the FIRM scope through getOrgPosture/setOrgPosture).
 function orgPostureFor (firm) {
-  return orgPostures[firm] || CROSS_ORG.defaultPosture
+  return postureAt('firm', firm)
 }
 
-// Both-sides consent (plan §8): a cross-firm interaction needs BOTH firms open.
-// Same firm is always allowed.
-function canReachAcross (firmA, firmB) {
-  if (!firmA || !firmB) { return false }
-  if (firmA === firmB) { return true }
-  return orgPostureFor(firmA) === 'open' && orgPostureFor(firmB) === 'open'
+// A branch's effective posture = most-closed across brand → country → branch.
+function effectivePostureForOrg (brand, country, firm) {
+  const g = postureAt('global', brand)
+  const c = postureAt('country', countryKey(brand, country))
+  const f = postureAt('firm', firm)
+  return (g === 'open' && c === 'open' && f === 'open') ? 'open' : 'closed'
+}
+
+function effectivePostureFor (advisor) {
+  if (!advisor) { return CROSS_ORG.defaultPosture }
+  return effectivePostureForOrg(advisor.globalGroup, advisor.country, advisor.firm)
+}
+
+// Both-sides consent (plan §8): a cross-branch interaction needs BOTH advisers'
+// orgs to be EFFECTIVELY open. Same branch is always allowed (internal). Takes the
+// advisor RECORDS (they carry globalGroup + country + firm).
+function canReach (from, to) {
+  if (!from || !to) { return false }
+  if (from.firm && from.firm === to.firm) { return true }
+  return effectivePostureFor(from) === 'open' && effectivePostureFor(to) === 'open'
+}
+
+// Which posture level a manager CONTROLS (their own tier) + the storage key/label:
+//   • Firm Manager  → the firm/branch level
+//   • Group Manager → the country level (their brand's country unit)
+//   • Global / Mentor → the brand (global) level
+// A manager writes exactly this one key — never a per-child fan-out (scale).
+function postureScopeFor (me) {
+  const tier = roles.resolveTier(me)
+  if (tier === 'firm_manager') { return { level: 'firm', key: me.firm, label: me.firm } }
+  if (tier === 'group_manager') { return { level: 'country', key: countryKey(me.globalGroup, me.country), label: me.globalGroup + ' · ' + (me.country || '') } }
+  return { level: 'global', key: me.globalGroup, label: me.globalGroup }
+}
+
+// The cross-org control state for a manager's console: what they've set at their
+// OWN level, the ceiling handed down from ABOVE (the nearest stricter level), and
+// the resulting effective state — with `cappedBy` naming the level currently
+// overriding an Open choice (drives the Option-A "capped" note, owner 2026-07-07).
+function crossOrgStateFor (me) {
+  const scope = postureScopeFor(me)
+  const own = postureAt(scope.level, scope.key)
+  let ceiling = 'open'
+  let cappedBy = null
+  if (scope.level === 'firm') {
+    const country = postureAt('country', countryKey(me.globalGroup, me.country))
+    const global = postureAt('global', me.globalGroup)
+    if (country === 'closed' || global === 'closed') {
+      ceiling = 'closed'
+      cappedBy = country === 'closed' ? 'country' : 'global' // report the nearest
+    }
+  } else if (scope.level === 'country') {
+    if (postureAt('global', me.globalGroup) === 'closed') { ceiling = 'closed'; cappedBy = 'global' }
+  }
+  // global / mentor: nothing sits above them, so the ceiling is always open.
+  const effective = (own === 'open' && ceiling === 'open') ? 'open' : 'closed'
+  return { level: scope.level, scopeLabel: scope.label, own, ceiling, cappedBy, effective }
 }
 
 function connectionStatusFor (myId, otherId) {
@@ -296,12 +376,12 @@ async function listAdvisors (opts) {
   const o = opts || {}
   const viewer = o.myId || o.excludeId
   const viewerAdvisor = advisors.find(a => a.id === viewer)
-  const viewerFirm = viewerAdvisor ? viewerAdvisor.firm : null
   return advisors
     .filter(a => a.id !== o.excludeId)
-    // Cross-org wall (plan §8; D1/Q6): hide advisers your firm can't reach.
-    // A viewer with no known firm (e.g. an unresolved dev identity) is not filtered.
-    .filter(a => (viewerFirm ? canReachAcross(viewerFirm, a.firm) : true))
+    // Cross-org wall (plan §8; D1/Q6): hide advisers your firm can't reach — now
+    // via the three-level effective posture (most-closed-wins). A viewer with no
+    // resolved record (e.g. an unresolved dev identity) is not filtered.
+    .filter(a => (viewerAdvisor ? canReach(viewerAdvisor, a) : true))
     .filter(a => matchesQuery(a, o.q))
     .filter(a => (o.availableOnly ? a.available : true))
     .map(a => Object.assign({}, a, { connectionStatus: connectionStatusFor(viewer, a.id) }))
@@ -629,19 +709,21 @@ async function canReachAdvisor (fromId, toId) {
   const from = advisors.find(a => a.id === fromId)
   const to = advisors.find(a => a.id === toId)
   if (!from || !to) { return true }
-  return canReachAcross(from.firm, to.firm)
+  return canReach(from, to)
 }
 
 async function getOrgPosture (firm) {
-  // SQL SEAM: SELECT posture FROM org_posture WHERE org_id = ? (default from config)
+  // SQL SEAM: SELECT posture FROM org_posture_firm WHERE firm = ? (default from config).
+  // Firm-level scope — used by the Profile posture indicator.
   return orgPostureFor(firm)
 }
 
 async function setOrgPosture (firm, posture) {
-  // SQL SEAM: UPSERT org_posture(org_id, posture). GUARD (future): only a Firm/
-  // Global manager may call this — enforced once FEAT-RBAC lands (Q-ROLES).
+  // SQL SEAM: UPSERT org_posture_firm(firm, posture). Firm-level write. The
+  // tier-scoped manager entry point is setFirmPosture (below), which routes the
+  // write to the caller's OWN level and is guarded to a managing tier.
   if (posture !== 'open' && posture !== 'closed') { return { error: 'BAD_POSTURE' } }
-  orgPostures[firm] = posture
+  postures.firm[firm] = posture
   return { firm: firm, posture: posture }
 }
 
@@ -707,6 +789,7 @@ function buildConsole (me) {
   })
   const tier = roles.resolveTier(me)
   const levels = CONSOLE_LEVELS[tier] || []
+  const crossOrg = crossOrgStateFor(me)
   return {
     firm,
     // The manager's tier + where they sit in the tree (Q-ROLES). The frontend uses
@@ -722,8 +805,13 @@ function buildConsole (me) {
       advisers: managed.length,
       groups: managedGroups.length, // specialty (SIG) collaboration groups
       pendingApprovals: approvals.length,
-      crossOrgPosture: orgPostureFor(firm)
+      // The manager's EFFECTIVE cross-org state (their own level capped by any
+      // stricter level above) — what the console tile/summary shows.
+      crossOrgPosture: crossOrg.effective
     },
+    // The three-level cross-org control for this manager: own level, inherited
+    // ceiling, effective result, and which level (if any) is capping an Open choice.
+    crossOrg,
     advisers: managed.map(adviserRow), // flat list — the Firm-tier console table
     // The cascading roll-up for higher tiers (null at the Firm tier, which uses the
     // flat advisers table). Each node carries its counts + its children/advisers.
@@ -786,14 +874,20 @@ async function getConsolePreview (tier) {
   return buildConsole(me)
 }
 
-// Manager sets their own firm's cross-org posture (the console toggle). Reuses the
-// posture seam; guarded to a Firm Manager of that firm.
+// A manager sets the cross-org posture at their OWN tier level — a Firm Manager
+// the branch, a Group Manager their country, a Global Manager/Mentor the brand
+// (postureScopeFor). ONE key is written; a lower level may only tighten, and the
+// returned crossOrgPosture is the EFFECTIVE state (their choice capped by any
+// stricter level above). Guarded to a managing tier (Q-ROLES); the write itself is
+// scoped to what this manager controls, so it can never touch a sibling or parent.
 async function setFirmPosture (managerId, posture) {
   const me = advisors.find(a => a.id === managerId)
   if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_MANAGER' } }
-  const r = await setOrgPosture(me.firm, posture)
-  if (r.error) { return r }
-  return { success: true, firm: me.firm, crossOrgPosture: posture }
+  if (posture !== 'open' && posture !== 'closed') { return { error: 'BAD_POSTURE' } }
+  const scope = postureScopeFor(me)
+  postures[scope.level][scope.key] = posture
+  const crossOrg = crossOrgStateFor(me)
+  return { success: true, firm: me.firm, level: scope.level, scope: scope.key, own: posture, crossOrgPosture: crossOrg.effective, crossOrg }
 }
 
 async function requestConnection (fromId, toId) {

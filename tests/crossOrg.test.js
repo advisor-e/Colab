@@ -71,3 +71,88 @@ describe('enforcement', () => {
     expect(r).toEqual(expect.objectContaining({ status: 'pending' }))
   })
 })
+
+// The ceiling model (owner, 2026-07-07): open/closed exists at brand → country →
+// branch; a branch's EFFECTIVE posture is most-closed-wins. `me` is Advisor-e / DE
+// / Advisor-e Munich; bob-lindt is Lindt & Co / CH / Lindt Zürich (both open).
+describe('three-level ceiling (most-closed-wins)', () => {
+  const reach = () => repo.canReachAdvisor('me', 'bob-lindt')
+
+  test('all three levels open ⇒ reachable', async () => {
+    expect(await reach()).toBe(true)
+  })
+
+  test('closing the BRANCH level alone seals it', async () => {
+    await repo.setOrgPosture('Advisor-e Munich', 'closed')
+    expect(await reach()).toBe(false)
+  })
+
+  test('closing the COUNTRY level alone seals it (branch record untouched)', async () => {
+    require('../server/data/roles').setOverride('me', 'group_manager') // 'me' heads Advisor-e Germany
+    await repo.setFirmPosture('me', 'closed') // writes the COUNTRY level
+    expect(await repo.getOrgPosture('Advisor-e Munich')).toBe('open') // branch level untouched
+    expect(await reach()).toBe(false)
+  })
+
+  test('closing the BRAND level seals EVERY branch with a single write (the scale property)', async () => {
+    require('../server/data/roles').setOverride('me', 'global_manager') // 'me' heads the Advisor-e brand
+    await repo.setFirmPosture('me', 'closed') // writes the GLOBAL level only
+    expect(await repo.getOrgPosture('Advisor-e Munich')).toBe('open') // no per-branch fan-out
+    // One brand-level write hides every Advisor-e branch from an outside viewer —
+    // this is what lets the model hold at a brand with ~1,700 branches.
+    const list = await repo.listAdvisors({ myId: 'bob-lindt', excludeId: 'bob-lindt' })
+    expect(list.some(a => a.globalGroup === 'Advisor-e')).toBe(false)
+    expect(list.some(a => a.id === 'anna-r')).toBe(true) // a different brand (BDO) is unaffected
+  })
+})
+
+describe('tier-scoped posture writes (a manager writes only their own level)', () => {
+  test('a Firm Manager writes the BRANCH level', async () => {
+    const r = await repo.setFirmPosture('me', 'closed') // 'me' is a seed firm manager
+    expect(r).toEqual(expect.objectContaining({ level: 'firm', scope: 'Advisor-e Munich' }))
+    expect(await repo.getOrgPosture('Advisor-e Munich')).toBe('closed')
+  })
+
+  test('a Group Manager writes the COUNTRY level — other countries of the brand are unaffected', async () => {
+    require('../server/data/roles').setOverride('me', 'group_manager')
+    const r = await repo.setFirmPosture('me', 'closed')
+    expect(r).toEqual(expect.objectContaining({ level: 'country', scope: 'Advisor-e||DE' }))
+    // A DE branch is now sealed; an IT branch of the same brand is not.
+    expect(await repo.canReachAdvisor('priya-nair', 'bob-lindt')).toBe(false) // DE
+    expect(await repo.canReachAdvisor('sofia-marchetti', 'bob-lindt')).toBe(true) // IT
+  })
+
+  test('a non-manager cannot set a posture', async () => {
+    expect(await repo.setFirmPosture('bob-lindt', 'open')).toEqual({ error: 'NOT_MANAGER' })
+  })
+
+  test('an invalid posture value is rejected', async () => {
+    expect(await repo.setFirmPosture('me', 'sideways')).toEqual({ error: 'BAD_POSTURE' })
+  })
+})
+
+// Option A (owner): a manager may set Open even while a stricter level above caps
+// it — the console reports the cap rather than disabling the control. The state is
+// carried on the setFirmPosture response (crossOrg) and in the console payload.
+describe('capped state (crossOrg on the console payload)', () => {
+  test('a Firm Manager Open under a closed BRAND reads capped, effective closed', async () => {
+    const roles = require('../server/data/roles')
+    roles.setOverride('me', 'global_manager')
+    await repo.setFirmPosture('me', 'closed') // brand Advisor-e = closed
+    roles.setOverride('me', 'firm_manager') // now act as the Munich firm manager
+    const r = await repo.setFirmPosture('me', 'open') // opens own branch
+    expect(r.crossOrg).toEqual(expect.objectContaining({ level: 'firm', own: 'open', ceiling: 'closed', cappedBy: 'global', effective: 'closed' }))
+    expect(r.crossOrgPosture).toBe('closed') // effective, not their own choice
+  })
+
+  test('no cap when every level above is open', async () => {
+    const r = await repo.setFirmPosture('me', 'open')
+    expect(r.crossOrg).toEqual(expect.objectContaining({ own: 'open', ceiling: 'open', cappedBy: null, effective: 'open' }))
+  })
+
+  test('the console payload carries the crossOrg control block', async () => {
+    const c = await repo.getFirmConsole('me')
+    expect(c.crossOrg).toEqual(expect.objectContaining({ level: 'firm', scopeLabel: 'Advisor-e Munich' }))
+    expect(c.stats.crossOrgPosture).toBe(c.crossOrg.effective)
+  })
+})

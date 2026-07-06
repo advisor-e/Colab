@@ -496,14 +496,17 @@ async function getConsolePreview (req, res) {
   ok(res, Object.assign({}, data, { activity, preview: true }))
 }
 
-// Firm Manager sets their own firm's cross-org posture (the console toggle).
+// A manager sets the cross-org posture at their OWN tier level (the console
+// toggle) — Firm→branch, Group→country, Global/Mentor→brand (repo.setFirmPosture
+// routes the write). A lower level may only tighten; the response carries the
+// EFFECTIVE state (capped by any stricter level above).
 async function setFirmPosture (req, res) {
   const me = await currentAdvisor(req)
   const posture = (req.body || {}).posture
   const r = await repo.setFirmPosture(me.id, posture)
-  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can change this.'); return }
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a manager can change this.'); return }
   if (r.error === 'BAD_POSTURE') { fail(res, 400, 'BAD_POSTURE', 'Posture must be "open" or "closed".'); return }
-  audit.record({ actorId: me.id, action: 'firm.posture_set', targetType: 'firm', targetId: r.firm, meta: { posture } })
+  audit.record({ actorId: me.id, action: 'firm.posture_set', targetType: 'org', targetId: r.scope, meta: { posture, level: r.level, scope: r.scope } })
   ok(res, r)
 }
 

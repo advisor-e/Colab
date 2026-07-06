@@ -137,16 +137,33 @@ describe('firm console page', () => {
     expect(w.vm.formatWhen('')).toBe('')
   })
 
-  test('labels itself by tier: a Group payload reads its country + hides the firm toggle', async () => {
+  test('labels itself by tier: a Group payload reads its country + shows the roll-up', async () => {
     const GROUP = Object.assign({}, CONSOLE, { firm: 'BDO Germany', scope: { tier: 'group_manager', country: 'DE' } })
     global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(GROUP) }))
     const w = factory({ endpoint: '/api/people/console/preview/group', preview: true })
     await flush(); await w.vm.$nextTick()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/console/preview/group')
     expect(w.vm.tier).toBe('group_manager')
-    expect(w.vm.isFirm).toBe(false) // the cross-firm toggle box is Firm-only
+    expect(w.vm.isFirm).toBe(false) // drives the flat table vs the cascading roll-up
     expect(w.vm.scopeChip).toContain('Germany') // country name, not the firm
     expect(w.vm.preview).toBe(true)
     expect(w.vm.advisersSub).toContain('Germany') // "Everyone in Germany"
+  })
+
+  // Option A (owner): a manager may set Open even while a stricter level above caps
+  // it — the console shows the cap rather than disabling the control.
+  test('a capped Open shows the cap note; the toggle reflects the manager\'s own choice', async () => {
+    const CAPPED = Object.assign({}, CONSOLE, {
+      stats: Object.assign({}, CONSOLE.stats, { crossOrgPosture: 'closed' }),
+      crossOrg: { level: 'firm', scopeLabel: 'Advisor-e Munich', own: 'open', ceiling: 'closed', cappedBy: 'global', effective: 'closed' }
+    })
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(CAPPED) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.crossOrg.cappedBy).toBe('global')
+    expect(w.vm.ownOpen).toBe(true) // their own switch is Open…
+    expect(w.vm.postureOpen).toBe(false) // …but the effective state is capped closed
+    expect(w.vm.hasCeiling).toBe(true)
+    expect(w.vm.cappedNote).toBe('console.crossOrg.capped')
   })
 })
