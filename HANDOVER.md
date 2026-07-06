@@ -230,6 +230,15 @@ product owner) and what remains:
    **`country-address` → the Group/country tier**, so much of the hierarchy derives from existing
    master fields.
 5. ⏳ The **role hierarchy** (Mentor→Global→Group→Firm→Advisor→Client) source of truth.
+   **Model resolved 2026-07-06 (owner, Q-ROLES; plan §13)** — **hybrid source:** derive
+   **Firm** from `branch` + **Group/country** from `country-address` (item 4 / Q3); read
+   **manager/mentor** designations from a **`role` claim** in the Advisory JWT
+   (`AUTH.roleClaim`), with a **local override table** as the interim seam. Each manager tier
+   sees/controls only its own branch (same console + view-as as the Firm tier); the cross-org
+   toggle follows a **ceiling model** (Global sets the limit; Group/Firm may only tighten);
+   Mentor = platform super-admin; Client = **no access** to this app. **Remaining for the
+   master team:** confirm the exact **`role` values** Advisory issues (and whether roles ever
+   arrive via a profile API instead of the token) — the app builds against the seam either way.
 
 > **Future / optional — promote `service_line` to the master profile.** A *service line* (Tax,
 > Audit, Corporate Finance…) is a core professional attribute other apps may also want, so it is a
