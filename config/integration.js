@@ -46,19 +46,19 @@ const DB = {
   connectTimeout: 2000 // fail fast in dev when MySQL is not running
 }
 
-// ── Cross-organisation engagement policy (plan §8; owner decisions D1 + Q6) ────
-// D1 (2026-07-03): the default posture is CLOSED / opt-in — a firm's members are
-// sealed to their own organisation until the firm opts in to reach across. Q6
-// (2026-07-03): the boundary is the individual office — the advisor's `firm`
-// (= branch). Both paths stay switchable: flip `defaultPosture` to 'open' for an
-// open-network default (a config flip, not a rebuild).
+// ── Cross-organisation engagement policy (plan §8; D1 + Q6 + the ceiling model) ─
+// D1 (2026-07-03): the default posture is CLOSED / opt-in — members are sealed to
+// their own organisation until a manager opts in to reach across. Q6 (2026-07-03):
+// the boundary is the individual office (the advisor's `firm` / branch).
 //
-// NOTE: per plan §8 the open/closed toggle is a MANAGER-level control. The admin
-// UI to flip a firm's posture is deferred with FEAT-RBAC (blocked on Q-ROLES —
-// see design/ACTIONS.md). Enforcement (the wall) is LIVE now; the per-firm
-// posture is a seam in server/data/repository.js (getOrgPosture / setOrgPosture).
+// CEILING MODEL (owner, 2026-07-07): the open/closed control is a MANAGER-level
+// switch that exists at THREE stacked levels — brand (Global) → country (Group) →
+// branch (Firm). A lower level may only ever TIGHTEN; a branch's EFFECTIVE posture
+// is most-closed-wins across the three (see server/data/repository.js). Each level
+// defaults to `defaultPosture`. Flip it to 'open' for an open-network default (a
+// config flip, not a rebuild). Group/space-level gating still rides on T1-Spaces.
 const CROSS_ORG = {
-  defaultPosture: 'closed' // 'closed' = opt-in (D1) · 'open' = open network
+  defaultPosture: 'closed' // 'closed' = opt-in (D1) · 'open' = open network · applied at every ceiling level
 }
 
 // ── Advisor-e app links (deep-link a purchased tool to its hosted page) ────────
