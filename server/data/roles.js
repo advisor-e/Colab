@@ -93,12 +93,14 @@ function isManagerTier (tier) {
 }
 
 /**
- * May `manager` see/act on `target`, per the resolved hierarchy + scope? A manager
- * only ever reaches people AT OR BELOW them, WITHIN their own branch of the tree:
- *   • mentor / global_manager → everyone
- *   • group_manager           → same country (spans every firm in that country)
- *   • firm_manager            → same firm (= branch / office)
- *   • advisor / client        → no-one
+ * May `manager` see/act on `target`, per the resolved hierarchy + scope? The tree
+ * is Global group (brand) → Country → Firm (branch) → Advisor (Q-ROLES / plan §5),
+ * so a manager reaches everyone AT OR BELOW them WITHIN their own branch:
+ *   • mentor         → everyone
+ *   • global_manager → same global group / brand (all its countries + branches)
+ *   • group_manager  → same brand AND same country (head of a country; all its branches)
+ *   • firm_manager   → same firm / branch (= office)
+ *   • advisor / client → no-one
  * (Cross-org posture is a SEPARATE gate — this is management scope, not outreach.)
  * @param {object} manager - the acting advisor record
  * @param {object} target - the advisor being managed
@@ -108,8 +110,12 @@ function isManagerTier (tier) {
 function canManage (manager, target, identity) {
   if (!manager || !target) { return false }
   const tier = resolveTier(manager, identity)
-  if (tier === 'mentor' || tier === 'global_manager') { return true }
-  if (tier === 'group_manager') { return !!manager.country && manager.country === target.country }
+  if (tier === 'mentor') { return true }
+  if (tier === 'global_manager') { return !!manager.globalGroup && manager.globalGroup === target.globalGroup }
+  if (tier === 'group_manager') {
+    return !!manager.globalGroup && manager.globalGroup === target.globalGroup &&
+      !!manager.country && manager.country === target.country
+  }
   if (tier === 'firm_manager') { return !!manager.firm && manager.firm === target.firm }
   return false
 }

@@ -27,73 +27,87 @@ const roles = require('./roles') // role/tier resolver (Q-ROLES) — the RBAC se
 
 // ── In-memory dev store ──────────────────────────────────────────────────────
 
+// Demo org tree (mock data — the protected catalogue is untouched). The role
+// hierarchy (Q-ROLES / plan §5) is: Mentor → Global group/brand → Country →
+// Firm(branch) → Advisor. Each advisor therefore carries `globalGroup` (the brand,
+// e.g. BDO), `country`, and `firm` (= the BRANCH within that country/brand, e.g.
+// "Advisor-e Munich"). Cross-org sealing is per branch (Q6).
+//   Advisor-e: DE(Munich: me, priya, james · Berlin: tom · Hamburg: lena) · IT(Milan: sofia) · IE(Dublin: sara)
+//   BDO:       DE(Hamburg: anna)
+//   Lindt & Co: CH(Zürich: bob)
 const advisors = [
   {
-    id: 'me', name: 'Mike Barnes', title: 'Partner', firm: 'Advisor-e',
-    city: 'Munich', country: 'DE', timezone: 'CET',
+    id: 'me', name: 'Mike Barnes', title: 'Partner',
+    globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Munich',
+    city: 'Munich', timezone: 'CET',
     linkedin: 'https://linkedin.com/in/mikebarnes', email: 'mike@advisor-e.com', phone: '+49 89 5550 1234',
     available: true, strengths: ['capital raising', 'tax'], industries: ['seafood', 'hospitality'],
     topics: ['M&A', 'valuations'], about: '20 yrs helping owner-managed firms with growth and exit.',
-    // RBAC SEAM: the dev user is the Firm Manager of Advisor-e. Real role comes from
-    // the Advisory JWT (AUTH.managerRole) once FEAT-RBAC lands — see design/ACTIONS.md.
+    // RBAC SEAM: the dev user is the Firm Manager of the Advisor-e Munich branch.
+    // Real role comes from the Advisory JWT (AUTH.managerRole) once wired — see design/ACTIONS.md.
     firmManager: true
   },
   {
-    id: 'bob-lindt', name: 'Bob Lindt', title: 'Partner', firm: 'Lindt & Co',
-    city: 'Zürich', country: 'CH', timezone: 'CET', linkedin: '',
-    available: true, strengths: ['capital raising', 'debt structuring'], industries: ['manufacturing'],
-    topics: ['funding rounds'], about: 'Corporate finance specialist focused on growth funding.'
-  },
-  {
-    id: 'anna-r', name: 'Anna Richter', title: 'Director', firm: 'BDO Germany',
-    city: 'Hamburg', country: 'DE', timezone: 'CET', linkedin: '',
-    available: false, strengths: ['financial modelling', 'valuation'], industries: ['seafood', 'food production'],
-    topics: ['forecasting'], about: 'Builds valuation models for food-production businesses.'
-  },
-  {
-    id: 'sara-okafor', name: 'Sara Okafor', title: 'Senior Adviser', firm: 'Okafor Advisory',
-    city: 'Dublin', country: 'IE', timezone: 'GMT', linkedin: '',
-    available: true, strengths: ['business coaching', 'succession'], industries: ['hospitality', 'retail'],
-    topics: ['exit planning'], about: 'Coaches owner-managers through scale-up and succession.'
-  },
-  // ── Advisor-e colleagues (same firm as the dev user) — populate the Firm Manager
-  //    console + the "view as adviser" demo. `blockFirmManagerView` is the advisor's
-  //    opt-out; James has switched it on to show the blocked state. `lastActive` is
-  //    demo text (real activity timestamps are a MySQL seam — no timestamps in mock).
-  {
-    id: 'priya-nair', name: 'Priya Nair', title: 'Senior Adviser', firm: 'Advisor-e',
-    city: 'Munich', country: 'DE', timezone: 'CET', linkedin: '',
+    id: 'priya-nair', name: 'Priya Nair', title: 'Senior Adviser',
+    globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Munich',
+    city: 'Munich', timezone: 'CET', linkedin: '',
     available: true, strengths: ['restructuring', 'cashflow'], industries: ['retail', 'manufacturing'],
     topics: ['turnaround'], about: 'Hands-on restructuring and 13-week cashflow work.',
     blockFirmManagerView: false, lastActive: 'Today'
   },
   {
-    id: 'tom-fischer', name: 'Tom Fischer', title: 'Adviser', firm: 'Advisor-e',
-    city: 'Berlin', country: 'DE', timezone: 'CET', linkedin: '',
+    id: 'james-obrien', name: "James O'Brien", title: 'Associate',
+    globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Munich',
+    city: 'Munich', timezone: 'CET', linkedin: '',
+    available: false, strengths: ['bookkeeping', 'onboarding'], industries: ['retail'],
+    topics: ['client onboarding'], about: 'Associate supporting onboarding and client setup.',
+    // James has switched "block firm manager view" on — shows the blocked state.
+    blockFirmManagerView: true, lastActive: '1 week ago'
+  },
+  {
+    id: 'tom-fischer', name: 'Tom Fischer', title: 'Adviser',
+    globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Berlin',
+    city: 'Berlin', timezone: 'CET', linkedin: '',
     available: false, strengths: ['tax', 'compliance'], industries: ['professional services'],
     topics: ['tax automation'], about: 'Tax and compliance adviser; building automation workflows.',
     blockFirmManagerView: false, lastActive: '2 days ago'
   },
   {
-    id: 'sofia-marchetti', name: 'Sofia Marchetti', title: 'Adviser', firm: 'Advisor-e',
-    city: 'Milan', country: 'IT', timezone: 'CET', linkedin: '',
+    id: 'lena-vogel', name: 'Lena Vogel', title: 'Adviser',
+    globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Hamburg',
+    city: 'Hamburg', timezone: 'CET', linkedin: '',
+    available: true, strengths: ['forecasting', 'reporting'], industries: ['seafood', 'logistics'],
+    topics: ['forecasting'], about: 'Forecasting and management reporting specialist.',
+    blockFirmManagerView: false, lastActive: 'Yesterday'
+  },
+  {
+    id: 'sofia-marchetti', name: 'Sofia Marchetti', title: 'Adviser',
+    globalGroup: 'Advisor-e', country: 'IT', firm: 'Advisor-e Milan',
+    city: 'Milan', timezone: 'CET', linkedin: '',
     available: true, strengths: ['valuation', 'M&A'], industries: ['food production', 'hospitality'],
     topics: ['valuations'], about: 'Valuation and deal support across food & hospitality.',
     blockFirmManagerView: false, lastActive: 'Today'
   },
   {
-    id: 'james-obrien', name: "James O'Brien", title: 'Associate', firm: 'Advisor-e',
-    city: 'Dublin', country: 'IE', timezone: 'GMT', linkedin: '',
-    available: false, strengths: ['bookkeeping', 'onboarding'], industries: ['retail'],
-    topics: ['client onboarding'], about: 'Associate supporting onboarding and client setup.',
-    blockFirmManagerView: true, lastActive: '1 week ago'
+    id: 'sara-okafor', name: 'Sara Okafor', title: 'Senior Adviser',
+    globalGroup: 'Advisor-e', country: 'IE', firm: 'Advisor-e Dublin',
+    city: 'Dublin', timezone: 'GMT', linkedin: '',
+    available: true, strengths: ['business coaching', 'succession'], industries: ['hospitality', 'retail'],
+    topics: ['exit planning'], about: 'Coaches owner-managers through scale-up and succession.'
   },
   {
-    id: 'lena-vogel', name: 'Lena Vogel', title: 'Adviser', firm: 'Advisor-e',
-    city: 'Hamburg', country: 'DE', timezone: 'CET', linkedin: '',
-    available: true, strengths: ['forecasting', 'reporting'], industries: ['seafood', 'logistics'],
-    topics: ['forecasting'], about: 'Forecasting and management reporting specialist.',
-    blockFirmManagerView: false, lastActive: 'Yesterday'
+    id: 'anna-r', name: 'Anna Richter', title: 'Director',
+    globalGroup: 'BDO', country: 'DE', firm: 'BDO Hamburg',
+    city: 'Hamburg', timezone: 'CET', linkedin: '',
+    available: false, strengths: ['financial modelling', 'valuation'], industries: ['seafood', 'food production'],
+    topics: ['forecasting'], about: 'Builds valuation models for food-production businesses.'
+  },
+  {
+    id: 'bob-lindt', name: 'Bob Lindt', title: 'Partner',
+    globalGroup: 'Lindt & Co', country: 'CH', firm: 'Lindt Zürich',
+    city: 'Zürich', timezone: 'CET', linkedin: '',
+    available: true, strengths: ['capital raising', 'debt structuring'], industries: ['manufacturing'],
+    topics: ['funding rounds'], about: 'Corporate finance specialist focused on growth funding.'
   }
 ]
 
@@ -229,10 +243,13 @@ function pushNotification (userId, type, params, link) {
 // gating (plan §8) is also future work — the wall here covers the person-to-person
 // surfaces (discovery, connection, outreach).
 const orgPostures = {
-  'Advisor-e': 'open',
-  'Lindt & Co': 'open',
-  'BDO Germany': 'open',
-  'Okafor Advisory': 'open'
+  'Advisor-e Munich': 'open',
+  'Advisor-e Berlin': 'open',
+  'Advisor-e Hamburg': 'open',
+  'Advisor-e Milan': 'open',
+  'Advisor-e Dublin': 'open',
+  'BDO Hamburg': 'open',
+  'Lindt Zürich': 'open'
 }
 
 function orgPostureFor (firm) {
@@ -629,14 +646,6 @@ async function setOrgPosture (firm, posture) {
 }
 
 // ── Managers (role hierarchy · Q-ROLES) ──────────────────────────────────────
-// RBAC SEAM (Q-ROLES demo): designate a Group (country) Manager for Germany so the
-// higher-tier scope is demonstrable. Anna Richter (country DE) then manages every
-// DE adviser ACROSS firms (Advisor-e + BDO Germany), not just her own firm —
-// proving the Group tier spans firms within a country. Interim override; the real
-// designation comes from the Advisory JWT role (AUTH.roleClaim). Admin-set only
-// (no self-promotion). Illustrative demo data. See server/data/roles.js.
-roles.setOverride('anna-r', 'group_manager')
-
 // RBAC SEAM: "is this advisor a Firm Manager?" Kept for back-compat; the console
 // and view-as now gate on isManager (any managing tier) via the roles resolver.
 function isFirmManager (advisorId) {
@@ -663,11 +672,20 @@ function canManage (manager, target) {
 // one's availability + whether they've blocked the manager view), headline stats,
 // and the pending join requests to the firm's groups. Read-only assembly over the
 // in-memory store; activity/audit is added by the route from server/data/auditLog.
+// The grouping levels each tier rolls up, top to bottom (Q-ROLES / plan §5). A
+// manager shows the level immediately below them, drilling down to advisers.
+const CONSOLE_LEVELS = {
+  mentor: ['globalGroup', 'country', 'firm'],
+  global_manager: ['country', 'firm'],
+  group_manager: ['firm'],
+  firm_manager: [] // leaf: advisers directly (the base console)
+}
+
 // Assemble the console payload for a given manager record. Scope = the advisers the
-// manager oversees (roles.canManage — firm for a Firm Manager, country for a Group
-// Manager, all for Global/Mentor). ONE shape serves every tier; the frontend labels
-// itself from `scope.tier`. `me` may be a real advisor OR a synthetic demo manager
-// (preview) — it only needs id/name/firm/country/tier.
+// manager oversees (roles.canManage). ONE shape serves every tier; the frontend
+// labels itself from `scope.tier` and renders the cascade from `tree`. `me` may be a
+// real advisor OR a synthetic demo manager (preview) — it needs id/name + its
+// place in the tree (globalGroup/country/firm/tier).
 function buildConsole (me) {
   const firm = me.firm
   const managed = advisors.filter(a => roles.canManage(me, a))
@@ -682,25 +700,61 @@ function buildConsole (me) {
       const g = groups.find(x => x.id === r.groupId)
       return { id: r.id, advisor: { id: adv.id, name: adv.name, firm: adv.firm }, groupId: r.groupId, groupName: g ? g.name : r.groupId }
     })
+  const adviserRow = a => ({
+    id: a.id, name: a.name, title: a.title, available: !!a.available,
+    blocked: !!a.blockFirmManagerView, isMe: a.id === me.id,
+    groupCount: groupCountFor(a.id), lastActive: a.lastActive || null
+  })
+  const tier = roles.resolveTier(me)
+  const levels = CONSOLE_LEVELS[tier] || []
   return {
     firm,
-    // The manager's tier + the scope this console is showing (Q-ROLES). The frontend
-    // uses `scope.tier` to pick the title / scope chip / subtitle for the view.
-    scope: { tier: roles.resolveTier(me), firm: me.firm, country: me.country },
+    // The manager's tier + where they sit in the tree (Q-ROLES). The frontend uses
+    // `scope.tier` to pick the title / scope chip / subtitle for the view.
+    scope: { tier, globalGroup: me.globalGroup, country: me.country, firm: me.firm },
     manager: { id: me.id, name: me.name },
     stats: {
+      globalGroups: new Set(managed.map(a => a.globalGroup)).size,
+      // A "group" is a brand's country unit (e.g. Advisor-e Germany vs BDO Germany
+      // are two groups) — so count distinct globalGroup+country pairs, not countries.
+      orgGroups: new Set(managed.map(a => a.globalGroup + '||' + a.country)).size,
+      firms: new Set(managed.map(a => a.firm)).size,
       advisers: managed.length,
-      groups: managedGroups.length,
+      groups: managedGroups.length, // specialty (SIG) collaboration groups
       pendingApprovals: approvals.length,
       crossOrgPosture: orgPostureFor(firm)
     },
-    advisers: managed.map(a => ({
-      id: a.id, name: a.name, title: a.title, available: !!a.available,
-      blocked: !!a.blockFirmManagerView, isMe: a.id === me.id,
-      groupCount: groupCountFor(a.id), lastActive: a.lastActive || null
-    })),
+    advisers: managed.map(adviserRow), // flat list — the Firm-tier console table
+    // The cascading roll-up for higher tiers (null at the Firm tier, which uses the
+    // flat advisers table). Each node carries its counts + its children/advisers.
+    tree: levels.length ? buildBreakdown(managed, levels, adviserRow) : null,
     approvals
   }
+}
+
+// Recursively roll `list` up by `levels` (e.g. ['globalGroup','country','firm']),
+// down to advisers at the leaf. Each node: { level, value, label, advisers (count),
+// childLevel, childCount, children[] | people[] }.
+function buildBreakdown (list, levels, adviserRow) {
+  if (!levels.length) { return { people: list.map(adviserRow) } }
+  const head = levels[0]
+  const rest = levels.slice(1)
+  const buckets = new Map()
+  list.forEach((a) => {
+    const v = a[head] || '—'
+    if (!buckets.has(v)) { buckets.set(v, []) }
+    buckets.get(v).push(a)
+  })
+  const children = Array.from(buckets.keys()).sort().map((v) => {
+    const grp = buckets.get(v)
+    const childLevel = rest[0] || 'advisor'
+    const childCount = rest.length ? new Set(grp.map(a => a[rest[0]])).size : grp.length
+    return Object.assign(
+      { level: head, value: v, label: v, advisers: grp.length, childLevel, childCount },
+      buildBreakdown(grp, rest, adviserRow)
+    )
+  })
+  return { children }
 }
 
 async function getFirmConsole (managerId) {
@@ -716,12 +770,13 @@ async function getFirmConsole (managerId) {
 // Render the console AS a seeded demo manager of a given tier, so each tier's view
 // can be previewed without a real login. PRODUCTION collapses to the single
 // role-gated page (getFirmConsole) — these demo personas are never reachable there.
-// Fixed personas only (never an arbitrary id): group = the real DE Group Manager;
-// global/mentor = synthetic managers over the whole mock network.
+// Fixed synthetic personas positioned in the tree so each tier's roll-up is
+// demonstrable: group = head of Advisor-e Germany (its branches), global = head of
+// the Advisor-e brand (its countries), mentor = the whole network (all brands).
 const DEMO_MANAGERS = {
-  group: () => advisors.find(a => a.id === 'anna-r'),
-  global: () => ({ id: 'demo-global', name: 'Demo Global Manager', title: 'Global Manager', firm: 'Advisor-e', country: 'DE', tier: 'global_manager' }),
-  mentor: () => ({ id: 'demo-mentor', name: 'Demo Mentor', title: 'Mentor', firm: 'Advisor-e', country: 'DE', tier: 'mentor' })
+  group: () => ({ id: 'demo-group', name: 'Demo Group Manager', title: 'Head of Advisor-e Germany', globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e Germany', tier: 'group_manager' }),
+  global: () => ({ id: 'demo-global', name: 'Demo Global Manager', title: 'Head of Advisor-e', globalGroup: 'Advisor-e', country: 'DE', firm: 'Advisor-e', tier: 'global_manager' }),
+  mentor: () => ({ id: 'demo-mentor', name: 'Demo Mentor', title: 'Mentor', globalGroup: 'Advisor-e', country: 'DE', firm: '—', tier: 'mentor' })
 }
 
 async function getConsolePreview (tier) {
