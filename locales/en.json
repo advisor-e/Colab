@@ -59,6 +59,26 @@
     "loadFailed": "Couldn't load the firm console.",
     "actionFailed": "That didn't work — please try again."
   },
+  "console": {
+    "titles": {
+      "firm_manager": "Firm Manager",
+      "group_manager": "Group Manager",
+      "global_manager": "Global Manager",
+      "mentor": "Mentor"
+    },
+    "subtitles": {
+      "firm_manager": "Manage your firm's advisers, collaboration and approvals.",
+      "group_manager": "Manage advisers, collaboration and approvals across your country.",
+      "global_manager": "Oversee advisers and approvals across every country.",
+      "mentor": "The top of the tree — oversight of the entire network."
+    },
+    "allCountries": "All countries",
+    "wholeNetwork": "Whole network",
+    "advisersScopeCountry": "Everyone in {country}.",
+    "advisersScopeAll": "Everyone across the network.",
+    "previewRibbon": "Preview — demo data. In the live app this is one page, shown to the right person based on their Advisor-e login.",
+    "previewNav": "Preview a tier:"
+  },
   "home": {
     "title": "Find your people. Build together.",
     "subtitle": "The collaboration network for advisers — discover specialists, form specialty groups, and co-create the tools you use with clients.",

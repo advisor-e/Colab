@@ -5,22 +5,25 @@
 /* eslint-env browser, jest */
 
 /**
- * Component tests for pages/firm.vue — the Firm Manager console. Loads the firm
- * payload, renders advisers (incl. the blocked tag), toggles the cross-firm
- * posture, and approves/declines a join request via the shared endpoints.
+ * Component tests for components/shared/ManagerConsole.vue — the shared management
+ * console that serves every role tier (Q-ROLES). pages/firm.vue is a thin wrapper
+ * around it. Loads the payload, renders advisers (incl. the blocked tag), toggles
+ * the cross-firm posture, approves/declines a request, and — in preview mode —
+ * shows the ribbon + disables the interactive actions.
  */
 
 import { mount, createLocalVue } from '@vue/test-utils'
-import Firm from '../pages/firm.vue'
+import ManagerConsole from '../components/shared/ManagerConsole.vue'
 
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
-;['b-message', 'b-button', 'b-input'].forEach(n => localVue.component(n, Stub))
+;['b-message', 'b-button', 'b-input', 'nuxt-link'].forEach(n => localVue.component(n, Stub))
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
 const CONSOLE = {
   firm: 'Advisor-e',
+  scope: { tier: 'firm_manager', firm: 'Advisor-e' },
   manager: { id: 'me', name: 'Mike Barnes' },
   stats: { advisers: 6, groups: 2, pendingApprovals: 1, crossOrgPosture: 'open' },
   advisers: [
@@ -31,11 +34,12 @@ const CONSOLE = {
   activity: [{ at: '2026-07-06T09:14:00.000Z', actorName: 'Sofia Marchetti', action: 'listing.create', meta: {} }]
 }
 
-function factory () {
-  return mount(Firm, {
+function factory (propsData) {
+  return mount(ManagerConsole, {
     localVue,
+    propsData: propsData || {},
     mocks: {
-      $t: (k, p) => (p && p.firm ? k + ':' + p.firm : k),
+      $t: (k, p) => (p && p.firm ? k + ':' + p.firm : (p && p.country ? k + ':' + p.country : k)),
       $buefy: { toast: { open: jest.fn() } }
     }
   })
@@ -131,5 +135,18 @@ describe('firm console page', () => {
     expect(w.vm.humanize('group.shared_page_added')).toBe('group shared page added')
     expect(typeof w.vm.formatWhen('2026-07-06T09:14:00.000Z')).toBe('string')
     expect(w.vm.formatWhen('')).toBe('')
+  })
+
+  test('labels itself by tier: a Group payload reads its country + hides the firm toggle', async () => {
+    const GROUP = Object.assign({}, CONSOLE, { firm: 'BDO Germany', scope: { tier: 'group_manager', country: 'DE' } })
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(GROUP) }))
+    const w = factory({ endpoint: '/api/people/console/preview/group', preview: true })
+    await flush(); await w.vm.$nextTick()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/console/preview/group')
+    expect(w.vm.tier).toBe('group_manager')
+    expect(w.vm.isFirm).toBe(false) // the cross-firm toggle box is Firm-only
+    expect(w.vm.scopeChip).toContain('Germany') // country name, not the firm
+    expect(w.vm.preview).toBe(true)
+    expect(w.vm.advisersSub).toContain('Germany') // "Everyone in Germany"
   })
 })
