@@ -25,18 +25,12 @@
       template(v-else)
         p.has-text-grey.mb-4 {{ pageSubtitle }}
 
-        //- At a glance
+        //- At a glance — the tiles roll up the levels beneath this manager.
         .fm-tiles
-          .fm-tile
-            .k {{ $t('firm.advisers') }}
-            .v {{ c.stats.advisers }}
-          .fm-tile
-            .k {{ $t('firm.groups') }}
-            .v {{ c.stats.groups }}
-          .fm-tile
-            .k {{ $t('firm.pendingApprovals') }}
-            .v {{ c.stats.pendingApprovals }}
-          .fm-tile
+          .fm-tile(v-for="t in tiles" :key="t.key")
+            .k {{ t.label }}
+            .v {{ t.value }}
+          .fm-tile(v-if="isFirm")
             .k {{ $t('firm.crossFirm') }}
             .v
               span.tag.is-medium(:class="postureOpen ? 'is-success is-light' : 'is-danger is-light'") {{ postureOpen ? $t('firm.open') : $t('firm.closed') }}
@@ -52,9 +46,10 @@
           p.has-text-grey.is-size-7 {{ postureOpen ? $t('firm.openHint') : $t('firm.closedHint') }}
 
         .columns
-          //- Advisers
           .column.is-two-thirds
-            .box
+            //- Firm tier: the flat adviser table (search + view-as). Higher tiers:
+            //- the cascading roll-up (global group → country → firm → adviser).
+            .box(v-if="isFirm")
               .is-flex.is-align-items-center.is-justify-content-space-between.mb-1
                 p.label.mb-0 {{ $t('firm.advisersTitle') }}
                 span.has-text-grey.is-size-7 {{ $t('firm.showing', { shown: filteredAdvisers.length, total: c.advisers.length }) }}
@@ -87,6 +82,11 @@
                       td.has-text-right
                         b-button.is-small.is-light(v-if="!a.isMe && !a.blocked" :disabled="preview" :loading="viewingId === a.id" @click="viewAs(a)") {{ $t('firm.viewAs') }}
                         span.has-text-grey.is-size-7(v-else-if="a.blocked") 🔒
+            .box(v-else)
+              p.label.mb-1 {{ $t('console.breakdownTitle') }}
+              p.has-text-grey.is-size-7.mb-3 {{ breakdownSub }}
+              .cnode-tree(v-if="c.tree && c.tree.children")
+                console-node(v-for="n in c.tree.children" :key="n.level + ':' + n.value" :node="n" :preview="preview")
 
           //- Pending approvals
           .column
@@ -171,6 +171,31 @@ export default {
       if (this.tier === 'firm_manager') { return this.$t('firm.advisersSub', { firm: this.c.firm }) }
       if (this.tier === 'group_manager') { return this.$t('console.advisersScopeCountry', { country: this.countryName }) }
       return this.$t('console.advisersScopeAll')
+    },
+    // The stat tiles for this tier — each counts a level within the manager's scope.
+    tiles () {
+      if (!this.c) { return [] }
+      const s = this.c.stats
+      const def = {
+        globalGroups: { key: 'globalGroups', label: this.$t('console.tiles.globalGroups'), value: s.globalGroups },
+        groups: { key: 'groups', label: this.$t('console.tiles.groups'), value: s.orgGroups },
+        firms: { key: 'firms', label: this.$t('console.tiles.firms'), value: s.firms },
+        advisers: { key: 'advisers', label: this.$t('console.tiles.advisers'), value: s.advisers },
+        specialtyGroups: { key: 'specialtyGroups', label: this.$t('console.tiles.specialtyGroups'), value: s.groups },
+        pendingApprovals: { key: 'pendingApprovals', label: this.$t('console.tiles.pendingApprovals'), value: s.pendingApprovals }
+      }
+      const sets = {
+        mentor: ['globalGroups', 'groups', 'firms', 'advisers'],
+        global_manager: ['groups', 'firms', 'advisers', 'pendingApprovals'],
+        group_manager: ['firms', 'advisers', 'pendingApprovals'],
+        firm_manager: ['advisers', 'specialtyGroups', 'pendingApprovals'] // + the cross-firm tile
+      }
+      return (sets[this.tier] || sets.firm_manager).map(k => def[k])
+    },
+    // "Roll-up by {top level} — click a row to drill down."
+    breakdownSub () {
+      const top = (this.c && this.c.tree && this.c.tree.children && this.c.tree.children[0] && this.c.tree.children[0].level) || 'firm'
+      return this.$t('console.breakdownSub', { level: this.$t('console.levelPlural.' + top) })
     },
     postureOpen () { return !!this.c && this.c.stats.crossOrgPosture === 'open' },
     // Client-side search so a large scope (100+ advisers) stays navigable. For very

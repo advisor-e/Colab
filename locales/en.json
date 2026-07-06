@@ -77,7 +77,31 @@
     "advisersScopeCountry": "Everyone in {country}.",
     "advisersScopeAll": "Everyone across the network.",
     "previewRibbon": "Preview — demo data. In the live app this is one page, shown to the right person based on their Advisor-e login.",
-    "previewNav": "Preview a tier:"
+    "previewNav": "Preview a tier:",
+    "tiles": {
+      "globalGroups": "Global groups",
+      "groups": "Groups",
+      "specialtyGroups": "Specialty groups",
+      "firms": "Firms",
+      "advisers": "Advisers",
+      "pendingApprovals": "Pending approvals",
+      "crossFirm": "Cross-firm reach"
+    },
+    "levelPlural": {
+      "globalGroup": "global groups",
+      "country": "groups",
+      "firm": "firms",
+      "advisor": "advisers"
+    },
+    "levelSingular": {
+      "globalGroup": "global group",
+      "country": "group",
+      "firm": "firm",
+      "advisor": "adviser"
+    },
+    "breakdownTitle": "Breakdown",
+    "breakdownSub": "Roll-up by {level} — click a row to drill down.",
+    "unavailable": "Unavailable"
   },
   "home": {
     "title": "Find your people. Build together.",

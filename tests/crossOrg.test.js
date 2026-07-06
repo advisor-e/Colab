@@ -22,7 +22,7 @@ beforeEach(() => {
 
 describe('posture seam', () => {
   test('seeded demo firms are open; an unknown firm defaults to closed (D1)', async () => {
-    expect(await repo.getOrgPosture('Advisor-e')).toBe('open')
+    expect(await repo.getOrgPosture('Advisor-e Munich')).toBe('open')
     expect(await repo.getOrgPosture('Some New Firm')).toBe('closed')
   })
 
@@ -41,7 +41,7 @@ describe('canReachAdvisor (both-sides consent)', () => {
   })
 
   test('a closed firm on either side blocks reach', async () => {
-    await repo.setOrgPosture('Lindt & Co', 'closed') // bob-lindt's firm
+    await repo.setOrgPosture('Lindt Zürich', 'closed') // bob-lindt's firm (branch)
     expect(await repo.canReachAdvisor('me', 'bob-lindt')).toBe(false)
     expect(await repo.canReachAdvisor('bob-lindt', 'me')).toBe(false)
   })
@@ -53,7 +53,7 @@ describe('canReachAdvisor (both-sides consent)', () => {
 
 describe('enforcement', () => {
   test('listAdvisors hides advisers behind a closed firm', async () => {
-    await repo.setOrgPosture('Lindt & Co', 'closed')
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
     const list = await repo.listAdvisors({ myId: 'me', excludeId: 'me' })
     expect(list.some(a => a.id === 'bob-lindt')).toBe(false)
     // Other open firms remain visible.
@@ -61,7 +61,7 @@ describe('enforcement', () => {
   })
 
   test('requestConnection returns a CROSS_ORG_BLOCKED sentinel across a closed firm', async () => {
-    await repo.setOrgPosture('Lindt & Co', 'closed')
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
     const r = await repo.requestConnection('me', 'bob-lindt')
     expect(r).toEqual({ error: 'CROSS_ORG_BLOCKED' })
   })

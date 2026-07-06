@@ -21,7 +21,6 @@ function fresh () {
 const firmMgr = { id: 'fm', firm: 'Acme', country: 'DE', firmManager: true }
 const acmeDE = { id: 'a1', firm: 'Acme', country: 'DE' }
 const otherDE = { id: 'a2', firm: 'Other DE', country: 'DE' }
-const acmeIE = { id: 'a3', firm: 'Acme', country: 'IE' }
 
 describe('resolveTier — precedence', () => {
   test('explicit record.tier wins over everything', () => {
@@ -94,22 +93,27 @@ describe('canManage — the scope matrix', () => {
     expect(roles.canManage(firmMgr, otherDE)).toBe(false) // same country, other firm
   })
 
-  test('group_manager reaches everyone in their country, across firms', () => {
+  test('group_manager reaches their brand+country across branches, not other brands/countries', () => {
     const roles = fresh()
-    const gm = { id: 'gm', firm: 'Acme', country: 'DE', tier: 'group_manager' }
-    expect(roles.canManage(gm, acmeDE)).toBe(true) // same firm, same country
-    expect(roles.canManage(gm, otherDE)).toBe(true) // OTHER firm, same country
-    expect(roles.canManage(gm, acmeIE)).toBe(false) // other country
+    const gm = { id: 'gm', globalGroup: 'BrandX', country: 'DE', firm: 'X Munich', tier: 'group_manager' }
+    const sameBrandCountryOtherBranch = { id: 't1', globalGroup: 'BrandX', country: 'DE', firm: 'X Berlin' }
+    const sameBrandOtherCountry = { id: 't2', globalGroup: 'BrandX', country: 'IE', firm: 'X Dublin' }
+    const otherBrandSameCountry = { id: 't3', globalGroup: 'BrandY', country: 'DE', firm: 'Y Munich' }
+    expect(roles.canManage(gm, sameBrandCountryOtherBranch)).toBe(true) // other branch, same brand+country
+    expect(roles.canManage(gm, sameBrandOtherCountry)).toBe(false) // other country
+    expect(roles.canManage(gm, otherBrandSameCountry)).toBe(false) // other brand
   })
 
-  test('global_manager and mentor reach everyone', () => {
+  test('global_manager reaches their whole brand (all countries); mentor reaches everyone', () => {
     const roles = fresh()
-    const glob = { id: 'g', tier: 'global_manager', firm: 'HQ', country: 'DE' }
-    const mentor = { id: 'm', tier: 'mentor', firm: 'HQ', country: 'DE' }
-    ;[acmeDE, otherDE, acmeIE].forEach((t) => {
-      expect(roles.canManage(glob, t)).toBe(true)
-      expect(roles.canManage(mentor, t)).toBe(true)
-    })
+    const glob = { id: 'g', tier: 'global_manager', globalGroup: 'BrandX', country: 'DE', firm: 'X Munich' }
+    const mentor = { id: 'm', tier: 'mentor', globalGroup: 'BrandX', country: 'DE', firm: 'X Munich' }
+    const sameBrandOtherCountry = { id: 't2', globalGroup: 'BrandX', country: 'IE', firm: 'X Dublin' }
+    const otherBrand = { id: 't3', globalGroup: 'BrandY', country: 'DE', firm: 'Y Munich' }
+    expect(roles.canManage(glob, sameBrandOtherCountry)).toBe(true) // same brand, other country
+    expect(roles.canManage(glob, otherBrand)).toBe(false) // other brand — outside a global manager's scope
+    expect(roles.canManage(mentor, sameBrandOtherCountry)).toBe(true)
+    expect(roles.canManage(mentor, otherBrand)).toBe(true) // mentor = everyone
   })
 
   test('advisor and client manage no-one', () => {

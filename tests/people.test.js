@@ -48,7 +48,7 @@ describe('me', () => {
     const [status, body] = sent(res)
     expect(status).toBe(200)
     // The placeholder firm 'Advisor-e' is opted-in, so posture resolves to 'open'.
-    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e', crossOrgPosture: 'open', viewingAs: null })
+    expect(body).toEqual({ id: 'ghost', name: 'You', firm: 'Advisor-e', crossOrgPosture: 'closed', viewingAs: null })
   })
 
   test('updateMe applies advertised-interest fields and returns the updated advisor', async () => {
@@ -667,7 +667,7 @@ describe('connecting (unified inbox — Q-CONN-MSG-IA Option B)', () => {
     const sara = body.rows.find(r => r.type === 'connection' && r.advisorId === 'sara-okafor')
     expect(sara).toBeTruthy()
     expect(sara.connectionId).toBe('c-sara')
-    expect(sara.firm).toBe('Okafor Advisory')
+    expect(sara.firm).toBe('Advisor-e Dublin')
   })
 
   test('a connected person WITH a 1:1 thread collapses to a single chat row (no duplicate)', async () => {
@@ -789,7 +789,7 @@ describe('marketplace', () => {
 
 describe('cross-org wall', () => {
   test('connect is blocked (403) when the target firm has opted out', async () => {
-    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed')
     const res = mkRes()
     await route.connect({ params: { id: 'bob-lindt' } }, res)
     expect(sent(res)[0]).toBe(403)
@@ -797,7 +797,7 @@ describe('cross-org wall', () => {
   })
 
   test('getAdvisor is blocked (403) across a closed firm', async () => {
-    require('../server/data/repository').setOrgPosture('BDO Germany', 'closed')
+    require('../server/data/repository').setOrgPosture('BDO Hamburg', 'closed')
     const res = mkRes()
     await route.getAdvisor({ params: { id: 'anna-r' } }, res)
     expect(sent(res)[0]).toBe(403)
@@ -805,7 +805,7 @@ describe('cross-org wall', () => {
   })
 
   test('sendOutreach is blocked (403) across a closed firm', async () => {
-    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed')
     const res = mkRes()
     await route.sendOutreach({ body: { toId: 'bob-lindt', context: 'Hello' } }, res)
     expect(sent(res)[0]).toBe(403)
@@ -813,7 +813,7 @@ describe('cross-org wall', () => {
   })
 
   test('listAdvisors hides advisers behind a closed firm', async () => {
-    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed')
     const res = mkRes()
     await route.listAdvisors({ query: {} }, res)
     expect(sent(res)[1].some(a => a.id === 'bob-lindt')).toBe(false)
@@ -858,7 +858,7 @@ describe('audit trail', () => {
   })
 
   test('a blocked cross-firm connection is audited as a security event', async () => {
-    require('../server/data/repository').setOrgPosture('Lindt & Co', 'closed')
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed')
     const audit = require('../server/data/auditLog')
     await route.connect({ params: { id: 'bob-lindt' } }, mkRes())
     const rows = await audit.list({ action: 'connection.blocked' })
@@ -897,11 +897,11 @@ describe('firm manager console', () => {
     await route.getFirmConsole({}, res) // dev identity = 'me' (a firm manager)
     const [status, body] = sent(res)
     expect(status).toBe(200)
-    expect(body.firm).toBe('Advisor-e')
+    expect(body.firm).toBe('Advisor-e Munich')
     expect(body.advisers.some(a => a.id === 'me' && a.isMe)).toBe(true)
     // James has switched on "block firm manager view".
     expect(body.advisers.some(a => a.id === 'james-obrien' && a.blocked)).toBe(true)
-    expect(body.stats.advisers).toBeGreaterThanOrEqual(6)
+    expect(body.stats.advisers).toBe(3) // the Advisor-e Munich branch: me, priya, james
     expect(Array.isArray(body.approvals)).toBe(true)
     expect(Array.isArray(body.activity)).toBe(true)
   })
@@ -1006,47 +1006,55 @@ describe('firm manager console', () => {
 })
 
 describe('role hierarchy (Q-ROLES) — Group (country) Manager scope', () => {
-  // Anna Richter (BDO Germany, country DE) is seeded as the demo Group Manager for
-  // Germany (server/data/repository.js → roles.setOverride). Her console therefore
-  // spans EVERY German adviser across firms — the higher tier reusing the same
-  // console the Firm tier uses, with a wider scope.
-  test('getFirmConsole for a Group Manager spans every firm in the country', async () => {
+  // Make Priya a Group Manager (head of Advisor-e Germany). She then oversees every
+  // Advisor-e BRANCH in Germany (Munich + Berlin + Hamburg), but not other brands
+  // (BDO/Lindt) or other countries (IT/IE). Interim override — the real designation
+  // comes from the Advisory JWT role.
+  function makePriyaGroupManager () {
+    require('../server/data/roles').setOverride('priya-nair', 'group_manager')
+  }
+
+  test('getFirmConsole for a Group Manager rolls up the brand+country across its branches', async () => {
+    makePriyaGroupManager()
     const res = mkRes()
-    await route.getFirmConsole({ identity: { advisorId: 'anna-r' } }, res)
+    await route.getFirmConsole({ identity: { advisorId: 'priya-nair' } }, res)
     const [status, body] = sent(res)
     expect(status).toBe(200)
     expect(body.scope.tier).toBe('group_manager')
     const ids = body.advisers.map(a => a.id)
-    // Cross-firm: Anna (BDO Germany) + Mike & Priya (Advisor-e) — all German.
-    expect(ids).toEqual(expect.arrayContaining(['anna-r', 'me', 'priya-nair']))
-    // Country-scoped: no IE / CH / IT advisers leak in.
-    expect(ids).not.toContain('sara-okafor') // IE
-    expect(ids).not.toContain('bob-lindt') // CH
-    expect(ids).not.toContain('sofia-marchetti') // IT
-    expect(body.stats.advisers).toBe(5) // exactly the five German advisers
+    // Advisor-e Germany across branches: Munich (me, priya, james), Berlin (tom), Hamburg (lena).
+    expect(ids).toEqual(expect.arrayContaining(['me', 'priya-nair', 'tom-fischer', 'lena-vogel']))
+    expect(ids).not.toContain('sofia-marchetti') // IT — other country
+    expect(ids).not.toContain('sara-okafor') // IE — other country
+    expect(ids).not.toContain('anna-r') // BDO — other brand
+    expect(ids).not.toContain('bob-lindt') // Lindt / CH
+    expect(body.stats.advisers).toBe(5)
+    expect(body.tree.children.length).toBe(3) // grouped by branch: Munich, Berlin, Hamburg
   })
 
-  test('a Firm Manager still sees ONLY their own firm (the Group tier does not leak down)', async () => {
+  test('a Firm Manager still sees ONLY their own branch (the Group tier does not leak down)', async () => {
     const res = mkRes()
-    await route.getFirmConsole({}, res) // dev identity = 'me' (Advisor-e firm manager)
+    await route.getFirmConsole({}, res) // dev identity = 'me' (Advisor-e Munich firm manager)
     const [status, body] = sent(res)
     expect(status).toBe(200)
     expect(body.scope.tier).toBe('firm_manager')
     const ids = body.advisers.map(a => a.id)
-    expect(ids).toContain('priya-nair') // same firm (Advisor-e)
-    expect(ids).not.toContain('anna-r') // BDO Germany — a different firm
+    expect(ids).toContain('priya-nair') // same branch (Advisor-e Munich)
+    expect(ids).not.toContain('tom-fischer') // Advisor-e Berlin — a different branch
   })
 
-  test('a Group Manager can view-as an adviser in ANOTHER firm in the same country', async () => {
+  test('a Group Manager can view-as an adviser in ANOTHER branch of their brand+country', async () => {
+    makePriyaGroupManager()
     const res = mkResH()
-    await route.startViewAs({ identity: { advisorId: 'anna-r' }, body: { advisorId: 'priya-nair' } }, res)
-    expect(sent(res)[0]).toBe(200) // Priya is Advisor-e, but same country (DE)
-    expect(setCookieOf(res)).toMatch(/viewAs=priya-nair/)
+    await route.startViewAs({ identity: { advisorId: 'priya-nair' }, body: { advisorId: 'tom-fischer' } }, res)
+    expect(sent(res)[0]).toBe(200) // Tom is Advisor-e Berlin — same brand + country (DE)
+    expect(setCookieOf(res)).toMatch(/viewAs=tom-fischer/)
   })
 
   test('a Group Manager cannot view-as an adviser in another country', async () => {
+    makePriyaGroupManager()
     const res = mkResH()
-    await route.startViewAs({ identity: { advisorId: 'anna-r' }, body: { advisorId: 'sara-okafor' } }, res) // IE
+    await route.startViewAs({ identity: { advisorId: 'priya-nair' }, body: { advisorId: 'sara-okafor' } }, res) // IE
     expect(sent(res)[0]).toBe(404)
   })
 })
@@ -1064,7 +1072,7 @@ describe('console previews (show-home, dev-gated)', () => {
     expect(sent(res)[0]).toBe(404)
   })
 
-  test('the group preview renders the country-manager view across firms', async () => {
+  test('the group preview rolls up a brand+country across its branches', async () => {
     process.env.ALLOW_DEV_AUTH = 'true'
     const res = mkRes()
     await route.getConsolePreview({ params: { tier: 'group' } }, res)
@@ -1073,20 +1081,26 @@ describe('console previews (show-home, dev-gated)', () => {
     expect(body.preview).toBe(true)
     expect(body.scope.tier).toBe('group_manager')
     const ids = body.advisers.map(a => a.id)
-    expect(ids).toEqual(expect.arrayContaining(['anna-r', 'me', 'priya-nair'])) // BDO + Advisor-e
-    expect(ids).not.toContain('sara-okafor') // IE — out of the country scope
+    expect(ids).toEqual(expect.arrayContaining(['me', 'priya-nair', 'tom-fischer'])) // Advisor-e DE branches
+    expect(ids).not.toContain('sara-okafor') // IE — other country
+    expect(ids).not.toContain('anna-r') // BDO — other brand
+    expect(body.stats.advisers).toBe(5)
+    expect(body.tree.children.length).toBe(3) // Munich, Berlin, Hamburg
   })
 
-  test('the global and mentor previews span the whole network', async () => {
+  test('the global preview covers a whole brand; the mentor preview the whole network', async () => {
     process.env.ALLOW_DEV_AUTH = 'true'
-    for (const tier of ['global', 'mentor']) {
-      const res = mkRes()
-      await route.getConsolePreview({ params: { tier } }, res)
-      const [status, body] = sent(res)
-      expect(status).toBe(200)
-      expect(body.scope.tier).toBe(tier === 'global' ? 'global_manager' : 'mentor')
-      expect(body.advisers.length).toBe(9) // everyone in the mock network
-    }
+    const g = mkRes()
+    await route.getConsolePreview({ params: { tier: 'global' } }, g)
+    expect(sent(g)[1].scope.tier).toBe('global_manager')
+    expect(sent(g)[1].stats.advisers).toBe(7) // the whole Advisor-e brand (all countries)
+    expect(sent(g)[1].tree.children.length).toBe(3) // countries: DE, IT, IE
+
+    const m = mkRes()
+    await route.getConsolePreview({ params: { tier: 'mentor' } }, m)
+    expect(sent(m)[1].scope.tier).toBe('mentor')
+    expect(sent(m)[1].stats.advisers).toBe(9) // everyone
+    expect(sent(m)[1].tree.children.length).toBe(3) // global groups: Advisor-e, BDO, Lindt & Co
   })
 
   test('an unknown preview tier is 404', async () => {
