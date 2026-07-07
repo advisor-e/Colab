@@ -17,6 +17,9 @@ const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
 ;['b-button', 'b-message', 'b-modal', 'b-field', 'b-autocomplete', 'b-input',
   'b-taginput', 'page-help'].forEach(n => localVue.component(n, Stub))
+// The shared ToolPicker has its own tests (tests/toolPicker.test.js); stub it here
+// so the page tests exercise only the page's own select/locked/clear handlers.
+const PickerStub = { render (h) { return h('div') }, methods: { reset () {} } }
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -40,6 +43,7 @@ function mockApi () {
 function factory () {
   return mount(Marketplace, {
     localVue,
+    stubs: { ToolPicker: PickerStub },
     mocks: { $t: key => key, $buefy: { toast: { open: jest.fn() } } }
   })
 }
@@ -63,15 +67,6 @@ describe('marketplace page', () => {
     expect(w.vm.loading).toBe(false)
     expect(w.vm.listings).toEqual([])
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-danger' }))
-  })
-
-  test('loadTools ignores a non-OK catalogue response and leaves the picker empty', async () => {
-    global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }))
-    const w = factory()
-    await flush()
-    w.vm.tools = []
-    await w.vm.loadTools()
-    expect(w.vm.tools).toEqual([])
   })
 
   test('the My tools filter shows only owned listings, with an Open tool link', async () => {
@@ -105,21 +100,7 @@ describe('marketplace page', () => {
     expect(w.vm.$buefy.toast.open).toHaveBeenCalled()
   })
 
-  test('filteredTools searches and caps at 40', async () => {
-    mockApi()
-    const w = factory()
-    await flush()
-    w.vm.tools = TOOLS
-    w.vm.toolQuery = 'cashflow'
-    expect(w.vm.filteredTools).toHaveLength(1)
-    expect(w.vm.filteredTools[0].pageId).toBe('id-200')
-
-    w.vm.tools = Array.from({ length: 60 }, (_, i) => ({ pageId: 'id-' + i, title: 'Tool ' + i, tags: [] }))
-    w.vm.toolQuery = ''
-    expect(w.vm.filteredTools).toHaveLength(40)
-  })
-
-  test('onToolSelect fills the form and locks the page ID', async () => {
+  test('onToolSelect (from the ToolPicker) fills the form and links the page ID', async () => {
     mockApi()
     const w = factory()
     await flush()
@@ -127,16 +108,14 @@ describe('marketplace page', () => {
     expect(w.vm.form.pageId).toBe('id-100')
     expect(w.vm.form.title).toBe('Dashboard Report')
     expect(w.vm.form.summary).toBe('Shows KPIs')
-    expect(w.vm.selectedTool).toEqual(TOOLS[0])
   })
 
-  test('onToolSelect refuses a locked framework and does not link it', async () => {
+  test('onToolLocked warns that a locked framework cannot be listed', async () => {
     mockApi()
     const w = factory()
     await flush()
-    w.vm.onToolSelect({ pageId: 'id-lock', title: 'Locked FW', locked: true })
+    w.vm.onToolLocked()
     expect(w.vm.form.pageId).toBe('')
-    expect(w.vm.selectedTool).toBeNull()
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-warning' }))
   })
 
@@ -159,31 +138,24 @@ describe('marketplace page', () => {
     expect(w.vm.$buefy.toast.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'is-warning' }))
   })
 
-  test('re-typing after a selection drops the linked tool (watch)', async () => {
+  test('onToolClear drops the linked tool (re-searching in the picker)', async () => {
     mockApi()
     const w = factory()
     await flush()
     w.vm.onToolSelect(TOOLS[0])
-    w.vm.toolQuery = 'something else'
-    await w.vm.$nextTick()
-    expect(w.vm.selectedTool).toBeNull()
+    expect(w.vm.form.pageId).toBe('id-100')
+    w.vm.onToolClear()
     expect(w.vm.form.pageId).toBe('')
   })
 
-  test('openCreate resets the form and loads the tool catalogue once', async () => {
+  test('openCreate resets the form and opens the modal', async () => {
     mockApi()
     const w = factory()
-    await flush(); global.fetch.mockClear()
-    w.vm.openCreate()
     await flush()
+    w.vm.form = { title: 'stale', summary: 's', tags: ['x'], price: '€9', pageId: 'id-100' }
+    w.vm.openCreate()
     expect(w.vm.createOpen).toBe(true)
-    expect(global.fetch).toHaveBeenCalledWith('/api/templates')
-    expect(w.vm.tools).toHaveLength(2)
-
-    // Second open must not re-fetch (cached).
-    global.fetch.mockClear()
-    await w.vm.loadTools()
-    expect(global.fetch).not.toHaveBeenCalled()
+    expect(w.vm.form).toEqual({ title: '', summary: '', tags: [], price: 'Free', pageId: '' })
   })
 
   test('create blocks without a linked tool, then without a title', async () => {

@@ -45,21 +45,7 @@
           p.modal-card-title {{ $t('group.addTool') }}
         section.modal-card-body
           b-field(:label="$t('market.fTool')" :message="$t('messages.addToolHint')")
-            b-autocomplete(
-              v-model="toolQuery"
-              :data="filteredTools"
-              field="title"
-              :placeholder="$t('market.toolPlaceholder')"
-              :loading="toolsLoading"
-              open-on-focus
-              clearable
-              @select="onToolSelect"
-            )
-              template(slot-scope="props")
-                .is-flex.is-justify-content-space-between.is-align-items-center
-                  span {{ props.option.title }}
-                  small.has-text-grey.ml-2 {{ props.option.subSection }}
-              template(slot="empty") {{ $t('market.noTool') }}
+            tool-picker(ref="toolPicker" @select="onToolSelect" @clear="onToolClear")
           b-field(v-if="selectedTool" :label="$t('market.fToolId')")
             .tags.has-addons.mb-0
               span.tag.is-dark {{ selectedTool.pageId }}
@@ -81,9 +67,11 @@
  * <conversation-pane> (lives in components/shared/).
  */
 import speechMixin from '~/mixins/speechMixin'
+import ToolPicker from '~/components/shared/ToolPicker.vue'
 
 export default {
   name: 'ConversationPane',
+  components: { ToolPicker },
   mixins: [speechMixin],
   props: {
     // The thread to display; null/empty shows the "pick a conversation" state.
@@ -96,11 +84,8 @@ export default {
       autoTranslate: false,
       translations: {},
       translating: {},
-      // Add-a-tool picker (1:1 Shared workspace) — mirrors the group page.
+      // Add-a-tool picker (1:1 Shared workspace) — uses the shared ToolPicker.
       toolModalOpen: false,
-      tools: [],
-      toolsLoading: false,
-      toolQuery: '',
       selectedTool: null
     }
   },
@@ -109,27 +94,12 @@ export default {
     isInvitation () { return !!(this.current && this.current.kind === 'invitation' && this.current.direction === 'incoming') },
     // Only a 1:1 conversation (kind 'outreach') can attach/detach tools here;
     // group tools live on the group page.
-    canShareTools () { return !!(this.current && this.current.kind === 'outreach') },
-    // Client-side filter over the loaded catalogue; capped so the dropdown stays snappy.
-    filteredTools () {
-      const q = (this.toolQuery || '').trim().toLowerCase()
-      const base = q
-        ? this.tools.filter((t) => {
-          const hay = (t.title + ' ' + (t.subSection || '') + ' ' + (t.tags || []).join(' ')).toLowerCase()
-          return hay.includes(q)
-        })
-        : this.tools
-      return base.slice(0, 40)
-    }
+    canShareTools () { return !!(this.current && this.current.kind === 'outreach') }
   },
   watch: {
     // Load whenever the selected thread changes (immediate = initial load too).
     threadId: { immediate: true, handler () { this.load() } },
-    autoTranslate (on) { if (on) { this.translateAllForeign() } },
-    // Re-searching drops a stale selection until they pick again.
-    toolQuery (val) {
-      if (this.selectedTool && val !== this.selectedTool.title) { this.selectedTool = null }
-    }
+    autoTranslate (on) { if (on) { this.translateAllForeign() } }
   },
   methods: {
     async load () {
@@ -209,24 +179,14 @@ export default {
         this.$buefy.toast.open({ message: this.$t('toast.sendFailed'), type: 'is-danger' })
       }
     },
-    // Open the picker and lazy-load the Advisor-e catalogue the first time.
+    // Open the picker (the shared ToolPicker loads the catalogue itself).
     openToolPicker () {
       this.toolModalOpen = true
-      this.loadTools()
+      this.selectedTool = null
+      if (this.$refs.toolPicker) { this.$refs.toolPicker.reset() }
     },
-    async loadTools () {
-      if (this.tools.length) { return }
-      this.toolsLoading = true
-      try {
-        const res = await fetch('/api/templates')
-        if (res.ok) { this.tools = await res.json() }
-      } catch (e) {
-        // leave empty; the picker just shows no options
-      } finally {
-        this.toolsLoading = false
-      }
-    },
-    onToolSelect (option) { this.selectedTool = option || null },
+    onToolSelect (option) { this.selectedTool = option },
+    onToolClear () { this.selectedTool = null },
     // Attach the picked tool to this 1:1 conversation's Shared workspace.
     async addTool () {
       if (!this.selectedTool || !this.current) { return }
@@ -242,7 +202,6 @@ export default {
           this.$buefy.toast.open({ message: this.$t('group.toolAdded'), type: 'is-success' })
           this.toolModalOpen = false
           this.selectedTool = null
-          this.toolQuery = ''
         } else {
           const msg = data.error && data.error.message ? data.error.message : this.$t('toast.failed')
           this.$buefy.toast.open({ message: msg, type: 'is-warning' })

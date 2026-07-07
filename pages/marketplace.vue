@@ -45,23 +45,7 @@
             p.modal-card-title {{ $t('market.list') }}
           section.modal-card-body
             b-field(:label="$t('market.fTool')" :message="$t('market.toolHint')")
-              b-autocomplete(
-                v-model="toolQuery"
-                :data="filteredTools"
-                field="title"
-                :placeholder="$t('market.toolPlaceholder')"
-                :loading="toolsLoading"
-                open-on-focus
-                clearable
-                @select="onToolSelect"
-              )
-                template(slot-scope="props")
-                  .is-flex.is-justify-content-space-between.is-align-items-center
-                    span
-                      | {{ props.option.title }}
-                      span.tag.is-warning.is-light.ml-2(v-if="props.option.locked") 🔒 {{ $t('market.locked') }}
-                    small.has-text-grey.ml-2 {{ props.option.subSection }}
-                template(slot="empty") {{ $t('market.noTool') }}
+              tool-picker(ref="toolPicker" :block-locked="true" @select="onToolSelect" @locked="onToolLocked" @clear="onToolClear")
             b-field(v-if="form.pageId" :label="$t('market.fToolId')")
               .tags.has-addons.mb-0
                 span.tag.is-dark {{ form.pageId }}
@@ -93,9 +77,11 @@
 
 <script>
 import speechMixin from '~/mixins/speechMixin'
+import ToolPicker from '~/components/shared/ToolPicker.vue'
 
 export default {
   name: 'MarketplacePage',
+  components: { ToolPicker },
   mixins: [speechMixin],
   data () {
     return {
@@ -103,11 +89,7 @@ export default {
       loading: true,
       filter: 'all', // 'all' | 'mine' (tools I've bought)
       createOpen: false,
-      form: { title: '', summary: '', tags: [], price: 'Free', pageId: '' },
-      tools: [],
-      toolsLoading: false,
-      toolQuery: '',
-      selectedTool: null
+      form: { title: '', summary: '', tags: [], price: 'Free', pageId: '' }
     }
   },
   computed: {
@@ -115,28 +97,6 @@ export default {
     // "All tools" vs "My tools" (only the ones I've bought).
     visibleListings () {
       return this.filter === 'mine' ? this.listings.filter(l => l.owned) : this.listings
-    },
-    // Client-side filter over the loaded catalogue; capped so the dropdown stays
-    // snappy with 200+ tools. Matches title, sub-section and tags.
-    filteredTools () {
-      const q = (this.toolQuery || '').trim().toLowerCase()
-      const base = q
-        ? this.tools.filter((t) => {
-          const hay = (t.title + ' ' + (t.subSection || '') + ' ' + (t.tags || []).join(' ')).toLowerCase()
-          return hay.includes(q)
-        })
-        : this.tools
-      return base.slice(0, 40)
-    }
-  },
-  watch: {
-    // If the picker text no longer matches the confirmed selection, the advisor is
-    // re-searching — drop the link until they pick again (create() then blocks).
-    toolQuery (val) {
-      if (this.selectedTool && val !== this.selectedTool.title) {
-        this.selectedTool = null
-        this.form.pageId = ''
-      }
     }
   },
   async mounted () {
@@ -170,42 +130,28 @@ export default {
         this.$buefy.toast.open({ message: this.$t('toast.failed'), type: 'is-danger' })
       }
     },
-    // Load the Advisor-e tool catalogue once, the first time the form opens.
-    async loadTools () {
-      if (this.tools.length) { return }
-      this.toolsLoading = true
-      try {
-        const res = await fetch('/api/templates')
-        if (res.ok) { this.tools = await res.json() }
-      } catch (e) {
-        // leave empty; the picker just shows no options
-      } finally {
-        this.toolsLoading = false
-      }
-    },
-    // Fill the form from the chosen tool. The page ID is the read-only link; the
-    // title/summary/tags pre-fill from the master record and stay editable.
+    // A tool was chosen in the shared ToolPicker: fill the form from it. The page ID
+    // is the read-only link; title/summary/tags pre-fill from the master record and
+    // stay editable. (The picker already refuses locked tools via block-locked.)
     onToolSelect (option) {
-      if (!option) { return }
-      // A locked / non-derivable framework (Tier 2) can't be listed (plan §6).
-      // Block it at the picker; the backend enforces the same rule on create.
-      if (option.locked) {
-        this.$buefy.toast.open({ message: this.$t('market.lockedTool'), type: 'is-warning' })
-        return
-      }
-      this.selectedTool = option
       this.form.pageId = option.pageId
       this.form.title = option.title
       this.form.summary = option.purpose || ''
       this.form.tags = (option.tags || []).slice()
-      this.toolQuery = option.title
+    },
+    // The picker refused a locked / non-derivable framework (Tier 2, plan §6).
+    onToolLocked () {
+      this.$buefy.toast.open({ message: this.$t('market.lockedTool'), type: 'is-warning' })
+    },
+    // The picker selection was cleared (re-searching) — drop the linked page ID so
+    // create() blocks until a tool is chosen again.
+    onToolClear () {
+      this.form.pageId = ''
     },
     openCreate () {
       this.form = { title: '', summary: '', tags: [], price: 'Free', pageId: '' }
-      this.toolQuery = ''
-      this.selectedTool = null
       this.createOpen = true
-      this.loadTools()
+      if (this.$refs.toolPicker) { this.$refs.toolPicker.reset() }
     },
     async create () {
       // A listing must link to a real Advisor-e tool (page ID). The backend

@@ -18,6 +18,8 @@ import ConversationPane from '../components/shared/ConversationPane.vue'
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
 ;['b-message', 'b-tag', 'b-switch', 'b-button', 'b-modal', 'b-field', 'b-autocomplete'].forEach(n => localVue.component(n, Stub))
+// The shared ToolPicker has its own tests; stub it (with reset).
+const PickerStub = { render (h) { return h('div') }, methods: { reset () {} } }
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -35,6 +37,7 @@ function mockApi () {
 function factory (threadId) {
   return mount(ConversationPane, {
     localVue,
+    stubs: { ToolPicker: PickerStub },
     propsData: { threadId: threadId || 't-bob' },
     mocks: {
       $t: key => key,
@@ -141,10 +144,10 @@ describe('ConversationPane', () => {
     })
     const w = factory('t-bob')
     await flush(); await w.vm.$nextTick()
-    await w.vm.openToolPicker()
-    await flush()
-    expect(w.vm.tools).toHaveLength(1)
+    w.vm.openToolPicker()
+    // The ToolPicker emits `select` with the chosen catalogue row.
     w.vm.onToolSelect({ pageId: 'id-1', title: 'Tool One' })
+    expect(w.vm.selectedTool.pageId).toBe('id-1')
     await w.vm.addTool()
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/messages/t-bob/shared-pages', expect.objectContaining({ method: 'POST' }))
