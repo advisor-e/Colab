@@ -126,8 +126,11 @@ server.post('/api/people/firm/posture', auth, people.setFirmPosture)
 // View-as: a manager assumes an adviser's view (gated + re-checked server-side).
 server.post('/api/people/firm/view-as', auth, people.startViewAs)
 server.del('/api/people/firm/view-as', auth, people.exitViewAs)
+// Lazy per-branch adviser loader for the console tree (PERF-CONSOLE-TREE).
+server.get('/api/people/console/advisers', auth, people.getConsoleAdvisers)
 // Console previews (show-home only; the handler refuses unless ALLOW_DEV_AUTH).
 server.get('/api/people/console/preview/:tier', auth, people.getConsolePreview)
+server.get('/api/people/console/preview/:tier/advisers', auth, people.getConsoleAdvisersPreview)
 server.get('/api/people/marketplace', auth, people.listMarketplace)
 server.post('/api/people/marketplace', auth, people.createListing)
 server.get('/api/people/marketplace/:id', auth, people.getListing)

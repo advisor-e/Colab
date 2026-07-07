@@ -789,7 +789,6 @@ function buildConsole (me) {
   const managedIds = new Set(managed.map(a => a.id))
   const managedGroups = groups.filter(g => (g.members || []).some(m => managedIds.has(m.id)))
   const managedGroupIds = new Set(managedGroups.map(g => g.id))
-  const groupCountFor = id => groups.filter(g => (g.members || []).some(m => m.id === id)).length
   const approvals = groupJoinRequests
     .filter(r => r.status === 'requested' && managedGroupIds.has(r.groupId))
     .map((r) => {
@@ -797,11 +796,6 @@ function buildConsole (me) {
       const g = groups.find(x => x.id === r.groupId)
       return { id: r.id, advisor: { id: adv.id, name: adv.name, firm: adv.firm }, groupId: r.groupId, groupName: g ? g.name : r.groupId }
     })
-  const adviserRow = a => ({
-    id: a.id, name: a.name, title: a.title, available: !!a.available,
-    blocked: !!a.blockFirmManagerView, isMe: a.id === me.id,
-    groupCount: groupCountFor(a.id), lastActive: a.lastActive || null
-  })
   const tier = roles.resolveTier(me)
   const levels = CONSOLE_LEVELS[tier] || []
   const crossOrg = crossOrgStateFor(me)
@@ -827,19 +821,37 @@ function buildConsole (me) {
     // The three-level cross-org control for this manager: own level, inherited
     // ceiling, effective result, and which level (if any) is capping an Open choice.
     crossOrg,
-    advisers: managed.map(adviserRow), // flat list — the Firm-tier console table
-    // The cascading roll-up for higher tiers (null at the Firm tier, which uses the
-    // flat advisers table). Each node carries its counts + its children/advisers.
-    tree: levels.length ? buildBreakdown(managed, levels, adviserRow) : null,
+    // Flat adviser table — ONLY the Firm tier (one bounded branch). Higher tiers
+    // ship the tree of COUNTS and lazy-load each branch's advisers on expand
+    // (listConsoleAdvisers), so the payload never scales with the subtree size
+    // (~1,700 branches at a real brand) — PERF-CONSOLE-TREE.
+    advisers: levels.length ? [] : managed.map(a => consoleAdviserRow(a, me.id)),
+    // The cascading roll-up for higher tiers (null at the Firm tier). COUNTS ONLY —
+    // no adviser rows at the leaves; a branch's advisers are fetched on demand.
+    tree: levels.length ? buildBreakdown(managed, levels) : null,
     approvals
   }
 }
 
-// Recursively roll `list` up by `levels` (e.g. ['globalGroup','country','firm']),
-// down to advisers at the leaf. Each node: { level, value, label, advisers (count),
-// childLevel, childCount, children[] | people[] }.
-function buildBreakdown (list, levels, adviserRow) {
-  if (!levels.length) { return { people: list.map(adviserRow) } }
+// One adviser row for the console (id / name / status / group count). Module-level
+// so the lazy per-branch loader and buildConsole share the exact same shape.
+function consoleGroupCount (id) {
+  return groups.filter(g => (g.members || []).some(m => m.id === id)).length
+}
+function consoleAdviserRow (a, meId) {
+  return {
+    id: a.id, name: a.name, title: a.title, available: !!a.available,
+    blocked: !!a.blockFirmManagerView, isMe: a.id === meId,
+    groupCount: consoleGroupCount(a.id), lastActive: a.lastActive || null
+  }
+}
+
+// Recursively roll `list` up by `levels` (e.g. ['globalGroup','country','firm']).
+// Each node: { level, value, label, advisers (count), childLevel, childCount,
+// children[] }. The leaf (a branch) carries counts only — its advisers are loaded
+// on expand via listConsoleAdvisers (PERF-CONSOLE-TREE), never inlined here.
+function buildBreakdown (list, levels) {
+  if (!levels.length) { return {} } // leaf branch — advisers fetched on demand
   const head = levels[0]
   const rest = levels.slice(1)
   const buckets = new Map()
@@ -854,10 +866,39 @@ function buildBreakdown (list, levels, adviserRow) {
     const childCount = rest.length ? new Set(grp.map(a => a[rest[0]])).size : grp.length
     return Object.assign(
       { level: head, value: v, label: v, advisers: grp.length, childLevel, childCount },
-      buildBreakdown(grp, rest, adviserRow)
+      buildBreakdown(grp, rest)
     )
   })
   return { children }
+}
+
+// Lazy per-branch adviser loader (PERF-CONSOLE-TREE): the advisers a manager
+// oversees WITHIN one firm/branch, paginated. Re-checks scope every call
+// (roles.canManage), so a firm outside the manager's scope simply yields nobody —
+// the client only sends the `firm` filter, never a scope it could widen.
+function consoleAdvisersForScope (me, firm, opts) {
+  const o = opts || {}
+  const all = advisors.filter(a => a.firm === firm && roles.canManage(me, a))
+  const offset = o.offset > 0 ? o.offset : 0
+  const limit = o.limit > 0 ? o.limit : 100
+  return { firm: firm, total: all.length, advisers: all.slice(offset, offset + limit).map(a => consoleAdviserRow(a, me.id)) }
+}
+
+async function listConsoleAdvisers (managerId, firm, opts) {
+  // SQL SEAM: SELECT advisers WHERE firm=? AND <in manager's managed scope> LIMIT/OFFSET.
+  const me = advisors.find(a => a.id === managerId)
+  if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_MANAGER' } }
+  return consoleAdvisersForScope(me, firm, opts)
+}
+
+// Is an audit actor within a console scope? Used to scope the activity feed without
+// shipping the (potentially huge) managed set to the client — rebuilds a pseudo
+// manager from the server-produced `scope` and re-checks canManage.
+function actorInScope (scope, actorId) {
+  if (!scope) { return false }
+  const act = advisors.find(a => a.id === actorId)
+  if (!act) { return false }
+  return roles.canManage({ tier: scope.tier, globalGroup: scope.globalGroup, country: scope.country, firm: scope.firm }, act)
 }
 
 async function getFirmConsole (managerId) {
@@ -887,6 +928,15 @@ async function getConsolePreview (tier) {
   const me = resolver ? resolver() : null
   if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_FOUND' } }
   return buildConsole(me)
+}
+
+// Lazy per-branch adviser loader for a PREVIEW tier (show-home; dev-gated in the
+// route). Same shape as listConsoleAdvisers, scoped to the demo manager for the tier.
+async function listConsoleAdvisersPreview (tier, firm, opts) {
+  const resolver = DEMO_MANAGERS[tier]
+  const me = resolver ? resolver() : null
+  if (!me || !roles.isManagerTier(roles.resolveTier(me))) { return { error: 'NOT_FOUND' } }
+  return consoleAdvisersForScope(me, firm, opts)
 }
 
 // A manager sets the cross-org posture at their OWN tier level — a Firm Manager
@@ -1157,5 +1207,6 @@ module.exports = {
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
   canReachAdvisor, getOrgPosture, setOrgPosture,
-  isFirmManager, isManager, isAdmin, advisorLabel, canManage, getFirmConsole, getConsolePreview, setFirmPosture
+  isFirmManager, isManager, isAdmin, advisorLabel, canManage, getFirmConsole, getConsolePreview, setFirmPosture,
+  listConsoleAdvisers, listConsoleAdvisersPreview, actorInScope
 }

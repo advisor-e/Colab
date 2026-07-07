@@ -1050,22 +1050,39 @@ describe('role hierarchy (Q-ROLES) — Group (country) Manager scope', () => {
     require('../server/data/roles').setOverride('priya-nair', 'group_manager')
   }
 
-  test('getFirmConsole for a Group Manager rolls up the brand+country across its branches', async () => {
+  test('getFirmConsole for a Group Manager rolls up the brand+country across its branches (counts only)', async () => {
     makePriyaGroupManager()
     const res = mkRes()
     await route.getFirmConsole({ identity: { advisorId: 'priya-nair' } }, res)
     const [status, body] = sent(res)
     expect(status).toBe(200)
     expect(body.scope.tier).toBe('group_manager')
-    const ids = body.advisers.map(a => a.id)
-    // Advisor-e Germany across branches: Munich (me, priya, james), Berlin (tom), Hamburg (lena).
-    expect(ids).toEqual(expect.arrayContaining(['me', 'priya-nair', 'tom-fischer', 'lena-vogel']))
-    expect(ids).not.toContain('sofia-marchetti') // IT — other country
-    expect(ids).not.toContain('sara-okafor') // IE — other country
-    expect(ids).not.toContain('anna-r') // BDO — other brand
-    expect(ids).not.toContain('bob-lindt') // Lindt / CH
     expect(body.stats.advisers).toBe(5)
-    expect(body.tree.children.length).toBe(3) // grouped by branch: Munich, Berlin, Hamburg
+    // Higher tiers ship the tree of COUNTS, not a flat adviser list (PERF-CONSOLE-TREE).
+    expect(body.advisers).toEqual([])
+    const branches = body.tree.children.map(n => n.value).sort()
+    expect(branches).toEqual(['Advisor-e Berlin', 'Advisor-e Hamburg', 'Advisor-e Munich']) // DE branches
+    expect(body.tree.children.reduce((s, n) => s + n.advisers, 0)).toBe(5) // counts sum to the total
+    expect(body.tree.children.every(n => !n.people)).toBe(true) // no adviser rows inlined
+  })
+
+  test('the lazy per-branch loader returns a branch\'s advisers within scope, and re-checks scope', async () => {
+    makePriyaGroupManager()
+    const res = mkRes()
+    await route.getConsoleAdvisers({ identity: { advisorId: 'priya-nair' }, query: { firm: 'Advisor-e Munich' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.firm).toBe('Advisor-e Munich')
+    expect(body.total).toBe(3)
+    expect(body.advisers.map(a => a.id).sort()).toEqual(['james-obrien', 'me', 'priya-nair'])
+    // A branch OUTSIDE the manager's scope yields nobody (scope re-derived server-side).
+    const out = mkRes()
+    await route.getConsoleAdvisers({ identity: { advisorId: 'priya-nair' }, query: { firm: 'Advisor-e Dublin' } }, out)
+    expect(sent(out)[1].advisers).toEqual([]) // IE — other country
+    // A non-manager is refused.
+    const nm = mkRes()
+    await route.getConsoleAdvisers({ identity: { advisorId: 'bob-lindt' }, query: { firm: 'Lindt Zürich' } }, nm)
+    expect(sent(nm)[0]).toBe(403)
   })
 
   test('a Firm Manager still sees ONLY their own branch (the Group tier does not leak down)', async () => {
@@ -1116,12 +1133,23 @@ describe('console previews (show-home, dev-gated)', () => {
     expect(status).toBe(200)
     expect(body.preview).toBe(true)
     expect(body.scope.tier).toBe('group_manager')
-    const ids = body.advisers.map(a => a.id)
-    expect(ids).toEqual(expect.arrayContaining(['me', 'priya-nair', 'tom-fischer'])) // Advisor-e DE branches
-    expect(ids).not.toContain('sara-okafor') // IE — other country
-    expect(ids).not.toContain('anna-r') // BDO — other brand
+    expect(body.advisers).toEqual([]) // counts-only tree (PERF-CONSOLE-TREE)
     expect(body.stats.advisers).toBe(5)
     expect(body.tree.children.length).toBe(3) // Munich, Berlin, Hamburg
+  })
+
+  test('the preview lazy loader returns a branch\'s advisers, dev-gated', async () => {
+    process.env.ALLOW_DEV_AUTH = 'true'
+    const res = mkRes()
+    await route.getConsoleAdvisersPreview({ params: { tier: 'group' }, query: { firm: 'Advisor-e Munich' } }, res)
+    expect(sent(res)[0]).toBe(200)
+    expect(sent(res)[1].preview).toBe(true)
+    expect(sent(res)[1].advisers.map(a => a.id)).toEqual(expect.arrayContaining(['me', 'priya-nair']))
+
+    delete process.env.ALLOW_DEV_AUTH
+    const off = mkRes()
+    await route.getConsoleAdvisersPreview({ params: { tier: 'group' }, query: { firm: 'Advisor-e Munich' } }, off)
+    expect(sent(off)[0]).toBe(404)
   })
 
   test('the global preview covers a whole brand; the mentor preview the whole network', async () => {

@@ -493,18 +493,28 @@ async function getAuditLogPreview (req, res) {
 // blocked the manager view), headline stats, pending join requests, and a recent
 // activity feed drawn from the (real) audit trail, scoped to the firm's advisers.
 // Gated to a Firm Manager (RBAC SEAM in repo.getFirmConsole).
+// The recent activity feed for a console, scoped to the manager's reach via the
+// server-produced `scope` (repo.actorInScope) — never the shipped adviser list,
+// which is now empty for higher tiers (PERF-CONSOLE-TREE). Names resolve on demand.
+async function scopedActivity (scope) {
+  return (await audit.list({ limit: 100 }))
+    .filter(e => repo.actorInScope(scope, e.actorId))
+    .slice(0, 8)
+    .map(e => ({ at: e.at, actorName: repo.advisorLabel(e.actorId), action: e.action, meta: e.meta }))
+}
+
+// Pagination options for the lazy per-branch adviser loaders.
+function pageOpts (req) {
+  const q = req.query || {}
+  return { offset: q.offset ? parseInt(q.offset, 10) : 0, limit: q.limit ? parseInt(q.limit, 10) : 100 }
+}
+
 async function getFirmConsole (req, res) {
   const me = await currentAdvisor(req)
   const data = await repo.getFirmConsole(me.id)
   if (data.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a firm manager can open the firm console.'); return }
   if (data.error) { fail(res, 404, 'NOT_FOUND', 'Firm not found.'); return }
-  const nameById = {}
-  const firmIds = new Set(data.advisers.map((a) => { nameById[a.id] = a.name; return a.id }))
-  const activity = (await audit.list({ limit: 100 }))
-    .filter(e => firmIds.has(e.actorId))
-    .slice(0, 8)
-    .map(e => ({ at: e.at, actorName: nameById[e.actorId] || e.actorId, action: e.action, meta: e.meta }))
-  ok(res, Object.assign({}, data, { activity }))
+  ok(res, Object.assign({}, data, { activity: await scopedActivity(data.scope) }))
 }
 
 // Console PREVIEW (show-home only): render a given tier's console as a seeded demo
@@ -514,13 +524,25 @@ async function getConsolePreview (req, res) {
   if (process.env.ALLOW_DEV_AUTH !== 'true') { fail(res, 404, 'NOT_FOUND', 'Not found.'); return }
   const data = await repo.getConsolePreview(req.params.tier)
   if (data.error) { fail(res, 404, 'NOT_FOUND', 'Unknown preview.'); return }
-  const nameById = {}
-  const ids = new Set(data.advisers.map((a) => { nameById[a.id] = a.name; return a.id }))
-  const activity = (await audit.list({ limit: 100 }))
-    .filter(e => ids.has(e.actorId))
-    .slice(0, 8)
-    .map(e => ({ at: e.at, actorName: nameById[e.actorId] || e.actorId, action: e.action, meta: e.meta }))
-  ok(res, Object.assign({}, data, { activity, preview: true }))
+  ok(res, Object.assign({}, data, { activity: await scopedActivity(data.scope), preview: true }))
+}
+
+// Lazy per-branch adviser loader (PERF-CONSOLE-TREE): the advisers in one branch,
+// within the caller's console scope, paginated. Manager-gated; the client sends only
+// the `firm` filter — scope is re-derived server-side, never trusted from the client.
+async function getConsoleAdvisers (req, res) {
+  const me = await currentAdvisor(req)
+  const r = await repo.listConsoleAdvisers(me.id, (req.query || {}).firm || '', pageOpts(req))
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'Only a manager can open the console.'); return }
+  ok(res, r)
+}
+
+// Dev-only preview variant of the lazy loader (show-home; refused in production).
+async function getConsoleAdvisersPreview (req, res) {
+  if (process.env.ALLOW_DEV_AUTH !== 'true') { fail(res, 404, 'NOT_FOUND', 'Not found.'); return }
+  const r = await repo.listConsoleAdvisersPreview(req.params.tier, (req.query || {}).firm || '', pageOpts(req))
+  if (r.error) { fail(res, 404, 'NOT_FOUND', 'Unknown preview.'); return }
+  ok(res, Object.assign({}, r, { preview: true }))
 }
 
 // A manager sets the cross-org posture at their OWN tier level (the console
@@ -540,6 +562,8 @@ async function setFirmPosture (req, res) {
 module.exports = {
   getFirmConsole,
   getConsolePreview,
+  getConsoleAdvisers,
+  getConsoleAdvisersPreview,
   setFirmPosture,
   startViewAs,
   exitViewAs,
