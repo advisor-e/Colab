@@ -572,6 +572,25 @@ async function inviteToGroup (groupId, inviter, inviteeId, note) {
   return { success: true, threadId: t.id, group: { id: g.id, name: g.name }, invitee: { id: invitee.id, name: invitee.name } }
 }
 
+// Manager bulk-invite (FEAT-BULKINVITE, plan §4): invite MANY advisers into one
+// group at once — but each invitation is still individual + consent-based (every
+// invitee must accept; no top-down placement). Reuses inviteToGroup per invitee, so
+// an already-member (or any per-invitee guard) is skipped, not fatal. Manager +
+// group are validated ONCE up front.
+async function inviteManyToGroup (groupId, inviter, inviteeIds, note) {
+  const g = groups.find(x => x.id === groupId)
+  if (!g) { return { error: 'GROUP_NOT_FOUND' } }
+  if (!(g.members || []).some(m => m.id === inviter.id)) { return { error: 'NOT_MANAGER' } }
+  const invited = []
+  const skipped = []
+  const ids = Array.isArray(inviteeIds) ? inviteeIds : []
+  for (let i = 0; i < ids.length; i++) {
+    const r = await inviteToGroup(groupId, inviter, ids[i], note)
+    if (r.success) { invited.push(r.invitee) } else { skipped.push({ id: ids[i], reason: r.error }) }
+  }
+  return { success: true, group: { id: g.id, name: g.name }, invited: invited, skipped: skipped }
+}
+
 async function respondInvitation (threadId, advisorId, accept) {
   // SQL SEAM: UPDATE group_invitation SET status=? WHERE id=? AND advisor_id=? AND
   //   status='invited'; if accepted INSERT INTO group_member (group_id, advisor_id, 'member')
@@ -1200,7 +1219,7 @@ module.exports = {
   getAdvisorById, listAdvisors, updateAdvisorInterest,
   listGroups, getGroupById, createGroup, requestJoinGroup, groupJoinStatus,
   listGroupJoinRequests, respondJoinRequest, addGroupSharedPage, removeGroupSharedPage,
-  listManageableGroups, inviteToGroup, respondInvitation,
+  listManageableGroups, inviteToGroup, inviteManyToGroup, respondInvitation,
   listThreads, getThreadById, appendMessage, createOutreachThread, findOrCreateGroupThread, findOrCreateDirectThread, hasOutgoingOutreach, countOutgoingOutreachSince,
   addThreadSharedPage, removeThreadSharedPage,
   requestConnection, listConnections, listConnecting, respondConnection,

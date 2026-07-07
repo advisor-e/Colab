@@ -64,11 +64,18 @@
                 span.has-text-grey.is-size-7 {{ $t('firm.showing', { shown: filteredAdvisers.length, total: c.advisers.length }) }}
               p.has-text-grey.is-size-7.mb-2 {{ advisersSub }}
               b-input.mb-3(v-model="advSearch" :placeholder="$t('firm.searchAdvisers')" size="is-small" rounded)
+              //- Bulk-invite bar — appears once advisers are ticked (FEAT-BULKINVITE).
+              .bulk-bar.mb-3(v-if="selectedIds.length")
+                span.has-text-grey.is-size-7 {{ $t('firm.selectedCount', { n: selectedIds.length }) }}
+                b-button.is-small.is-link(:disabled="preview" @click="openBulkInvite") {{ $t('firm.inviteSelected') }} ({{ selectedIds.length }})
+                b-button.is-small.is-light(@click="clearSelection") {{ $t('common.cancel') }}
               p.has-text-grey.is-size-7(v-if="!filteredAdvisers.length") {{ $t('firm.noAdviserMatch') }}
               .table-wrap(v-else)
                 table.table.is-fullwidth.is-hoverable
                   thead
                     tr
+                      th.fm-check
+                        b-checkbox(:value="allSelected" :disabled="preview" @input="toggleAll")
                       th {{ $t('firm.colAdviser') }}
                       th {{ $t('firm.colStatus') }}
                       th {{ $t('firm.colGroups') }}
@@ -76,6 +83,8 @@
                       th {{ $t('firm.colAction') }}
                   tbody
                     tr(v-for="a in filteredAdvisers" :key="a.id")
+                      td.fm-check
+                        b-checkbox(:value="selectedIds.includes(a.id)" :disabled="preview" @input="toggleSelect(a.id)")
                       td
                         .who
                           .avatar.fm-av(:style="avatarStyle(a)") {{ initials(a.name) }}
@@ -127,6 +136,23 @@
           //- Full network audit log — platform super-admin (Mentor) only.
           p.mt-3(v-if="isAdminTier")
             nuxt-link(to="/audit") {{ $t('console.viewFullAudit') }}
+
+        //- Bulk-invite group picker (FEAT-BULKINVITE): invite the ticked advisers
+        //- into one of the manager's groups. Each invitee still accepts individually.
+        b-modal(v-model="bulkOpen" has-modal-card)
+          .modal-card
+            header.modal-card-head
+              p.modal-card-title {{ $t('firm.bulkInviteTitle', { n: selectedIds.length }) }}
+            section.modal-card-body
+              template(v-if="myGroups.length")
+                b-field(:label="$t('firm.bulkInvitePick')")
+                  b-select(v-model="bulkGroupId" expanded)
+                    option(v-for="g in myGroups" :key="g.id" :value="g.id") {{ g.name }}
+                p.has-text-grey.is-size-7.mt-2 {{ $t('firm.bulkInviteNote') }}
+              p.has-text-grey.is-size-7(v-else) {{ $t('firm.bulkNoGroups') }}
+            footer.modal-card-foot
+              b-button(type="is-link" :disabled="!bulkGroupId || bulkSending" :loading="bulkSending" @click="sendBulkInvites") {{ $t('firm.sendInvitations') }}
+              b-button(@click="bulkOpen = false") {{ $t('common.cancel') }}
 </template>
 
 <script>
@@ -156,7 +182,19 @@ export default {
     preview: { type: Boolean, default: false }
   },
   data () {
-    return { c: null, loading: true, savingPosture: null, advSearch: '', viewingId: null }
+    return {
+      c: null,
+      loading: true,
+      savingPosture: null,
+      advSearch: '',
+      viewingId: null,
+      // Bulk-invite (FEAT-BULKINVITE): ticked adviser ids + the group-picker modal.
+      selectedIds: [],
+      bulkOpen: false,
+      myGroups: [],
+      bulkGroupId: '',
+      bulkSending: false
+    }
   },
   computed: {
     // The resolved tier drives the title/subtitle/scope chip. Defaults to the Firm
@@ -246,6 +284,10 @@ export default {
       return this.c.advisers.filter((a) => {
         return (a.name + ' ' + (a.title || '')).toLowerCase().includes(q)
       })
+    },
+    // All currently-visible advisers are ticked (drives the header select-all box).
+    allSelected () {
+      return this.filteredAdvisers.length > 0 && this.filteredAdvisers.every(a => this.selectedIds.includes(a.id))
     }
   },
   async mounted () {
@@ -348,6 +390,54 @@ export default {
       } catch (e) {
         this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-danger' })
       }
+    },
+    // ── Bulk-invite (FEAT-BULKINVITE) ────────────────────────────────────────
+    toggleSelect (id) {
+      const i = this.selectedIds.indexOf(id)
+      if (i === -1) { this.selectedIds.push(id) } else { this.selectedIds.splice(i, 1) }
+    },
+    toggleAll (on) {
+      this.selectedIds = on ? this.filteredAdvisers.map(a => a.id) : []
+    },
+    clearSelection () { this.selectedIds = [] },
+    // Open the group picker + load the manager's groups (the invite targets).
+    async openBulkInvite () {
+      this.bulkGroupId = ''
+      this.bulkOpen = true
+      try {
+        const res = await fetch('/api/people/my-groups')
+        if (res.ok) { this.myGroups = await res.json() }
+      } catch (e) {
+        this.myGroups = []
+      }
+    },
+    // Send the invitations. Each invitee still accepts individually (consent) — the
+    // backend skips anyone already in the group and reports it in the summary.
+    async sendBulkInvites () {
+      if (!this.bulkGroupId || this.bulkSending) { return }
+      this.bulkSending = true
+      try {
+        const res = await fetch('/api/people/groups/' + this.bulkGroupId + '/invite-many', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ advisorIds: this.selectedIds })
+        })
+        const data = await res.json()
+        if (data.success) {
+          const n = data.invited.length
+          const s = data.skipped.length
+          const msg = s
+            ? this.$t('firm.bulkSomeSkipped', { n, s })
+            : this.$t('firm.bulkInvited', { n })
+          this.$buefy.toast.open({ message: msg, type: 'is-success' })
+          this.bulkOpen = false
+          this.clearSelection()
+        } else {
+          this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-warning' })
+        }
+      } catch (e) {
+        this.$buefy.toast.open({ message: this.$t('firm.actionFailed'), type: 'is-danger' })
+      } finally {
+        this.bulkSending = false
+      }
     }
   }
 }
@@ -360,6 +450,9 @@ export default {
 .preview-msg { margin-bottom: .5rem; }
 .preview-nav { margin-bottom: 1.25rem; font-size: .9rem; }
 .preview-nav .sep { color: var(--muted); margin: 0 .4rem; }
+
+.bulk-bar { display: flex; align-items: center; gap: .6rem; background: #f4f7ff; border: 1px solid #e2e8ff; border-radius: 10px; padding: .5rem .7rem; }
+.fm-check { width: 2.2rem; text-align: center; }
 
 .fm-tiles { display: grid; gap: .9rem; grid-template-columns: repeat(4, 1fr); margin-bottom: 1.25rem; }
 @media (max-width: 720px) { .fm-tiles { grid-template-columns: repeat(2, 1fr); } }
