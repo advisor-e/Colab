@@ -5,7 +5,7 @@
         span.ico 🗂️
         h1 {{ $t('audit.title') }}
 
-      template(v-if="preview")
+      template(v-if="usedFallback")
         b-message.preview-msg(type="is-warning") {{ $t('audit.previewRibbon') }}
 
       b-message(v-if="loading" type="is-info") Loading…
@@ -51,24 +51,29 @@
  *
  * ACCESS: the real endpoint (/api/people/audit) is server-gated to the platform
  * super-admin (Mentor tier) and re-checked every request — the page is never the
- * gate. The show-home page (pages/audit.vue) points at the dev-only /preview
- * endpoint so it can be demonstrated without a real super-admin login.
+ * gate. In production a real Mentor reads the real endpoint. In the dev show-home
+ * the logged-in user is not a Mentor, so the real endpoint 403s; if a
+ * `fallbackEndpoint` (the dev-only /preview route) is supplied we fall back to it
+ * and flag the "demo data" ribbon. In production the fallback 404s (dev-auth off),
+ * so a non-admin correctly lands on the error state — the fallback is never a
+ * production backdoor.
  *
  * Filtering is client-side over the loaded page (the endpoint also accepts
  * actorId/action/limit — a server-side seam for very large volumes).
  *
  * Props:
- *   endpoint — the audit API to read (default the real, admin-gated route).
- *   preview  — show-home mode: adds the "demo data" ribbon.
+ *   endpoint         — the audit API to read (default the real, admin-gated route).
+ *   fallbackEndpoint — optional dev-only route to try if the real one is refused
+ *                      (show-home only; 404s in production).
  */
 export default {
   name: 'AuditViewer',
   props: {
     endpoint: { type: String, default: '/api/people/audit' },
-    preview: { type: Boolean, default: false }
+    fallbackEndpoint: { type: String, default: '' }
   },
   data () {
-    return { entries: [], loading: true, failed: false, search: '', actionFilter: '' }
+    return { entries: [], loading: true, failed: false, usedFallback: false, search: '', actionFilter: '' }
   },
   computed: {
     // The distinct action codes present, for the filter dropdown (sorted).
@@ -94,7 +99,13 @@ export default {
     async load () {
       this.loading = true
       try {
-        const res = await fetch(this.endpoint + '?limit=200')
+        let res = await fetch(this.endpoint + '?limit=200')
+        // Real endpoint refused (e.g. the dev show-home user isn't a Mentor) → try
+        // the dev-only fallback if one was supplied. It 404s in production.
+        if (!res.ok && this.fallbackEndpoint) {
+          res = await fetch(this.fallbackEndpoint + '?limit=200')
+          if (res.ok) { this.usedFallback = true }
+        }
         if (res.ok) {
           const data = await res.json()
           this.entries = data.entries || []

@@ -311,7 +311,7 @@ describe('group invitations', () => {
     expect(body.skipped).toEqual([{ id: 'anna-r', reason: 'ALREADY_MEMBER' }])
   })
 
-  test('inviteManyToGroup 400s with no advisers, 403s when not a manager', async () => {
+  test('inviteManyToGroup 400s with no advisers, 403s when not a manager, 400s over the cap', async () => {
     const none = mkRes()
     await route.inviteManyToGroup({ params: { id: 'seafood-modelling' }, body: { advisorIds: [] } }, none)
     expect(sent(none)[0]).toBe(400)
@@ -320,6 +320,30 @@ describe('group invitations', () => {
     const nm = mkRes()
     await route.inviteManyToGroup({ params: { id: 'tax-automation' }, body: { advisorIds: ['anna-r'] } }, nm)
     expect(sent(nm)[0]).toBe(403)
+
+    const tooMany = mkRes()
+    const ids = Array.from({ length: 51 }, (_, i) => 'a-' + i)
+    await route.inviteManyToGroup({ params: { id: 'seafood-modelling' }, body: { advisorIds: ids } }, tooMany)
+    expect(sent(tooMany)[0]).toBe(400)
+    expect(sent(tooMany)[1].error.code).toBe('TOO_MANY')
+  })
+
+  test('inviteToGroup is blocked (403) across a sealed org boundary (plan §8)', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed') // bob-lindt's branch
+    const res = mkRes()
+    // cashflow-clinic: 'me' manages it, bob-lindt is not a member.
+    await route.inviteToGroup({ params: { id: 'cashflow-clinic' }, body: { advisorId: 'bob-lindt' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+  })
+
+  test('inviteManyToGroup skips a cross-org invitee, invites the reachable one', async () => {
+    require('../server/data/repository').setOrgPosture('Lindt Zürich', 'closed')
+    const res = mkRes()
+    await route.inviteManyToGroup({ params: { id: 'cashflow-clinic' }, body: { advisorIds: ['tom-fischer', 'bob-lindt'] } }, res)
+    const body = sent(res)[1]
+    expect(body.invited.map(a => a.id)).toEqual(['tom-fischer']) // Advisor-e, reachable
+    expect(body.skipped).toEqual([{ id: 'bob-lindt', reason: 'CROSS_ORG_BLOCKED' }]) // sealed
   })
 
   test('acceptInvitation joins the group / 404s for unknown', async () => {
@@ -1005,6 +1029,23 @@ describe('firm manager console', () => {
     const self = mkResH()
     await route.startViewAs({ body: { advisorId: 'me' } }, self)
     expect(sent(self)[0]).toBe(400)
+  })
+
+  test('startViewAs refuses to impersonate another MANAGER (privilege-escalation guard)', async () => {
+    require('../server/data/roles').setOverride('priya-nair', 'group_manager') // now a manager, still in me's firm
+    const res = mkResH()
+    await route.startViewAs({ body: { advisorId: 'priya-nair' } }, res) // 'me' (firm mgr) tries to view-as her
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('NOT_ADVISER')
+    expect(setCookieOf(res)).toBe('') // no cookie set
+  })
+
+  test('a view-as cookie targeting a manager is ignored (reverts to the real manager)', async () => {
+    require('../server/data/roles').setOverride('priya-nair', 'group_manager')
+    const res = mkRes()
+    await route.getMe({ headers: { cookie: 'viewAs=priya-nair' } }, res)
+    expect(sent(res)[1].id).toBe('me') // reverted — not viewing as the manager
+    expect(sent(res)[1].viewingAs).toBeNull()
   })
 
   test('getMe reflects an active view-as: target profile + viewingAs banner info', async () => {

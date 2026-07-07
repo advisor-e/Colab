@@ -557,6 +557,10 @@ async function inviteToGroup (groupId, inviter, inviteeId, note) {
   if (!g) { return { error: 'GROUP_NOT_FOUND' } }
   if (!(g.members || []).some(m => m.id === inviter.id)) { return { error: 'NOT_MANAGER' } }
   if ((g.members || []).some(m => m.id === inviteeId)) { return { error: 'ALREADY_MEMBER' } }
+  // Cross-org wall (plan §8): a group invitation is cross-org reach — refuse it across
+  // a sealed org boundary (same firm / both orgs effectively open). Unknown ids aren't
+  // blocked (mirrors canReachAdvisor). Added 2026-07-07 (review hardening).
+  if (!(await canReachAdvisor(inviter.id, inviteeId))) { return { error: 'CROSS_ORG_BLOCKED' } }
 
   const invitee = advisors.find(a => a.id === inviteeId) || { id: inviteeId, name: inviteeId }
   const text = (note && note.trim()) ? note.trim() : ('We would love you to join ' + g.name + '.')
