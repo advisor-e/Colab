@@ -100,6 +100,7 @@ server.del('/api/people/groups/:id/shared-pages/:pageId', auth, people.removeSha
 server.post('/api/people/groups/:id/message', auth, people.messageGroup)
 server.post('/api/people/groups/:id/chat', auth, people.openGroupChat)
 server.post('/api/people/groups/:id/invite', auth, people.inviteToGroup)
+server.post('/api/people/groups/:id/invite-many', auth, people.inviteManyToGroup)
 server.post('/api/people/invitations/:id/accept', auth, people.acceptInvitation)
 server.post('/api/people/invitations/:id/decline', auth, people.declineInvitation)
 server.post('/api/people/outreach', auth, people.sendOutreach)

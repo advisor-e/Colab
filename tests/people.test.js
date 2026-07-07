@@ -301,6 +301,27 @@ describe('group invitations', () => {
     expect(sent(res)[1].error.code).toBe('ALREADY_MEMBER')
   })
 
+  test('inviteManyToGroup invites several at once; already-members are skipped, not fatal', async () => {
+    const res = mkRes()
+    // seafood-modelling: viewer 'me' manages it; anna-r is already a member, tom-fischer is not.
+    await route.inviteManyToGroup({ params: { id: 'seafood-modelling' }, body: { advisorIds: ['tom-fischer', 'anna-r'] } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.invited.map(a => a.id)).toEqual(['tom-fischer'])
+    expect(body.skipped).toEqual([{ id: 'anna-r', reason: 'ALREADY_MEMBER' }])
+  })
+
+  test('inviteManyToGroup 400s with no advisers, 403s when not a manager', async () => {
+    const none = mkRes()
+    await route.inviteManyToGroup({ params: { id: 'seafood-modelling' }, body: { advisorIds: [] } }, none)
+    expect(sent(none)[0]).toBe(400)
+    expect(sent(none)[1].error.code).toBe('NO_ADVISERS')
+
+    const nm = mkRes()
+    await route.inviteManyToGroup({ params: { id: 'tax-automation' }, body: { advisorIds: ['anna-r'] } }, nm)
+    expect(sent(nm)[0]).toBe(403)
+  })
+
   test('acceptInvitation joins the group / 404s for unknown', async () => {
     const okRes = mkRes()
     await route.acceptInvitation({ params: { id: 't-inv-hosp' } }, okRes)

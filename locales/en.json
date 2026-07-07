@@ -57,7 +57,16 @@
     "noActivity": "No recent activity yet — it appears here as your advisers use the app.",
     "postureUpdated": "Firm collaboration updated.",
     "loadFailed": "Couldn't load the firm console.",
-    "actionFailed": "That didn't work — please try again."
+    "actionFailed": "That didn't work — please try again.",
+    "selectedCount": "{n} selected",
+    "inviteSelected": "Invite selected",
+    "bulkInviteTitle": "Invite {n} advisers to a group",
+    "bulkInvitePick": "Choose a group",
+    "bulkInviteNote": "Each person gets an invitation they must accept.",
+    "bulkNoGroups": "You don't manage any groups yet.",
+    "sendInvitations": "Send invitations",
+    "bulkInvited": "Invited {n} — each must accept.",
+    "bulkSomeSkipped": "Invited {n}; {s} were already members."
   },
   "console": {
     "titles": {

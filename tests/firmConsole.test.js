@@ -17,7 +17,7 @@ import ManagerConsole from '../components/shared/ManagerConsole.vue'
 
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
-;['b-message', 'b-button', 'b-input', 'nuxt-link'].forEach(n => localVue.component(n, Stub))
+;['b-message', 'b-button', 'b-input', 'b-checkbox', 'b-select', 'b-modal', 'b-field', 'nuxt-link'].forEach(n => localVue.component(n, Stub))
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -152,6 +152,39 @@ describe('firm console page', () => {
 
   // Option A (owner): a manager may set Open even while a stricter level above caps
   // it — the console shows the cap rather than disabling the control.
+  test('bulk-invite: toggleAll selects all visible advisers; clearSelection empties', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(CONSOLE) }))
+    const w = factory()
+    await flush()
+    w.vm.toggleAll(true)
+    expect(w.vm.selectedIds.slice().sort()).toEqual(['james-obrien', 'me'])
+    expect(w.vm.allSelected).toBe(true)
+    w.vm.toggleSelect('me') // untick one
+    expect(w.vm.selectedIds).toEqual(['james-obrien'])
+    w.vm.clearSelection()
+    expect(w.vm.selectedIds).toEqual([])
+  })
+
+  test('bulk-invite: select advisers, load groups, send invitations, clear on success', async () => {
+    global.fetch = jest.fn((url) => {
+      let payload
+      if (url === '/api/people/my-groups') { payload = [{ id: 'g1', name: 'Cashflow Clinic' }] } else if (url.includes('/invite-many')) { payload = { success: true, invited: [{ id: 'james-obrien' }], skipped: [] } } else { payload = CONSOLE }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(payload) })
+    })
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    w.vm.toggleSelect('james-obrien')
+    await w.vm.openBulkInvite()
+    await flush()
+    expect(w.vm.myGroups).toHaveLength(1)
+    w.vm.bulkGroupId = 'g1'
+    await w.vm.sendBulkInvites()
+    await flush()
+    expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/g1/invite-many', expect.objectContaining({ method: 'POST' }))
+    expect(w.vm.bulkOpen).toBe(false)
+    expect(w.vm.selectedIds).toEqual([]) // cleared after success
+  })
+
   test('a capped Open shows the cap note; the toggle reflects the manager\'s own choice', async () => {
     const CAPPED = Object.assign({}, CONSOLE, {
       stats: Object.assign({}, CONSOLE.stats, { crossOrgPosture: 'closed' }),

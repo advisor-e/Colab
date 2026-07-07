@@ -222,6 +222,21 @@ async function inviteToGroup (req, res) {
   ok(res, r)
 }
 
+// Manager bulk-invite (FEAT-BULKINVITE): invite several advisers into one group at
+// once. Each invitation is still individual + consent-based (every invitee accepts);
+// already-members are skipped, not fatal. Returns a per-invitee summary.
+async function inviteManyToGroup (req, res) {
+  const me = await currentAdvisor(req)
+  const body = req.body || {}
+  const ids = Array.isArray(body.advisorIds) ? body.advisorIds : []
+  if (!ids.length) { fail(res, 400, 'NO_ADVISERS', 'Choose at least one adviser to invite.'); return }
+  const r = await repo.inviteManyToGroup(req.params.id, me, ids, body.note)
+  if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
+  if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'You can only invite into a group you manage.'); return }
+  audit.record({ actorId: me.id, action: 'group.invite_bulk', targetType: 'group', targetId: req.params.id, meta: { count: r.invited.length, skipped: r.skipped.length } })
+  ok(res, r)
+}
+
 // Recipient accepts/declines a group invitation. Accept joins the group.
 async function acceptInvitation (req, res) {
   const me = await currentAdvisor(req)
@@ -584,6 +599,7 @@ module.exports = {
   openGroupChat,
   listMyGroups,
   inviteToGroup,
+  inviteManyToGroup,
   acceptInvitation,
   declineInvitation,
   sendOutreach,
