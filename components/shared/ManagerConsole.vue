@@ -95,7 +95,7 @@
               p.label.mb-1 {{ $t('console.breakdownTitle') }}
               p.has-text-grey.is-size-7.mb-3 {{ breakdownSub }}
               .cnode-tree(v-if="c.tree && c.tree.children")
-                console-node(v-for="n in c.tree.children" :key="n.level + ':' + n.value" :node="n" :preview="preview")
+                console-node(v-for="n in c.tree.children" :key="n.level + ':' + n.value" :node="n" :preview="preview" :preview-tier="previewTier")
 
           //- Pending approvals
           .column
@@ -166,6 +166,13 @@ export default {
     // The platform super-admin (Mentor) — the only tier that sees the whole-network
     // audit log link (lower tiers get their own scope's activity feed above).
     isAdminTier () { return this.tier === 'mentor' },
+    // The preview tier key ('group'/'global'/'mentor') taken from the preview
+    // endpoint, so the tree's lazy adviser loader hits the matching dev endpoint.
+    previewTier () {
+      if (!this.preview) { return '' }
+      const m = this.endpoint.match(/preview\/([^/?]+)/)
+      return m ? m[1] : ''
+    },
     pageTitle () { return this.$t('console.titles.' + this.tier) },
     pageSubtitle () { return this.$t('console.subtitles.' + this.tier) },
     countryName () {

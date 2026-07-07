@@ -102,6 +102,9 @@
     "breakdownTitle": "Breakdown",
     "breakdownSub": "Roll-up by {level} — click a row to drill down.",
     "unavailable": "Unavailable",
+    "loadingAdvisers": "Loading advisers…",
+    "loadFailed": "Couldn't load advisers.",
+    "noAdvisers": "No advisers here.",
     "viewFullAudit": "View the full network audit log →",
     "crossOrg": {
       "ceilingLabel": "Set by the level above you:",

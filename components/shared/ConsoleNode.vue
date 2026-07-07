@@ -8,16 +8,21 @@
     .cnode-kids(v-if="open")
       //- Either more grouping levels (recurse) …
       template(v-if="node.children")
-        console-node(v-for="c in node.children" :key="c.level + ':' + c.value" :node="c" :preview="preview" :depth="depth + 1")
-      //- … or advisers at the leaf (a firm/branch).
-      template(v-else-if="node.people")
-        .cnode-person(v-for="p in node.people" :key="p.id")
-          span.cnode-pname
-            | {{ p.name }}
-            span.tag.is-light.ml-2(v-if="p.isMe") {{ $t('firm.you') }}
-            span.tag.is-warning.is-light.ml-2(v-if="p.blocked") 🔒
-          span.cnode-ptitle {{ p.title }}
-          span.tag.ml-2(:class="p.available ? 'is-success is-light' : 'is-light'") {{ p.available ? $t('common.available') : $t('console.unavailable') }}
+        console-node(v-for="c in node.children" :key="c.level + ':' + c.value" :node="c" :preview="preview" :preview-tier="previewTier" :depth="depth + 1")
+      //- … or a branch's advisers, LOADED ON DEMAND (PERF-CONSOLE-TREE) so the tree
+      //- payload never scales with the subtree size.
+      template(v-else-if="node.childLevel === 'advisor'")
+        p.cnode-note(v-if="loadingPeople") {{ $t('console.loadingAdvisers') }}
+        p.cnode-note(v-else-if="loadError") {{ $t('console.loadFailed') }}
+        template(v-else)
+          .cnode-person(v-for="p in people" :key="p.id")
+            span.cnode-pname
+              | {{ p.name }}
+              span.tag.is-light.ml-2(v-if="p.isMe") {{ $t('firm.you') }}
+              span.tag.is-warning.is-light.ml-2(v-if="p.blocked") 🔒
+            span.cnode-ptitle {{ p.title }}
+            span.tag.ml-2(:class="p.available ? 'is-success is-light' : 'is-light'") {{ p.available ? $t('common.available') : $t('console.unavailable') }}
+          p.cnode-note(v-if="loaded && !people.length") {{ $t('console.noAdvisers') }}
 </template>
 
 <script>
@@ -34,14 +39,25 @@ export default {
   props: {
     node: { type: Object, required: true },
     preview: { type: Boolean, default: false },
+    // The preview tier ('group'/'global'/'mentor') when in show-home mode, so the
+    // lazy adviser loader hits the dev-gated preview endpoint. Empty = real endpoint.
+    previewTier: { type: String, default: '' },
     depth: { type: Number, default: 0 }
   },
   data () {
-    return { open: false }
+    return { open: false, people: [], loaded: false, loadingPeople: false, loadError: false }
   },
   computed: {
     expandable () {
-      return !!(this.node.children && this.node.children.length) || !!(this.node.people && this.node.people.length)
+      return !!(this.node.children && this.node.children.length) ||
+        (this.node.childLevel === 'advisor' && this.node.advisers > 0)
+    },
+    // Where to fetch this branch's advisers (real vs dev preview endpoint).
+    advisersUrl () {
+      const base = this.previewTier
+        ? '/api/people/console/preview/' + this.previewTier + '/advisers'
+        : '/api/people/console/advisers'
+      return base + '?firm=' + encodeURIComponent(this.node.value)
     },
     // Country codes render as names; brands/branches show as-is.
     displayLabel () {
@@ -62,7 +78,30 @@ export default {
       return n + ' ' + this.$t(key)
     },
     toggle () {
-      if (this.expandable) { this.open = !this.open }
+      if (!this.expandable) { return }
+      this.open = !this.open
+      // Lazy-load a branch's advisers the first time it is opened (PERF-CONSOLE-TREE).
+      if (this.open && this.node.childLevel === 'advisor' && !this.loaded && !this.loadingPeople) {
+        this.loadPeople()
+      }
+    },
+    async loadPeople () {
+      this.loadingPeople = true
+      this.loadError = false
+      try {
+        const res = await fetch(this.advisersUrl)
+        if (res.ok) {
+          const data = await res.json()
+          this.people = data.advisers || []
+          this.loaded = true
+        } else {
+          this.loadError = true
+        }
+      } catch (e) {
+        this.loadError = true
+      } finally {
+        this.loadingPeople = false
+      }
     }
   }
 }
@@ -82,4 +121,5 @@ export default {
 .cnode-person:last-child { border-bottom: 0; }
 .cnode-pname { font-size: .9rem; }
 .cnode-ptitle { color: var(--muted); font-size: .78rem; }
+.cnode-note { color: var(--muted); font-size: .82rem; padding: .35rem .25rem; }
 </style>
