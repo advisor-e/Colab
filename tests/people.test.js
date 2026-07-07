@@ -785,6 +785,14 @@ describe('marketplace', () => {
     await route.purchaseListing({ params: { id: 'm-none' } }, missing)
     expect(sent(missing)[0]).toBe(404)
   })
+
+  test('purchaseListing is blocked (403) across a sealed org boundary (plan §8)', async () => {
+    require('../server/data/repository').setOrgPosture('BDO Hamburg', 'closed') // m-trucking's owner org
+    const res = mkRes()
+    await route.purchaseListing({ params: { id: 'm-trucking' } }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+  })
 })
 
 describe('cross-org wall', () => {
