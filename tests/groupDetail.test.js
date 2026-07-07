@@ -16,6 +16,9 @@ import GroupDetail from '../pages/groups/_id.vue'
 const localVue = createLocalVue()
 const Stub = { render (h) { return h('div', this.$slots.default) } }
 ;['b-message', 'b-modal', 'b-input', 'b-button', 'b-field', 'b-autocomplete', 'page-help'].forEach(n => localVue.component(n, Stub))
+// The shared ToolPicker has its own tests; stub it (with reset) so this page test
+// doesn't trigger its catalogue fetch.
+const PickerStub = { render (h) { return h('div') }, methods: { reset () {} } }
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0))
 
@@ -42,6 +45,7 @@ function mockApi (groupOk) {
 function factory () {
   return mount(GroupDetail, {
     localVue,
+    stubs: { ToolPicker: PickerStub },
     mocks: {
       $t: key => key,
       $route: { params: { id: 'seafood' } },
@@ -117,10 +121,10 @@ describe('group detail page', () => {
     })
     const w = factory()
     await flush(); await w.vm.$nextTick()
-    await w.vm.openToolPicker()
-    await flush()
-    expect(w.vm.tools).toHaveLength(1)
+    w.vm.openToolPicker()
+    // The ToolPicker emits `select` with the chosen catalogue row.
     w.vm.onToolSelect({ pageId: 'id-x', title: 'Picked Tool' })
+    expect(w.vm.selectedTool.pageId).toBe('id-x')
     await w.vm.addTool()
     await flush()
     expect(global.fetch).toHaveBeenCalledWith('/api/people/groups/seafood/shared-pages', expect.objectContaining({ method: 'POST' }))
