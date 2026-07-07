@@ -750,6 +750,21 @@ function canManage (manager, target) {
   return roles.canManage(manager, target)
 }
 
+// Platform super-admin (Q-ROLES): the Mentor tier. Gates the network-wide audit
+// viewer (FEAT-AUDIT-UI) — lower tiers see only their own scope's activity in the
+// console, never the whole trail.
+function isAdmin (advisorId) {
+  const a = advisors.find(x => x.id === advisorId)
+  return roles.resolveTier(a) === 'mentor'
+}
+
+// A display label for an actor id (their name, or the id if unknown) — used to
+// enrich audit entries, which store ids only (privacy: no names persisted).
+function advisorLabel (advisorId) {
+  const a = advisors.find(x => x.id === advisorId)
+  return a ? a.name : advisorId
+}
+
 // The Firm Manager console payload: the manager's firm, its advisers (with each
 // one's availability + whether they've blocked the manager view), headline stats,
 // and the pending join requests to the firm's groups. Read-only assembly over the
@@ -1117,5 +1132,5 @@ module.exports = {
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
   canReachAdvisor, getOrgPosture, setOrgPosture,
-  isFirmManager, isManager, canManage, getFirmConsole, getConsolePreview, setFirmPosture
+  isFirmManager, isManager, isAdmin, advisorLabel, canManage, getFirmConsole, getConsolePreview, setFirmPosture
 }

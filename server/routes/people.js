@@ -453,12 +453,33 @@ async function purchaseListing (req, res) {
   ok(res, r)
 }
 
-// Read the audit trail (admin/compliance evidence). DEV-OPEN today — MUST be
-// gated to admin/compliance roles before production (FEAT-RBAC / Q-ROLES).
+// Add the actor's display name to an audit entry (the store keeps ids only).
+function enrichAuditEntry (e) {
+  return Object.assign({}, e, { actorName: repo.advisorLabel(e.actorId) })
+}
+
+// Read the audit trail (admin/compliance evidence). ADMIN-GATED (FEAT-AUDIT-UI):
+// only the platform super-admin (Mentor tier) may read the whole network trail —
+// re-checked server-side every request. Lower tiers see their own scope's activity
+// in their console, never this. Optional actor/action/limit filters are a repo seam.
 async function getAuditLog (req, res) {
+  const me = await currentAdvisor(req)
+  if (!repo.isAdmin(me.id)) { fail(res, 403, 'NOT_ADMIN', 'Only a platform administrator can view the audit log.'); return }
   const q = req.query || {}
   const limit = q.limit ? parseInt(q.limit, 10) : 100
-  ok(res, { entries: await audit.list({ actorId: q.actorId, action: q.action, limit }) })
+  const entries = await audit.list({ actorId: q.actorId, action: q.action, limit })
+  ok(res, { entries: entries.map(enrichAuditEntry) })
+}
+
+// Audit-log PREVIEW (show-home only): the same trail without the admin gate, so
+// the audit viewer can be demonstrated without a real super-admin login. DEV-ONLY
+// — refused in production, where the real /api/people/audit (admin-gated) serves it.
+async function getAuditLogPreview (req, res) {
+  if (process.env.ALLOW_DEV_AUTH !== 'true') { fail(res, 404, 'NOT_FOUND', 'Not found.'); return }
+  const q = req.query || {}
+  const limit = q.limit ? parseInt(q.limit, 10) : 100
+  const entries = await audit.list({ actorId: q.actorId, action: q.action, limit })
+  ok(res, { entries: entries.map(enrichAuditEntry), preview: true })
 }
 
 // ── Firm Manager console ─────────────────────────────────────────────────────
@@ -553,5 +574,6 @@ module.exports = {
   purchaseListing,
   listNotifications,
   markNotificationsRead,
-  getAuditLog
+  getAuditLog,
+  getAuditLogPreview
 }

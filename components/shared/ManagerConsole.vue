@@ -124,6 +124,9 @@
               span.has-text-weight-semibold {{ e.actorName }}
               |  {{ humanize(e.action) }}
               span.fm-code {{ e.action }}
+          //- Full network audit log — platform super-admin (Mentor) only.
+          p.mt-3(v-if="isAdminTier")
+            nuxt-link(to="/audit") {{ $t('console.viewFullAudit') }}
 </template>
 
 <script>
@@ -160,6 +163,9 @@ export default {
     // tier if the payload predates the scope field (defensive).
     tier () { return (this.c && this.c.scope && this.c.scope.tier) || 'firm_manager' },
     isFirm () { return this.tier === 'firm_manager' },
+    // The platform super-admin (Mentor) — the only tier that sees the whole-network
+    // audit log link (lower tiers get their own scope's activity feed above).
+    isAdminTier () { return this.tier === 'mentor' },
     pageTitle () { return this.$t('console.titles.' + this.tier) },
     pageSubtitle () { return this.$t('console.subtitles.' + this.tier) },
     countryName () {

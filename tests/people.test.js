@@ -872,7 +872,15 @@ describe('audit trail', () => {
     expect((await audit.list({ action: 'listing.locked_blocked' })).length).toBe(1)
   })
 
-  test('getAuditLog returns the trail newest-first, with an action filter', async () => {
+  test('getAuditLog is admin-gated: a non-admin (firm manager) is refused (403)', async () => {
+    const res = mkRes() // dev identity 'me' is a firm manager, not the super-admin
+    await route.getAuditLog({ query: {} }, res)
+    expect(sent(res)[0]).toBe(403)
+    expect(sent(res)[1].error.code).toBe('NOT_ADMIN')
+  })
+
+  test('getAuditLog returns the trail (admin) newest-first, enriched, with an action filter', async () => {
+    require('../server/data/roles').setOverride('me', 'mentor') // platform super-admin
     await route.createGroup({ body: { name: 'G1' } }, mkRes())
     await route.connect({ params: { id: 'bob-lindt' } }, mkRes())
 
@@ -884,10 +892,30 @@ describe('audit trail', () => {
     expect(body.entries.length).toBeGreaterThanOrEqual(2)
     // Newest first: the connection request was recorded after the group create.
     expect(body.entries[0].action).toBe('connection.request')
+    // Entries are enriched with the actor's display name (store keeps ids only).
+    expect(body.entries[0].actorName).toBe('Mike Barnes')
 
     const filtered = mkRes()
     await route.getAuditLog({ query: { action: 'group.create' } }, filtered)
     expect(sent(filtered)[1].entries.every(e => e.action === 'group.create')).toBe(true)
+  })
+
+  test('getAuditLogPreview is dev-only: 404 without ALLOW_DEV_AUTH, 200 with it', async () => {
+    const prev = process.env.ALLOW_DEV_AUTH
+    delete process.env.ALLOW_DEV_AUTH
+    const off = mkRes()
+    await route.getAuditLogPreview({ query: {} }, off)
+    expect(sent(off)[0]).toBe(404)
+
+    process.env.ALLOW_DEV_AUTH = 'true'
+    await route.createGroup({ body: { name: 'Seeded' } }, mkRes())
+    const on = mkRes()
+    await route.getAuditLogPreview({ query: {} }, on)
+    expect(sent(on)[0]).toBe(200)
+    expect(sent(on)[1].preview).toBe(true)
+    expect(sent(on)[1].entries[0].actorName).toBe('Mike Barnes')
+
+    if (prev === undefined) { delete process.env.ALLOW_DEV_AUTH } else { process.env.ALLOW_DEV_AUTH = prev }
   })
 })
 
