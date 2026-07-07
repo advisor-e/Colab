@@ -449,6 +449,12 @@ async function purchaseListing (req, res) {
   const me = await currentAdvisor(req)
   const r = await repo.recordPurchase(req.params.id, me.id)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Listing not found'); return }
+  // Cross-org wall (plan §8): a sealed org can't buy across the boundary.
+  if (r.error === 'CROSS_ORG_BLOCKED') {
+    audit.record({ actorId: me.id, action: 'purchase.blocked', targetType: 'listing', targetId: req.params.id, meta: { reason: 'cross_org' } })
+    fail(res, 403, 'CROSS_ORG_BLOCKED', 'This tool is from an organisation outside your current reach.')
+    return
+  }
   audit.record({ actorId: me.id, action: 'purchase.record', targetType: 'listing', targetId: req.params.id })
   ok(res, r)
 }

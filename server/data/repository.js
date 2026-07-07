@@ -1052,12 +1052,29 @@ function openUrlFor (listing, owned) {
   return owned && listing.pageId ? (ADVISOR_E.pageBaseUrl + listing.pageId) : null
 }
 
+// Cross-org wall for the marketplace (plan §8: the toggle gates marketplace too, so
+// a sealed org is genuinely sealed). A listing is reachable to a viewer when it is
+// ALREADY OWNED (you keep what you bought), their OWN listing, or the viewer can
+// reach the listing owner's org (canReach — same branch, or both orgs effectively
+// open). An owner we can't resolve (external/legacy) is not blocked, and an
+// unresolved viewer (dev) is not filtered — mirrors canReachAdvisor's leniency.
+function canReachListing (viewer, listing, owned) {
+  if (owned) { return true }
+  if (!viewer) { return true }
+  if (!listing.createdById || listing.createdById === viewer.id) { return true }
+  const owner = advisors.find(a => a.id === listing.createdById)
+  if (!owner) { return true }
+  return canReach(viewer, owner)
+}
+
 async function listListings (myId) {
-  // SQL SEAM: SELECT listing (+ tags) ; owned = EXISTS(purchase by myId)
-  return listings.map((l) => {
-    const owned = purchases.some(p => p.listingId === l.id && p.buyerId === myId)
-    return Object.assign({}, l, { owned: owned, openUrl: openUrlFor(l, owned) })
-  })
+  // SQL SEAM: SELECT listing (+ tags) ; owned = EXISTS(purchase by myId) ; then the
+  // §8 cross-org filter (in SQL: JOIN the owner's org posture; keep owned/own/reachable).
+  const viewer = advisors.find(a => a.id === myId) || null
+  return listings
+    .map(l => ({ l, owned: purchases.some(p => p.listingId === l.id && p.buyerId === myId) }))
+    .filter(({ l, owned }) => canReachListing(viewer, l, owned))
+    .map(({ l, owned }) => Object.assign({}, l, { owned: owned, openUrl: openUrlFor(l, owned) }))
 }
 
 async function getListing (id, myId) {
@@ -1065,6 +1082,9 @@ async function getListing (id, myId) {
   const l = listings.find(x => x.id === id)
   if (!l) { return null }
   const owned = purchases.some(p => p.listingId === l.id && p.buyerId === myId)
+  const viewer = advisors.find(a => a.id === myId) || null
+  // Cross-org wall (§8): a sealed listing behaves as not-found — don't reveal it.
+  if (!canReachListing(viewer, l, owned)) { return null }
   return Object.assign({}, l, { owned: owned, openUrl: openUrlFor(l, owned) })
 }
 
@@ -1081,6 +1101,7 @@ async function createListing (input, creator) {
     tags: Array.isArray(input.tags) ? input.tags : [],
     price: ((input.price || '').trim()) || 'Free',
     createdBy: creator.name + ' (' + creator.firm + ')',
+    createdById: creator.id, // owner id — drives the §8 cross-org gate + seller notify
     ipTier: 4 // group-owned IP (plan §6)
   }
   listings.unshift(l)
@@ -1094,6 +1115,10 @@ async function recordPurchase (listingId, buyerId) {
   //   ownership stays with the group (plan §3d).
   const l = listings.find(x => x.id === listingId)
   if (!l) { return null }
+  const alreadyOwned = purchases.some(p => p.listingId === listingId && p.buyerId === buyerId)
+  // Cross-org wall (§8): refuse a purchase across a sealed org boundary.
+  const viewer = advisors.find(a => a.id === buyerId) || null
+  if (!canReachListing(viewer, l, alreadyOwned)) { return { error: 'CROSS_ORG_BLOCKED' } }
   if (!purchases.some(p => p.listingId === listingId && p.buyerId === buyerId)) {
     purchases.push({ id: 'p-' + (purchases.length + 1), listingId: listingId, buyerId: buyerId })
     // Notify the listing's creator (the seller) — record-only, informational.

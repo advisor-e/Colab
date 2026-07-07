@@ -156,3 +156,42 @@ describe('capped state (crossOrg on the console payload)', () => {
     expect(c.stats.crossOrgPosture).toBe(c.crossOrg.effective)
   })
 })
+
+// Plan §8: the cross-org toggle gates the MARKETPLACE too — a sealed org can't see
+// or buy other orgs' listings. Viewer 'me' = Advisor-e/DE/Munich. Seed listings:
+// m-trucking (owner anna-r, BDO Hamburg) · m-hospitality (owner sara-okafor, Advisor-e Dublin).
+describe('marketplace cross-org wall (§8)', () => {
+  test('a sealed owner-org hides its listing from discovery; reachable ones stay', async () => {
+    await repo.setOrgPosture('BDO Hamburg', 'closed') // anna-r's branch
+    const list = await repo.listListings('me')
+    expect(list.some(l => l.id === 'm-trucking')).toBe(false) // sealed away
+    expect(list.some(l => l.id === 'm-hospitality')).toBe(true) // still reachable
+  })
+
+  test('an already-owned listing stays visible even after its org seals', async () => {
+    await repo.recordPurchase('m-trucking', 'me') // bought while open
+    await repo.setOrgPosture('BDO Hamburg', 'closed')
+    const list = await repo.listListings('me')
+    expect(list.some(l => l.id === 'm-trucking')).toBe(true) // you keep what you bought
+  })
+
+  test('getListing behaves as not-found across a sealed boundary', async () => {
+    await repo.setOrgPosture('BDO Hamburg', 'closed')
+    expect(await repo.getListing('m-trucking', 'me')).toBeNull()
+    expect(await repo.getListing('m-hospitality', 'me')).not.toBeNull()
+  })
+
+  test('recordPurchase is refused across a sealed boundary', async () => {
+    await repo.setOrgPosture('BDO Hamburg', 'closed')
+    expect(await repo.recordPurchase('m-trucking', 'me')).toEqual({ error: 'CROSS_ORG_BLOCKED' })
+    // A reachable listing still purchases fine.
+    expect(await repo.recordPurchase('m-hospitality', 'me')).toEqual({ success: true, owned: true })
+  })
+
+  test('your OWN listing is never walled off from you', async () => {
+    const l = await repo.createListing({ title: 'My Own Tool', pageId: 'x' }, { id: 'me', name: 'Mike', firm: 'Advisor-e Munich' })
+    await repo.setOrgPosture('Advisor-e Munich', 'closed') // seal my own branch
+    const list = await repo.listListings('me')
+    expect(list.some(x => x.id === l.id)).toBe(true)
+  })
+})
