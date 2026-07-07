@@ -3,7 +3,10 @@
 > Quick-start for the next working session. Deeper detail in
 > [`HANDOVER.md`](../HANDOVER.md) and
 > [`advisor-collaboration-platform-plan.md`](advisor-collaboration-platform-plan.md).
-> **Snapshot date:** 2026-07-01 · **Last commit:** `92cba68`.
+> **Snapshot date:** 2026-07-07 · **Last commit:** `65e0f17` (FEAT-RBAC slice ④ — audit viewer).
+>
+> **The live task list is [`ACTIONS.md`](ACTIONS.md)** — this file is only a quick orientation;
+> `ACTIONS.md` is authoritative for what's outstanding.
 
 ---
 
@@ -28,9 +31,9 @@ probe) — both built and waiting on real Advisory credentials.
 ## Where it lives
 
 - **Repo:** `https://github.com/advisor-e/Colab` (private). **Local:** on **C:**, never a sync
-  folder (Dropbox/OneDrive are refused at startup). Master team's expected path
-  `C:\Users\Mike Barnes\Projects\Advisor Collaborate`; the current working copy is
-  `C:\Users\mb\Projects\Advisor Collaborate` (moved off Dropbox 2026-07-01 — `ACTIONS.md` P1-CANON).
+  folder (Dropbox/OneDrive are refused at startup). Canonical working copy is
+  `C:\Users\Mike Barnes\Projects\Advisor Collaborate`, in sync with `origin/main`; duplicate
+  copies were removed 2026-07-02 (`ACTIONS.md` P1-CANON).
 
 ## How to run it (dev)
 
@@ -48,24 +51,29 @@ npm run dev:all          # Nuxt :3000 + Restify backend :4000
 
 ## What to do next (suggested priorities)
 
-> **First — the design-triage review.** Go through the new **"Backlog — design items to triage"**
-> table in [`ACTIONS.md`](ACTIONS.md) (T1–T6) and decide **keep / delete / do** for each, plus the
-> already-tracked unbuilt scope it references (HANDOVER §6; plan §12 D1/D2, Q5/Q6). Then the
-> integration priorities below.
+> The design-triage (T1–T6), the P1 governance backlog (CI, hooks, audit gate, prod guard,
+> branch protection, test coverage), and the **FEAT-RBAC** build (role consoles, cross-org
+> **ceiling**, audit viewer) are all **done** — see the `ACTIONS.md` Done table. What remains
+> splits into "needs the master team" and "buildable now".
+
+**Blocked on the master team (integration — needs creds/decisions):**
 
 1. **Connect real MySQL** — provision `config/db-schema.sql`, then fill the SQL into the single
    seam file `server/data/repository.js` (each function has a `// SQL SEAM:` note). Needs DB creds.
-2. **Wire real Advisory login** — set `JWT_SECRET`, confirm claim names in `config/integration.js`,
-   confirm how the Advisory session reaches the app. Add the production startup guard (refuse
-   `ALLOW_DEV_AUTH=true` when `NODE_ENV=production`).
-3. **Role hierarchy / RBAC** — Mentor→Global→Group→Firm→Advisor→Client enforcement (not built).
-4. **Cross-org engagement policy** enforcement; **manager bulk-invite**; **audit logging**.
-5. Smaller: real advisor profiles from Advisory (replace the mock `advisors[]`).
+2. **Wire real Advisory login** — set `JWT_SECRET`, confirm the JWT claim names/algorithm, and how
+   the Advisory session reaches the app. Then the two remaining RBAC slices: real **Client-token
+   rejection** and wiring the real Advisory **`role` claim** (retire the interim override table).
+   At the same wiring, close **SEC-THREAD-ACL** (message participant/member authorization).
 
-> **Live task tracker:** `design/ACTIONS.md` holds the current P1 backlog — incl. **P1-AUDIT-GATE**
-> (wire the audit half of the pre-commit gate without blocking commits), **P1-SEC-UTILS**
-> (`sanitiseInput` / `validateAIResponse` + tests), **P1-PROD-GUARD** (production startup guard),
-> **P1-PROTECT** (branch protection), and **P1-TEST** (grow coverage to the CLAUDE.md targets).
+**Buildable now (no external blocker):**
+
+1. **SEC-MARKET-CROSSORG (P2)** — make the cross-org wall also gate the marketplace (plan §8).
+2. **PERF-CONSOLE-TREE (P2)** — lazy-load a branch's advisers on expand (real-scale hardening).
+3. **FEAT-BULKINVITE (P3)** — manager bulk-invite. Smaller nice-to-haves: FEAT-TOOLPICKER-EXTRACT,
+   FEAT-MARKET-HELP.
+
+> **Live task tracker:** `design/ACTIONS.md` is authoritative — the master to-do index at the top
+> lists everything outstanding, each row pointing to its detailed entry.
 
 ## Gotchas (the short list — full version in HANDOVER §7)
 
