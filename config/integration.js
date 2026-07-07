@@ -82,4 +82,11 @@ const OUTREACH = {
   respectAvailability: true
 }
 
-module.exports = { AUTH, DB, CROSS_ORG, ADVISOR_E, OUTREACH }
+// ── Group invitations ─────────────────────────────────────────────────────────
+// Manager bulk-invite (FEAT-BULKINVITE): the most invitees one request may carry.
+// A guardrail against an oversized/abusive batch — tunable without a rebuild.
+const INVITE = {
+  bulkMax: 50
+}
+
+module.exports = { AUTH, DB, CROSS_ORG, ADVISOR_E, OUTREACH, INVITE }

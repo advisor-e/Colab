@@ -16,7 +16,7 @@ const repo = require('../data/repository')
 const templates = require('../data/advisoryTemplates')
 const ipClass = require('../data/ipClassification')
 const audit = require('../data/auditLog')
-const { OUTREACH } = require('../../config/integration')
+const { OUTREACH, INVITE } = require('../../config/integration')
 const { sendApiError } = require('../utils/sendError')
 
 function ok (res, data) { res.send(200, data) }
@@ -53,8 +53,11 @@ async function viewAsContext (req) {
   if (!manager || !repo.isManager(realId)) { return null }
   const target = await repo.getAdvisorById(asId)
   // A manager may view-as only within their own scope (roles.canManage: firm for a
-  // Firm Manager, country for a Group Manager, all for Global/Mentor) — Q-ROLES.
-  if (!target || !repo.canManage(manager, target) || target.blockFirmManagerView) { return null }
+  // Firm Manager, country for a Group Manager, all for Global/Mentor) — Q-ROLES. And
+  // only an ADVISER, never another manager/admin: otherwise a manager could assume a
+  // more-senior colleague who happens to sit in their scope and inherit admin gates
+  // (they run on the effective/impersonated identity). Security hardening 2026-07-07.
+  if (!target || !repo.canManage(manager, target) || repo.isManager(target.id) || target.blockFirmManagerView) { return null }
   return { realId, realName: manager.name, target }
 }
 
@@ -87,6 +90,8 @@ async function startViewAs (req, res) {
   // Scope check (Q-ROLES): a manager may only view-as someone within their branch.
   if (!target || !repo.canManage(manager, target)) { fail(res, 404, 'NOT_FOUND', 'That adviser is not in your firm.'); return }
   if (target.id === realId) { fail(res, 400, 'SELF', "That's your own account."); return }
+  // View-as is for advisers only — never another manager/admin (privilege-escalation guard).
+  if (repo.isManager(target.id)) { fail(res, 403, 'NOT_ADVISER', 'You can only view as an adviser, not another manager.'); return }
   if (target.blockFirmManagerView) { fail(res, 403, 'BLOCKED', 'This adviser has blocked the firm manager view.'); return }
   res.setHeader('Set-Cookie', 'viewAs=' + encodeURIComponent(target.id) + '; Path=/; SameSite=Lax; HttpOnly')
   audit.record({ actorId: realId, action: 'firm.view_as_start', targetType: 'advisor', targetId: target.id })
@@ -218,6 +223,7 @@ async function inviteToGroup (req, res) {
   if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
   if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'You can only invite into a group you manage.'); return }
   if (r.error === 'ALREADY_MEMBER') { fail(res, 409, 'ALREADY_MEMBER', 'They are already in this group.'); return }
+  if (r.error === 'CROSS_ORG_BLOCKED') { fail(res, 403, 'CROSS_ORG_BLOCKED', 'This person is at an organisation outside your current reach.'); return }
   audit.record({ actorId: me.id, action: 'group.invite', targetType: 'group', targetId: req.params.id, meta: { invitee: inviteeId } })
   ok(res, r)
 }
@@ -230,6 +236,9 @@ async function inviteManyToGroup (req, res) {
   const body = req.body || {}
   const ids = Array.isArray(body.advisorIds) ? body.advisorIds : []
   if (!ids.length) { fail(res, 400, 'NO_ADVISERS', 'Choose at least one adviser to invite.'); return }
+  // Guardrail: cap the batch size (an oversized/abusive array). Cross-org invitees
+  // are walled per-invitee inside repo.inviteToGroup (skipped in the summary).
+  if (ids.length > INVITE.bulkMax) { fail(res, 400, 'TOO_MANY', 'Too many advisers at once — invite up to ' + INVITE.bulkMax + '.'); return }
   const r = await repo.inviteManyToGroup(req.params.id, me, ids, body.note)
   if (r.error === 'GROUP_NOT_FOUND') { fail(res, 404, 'NOT_FOUND', 'Group not found.'); return }
   if (r.error === 'NOT_MANAGER') { fail(res, 403, 'NOT_MANAGER', 'You can only invite into a group you manage.'); return }

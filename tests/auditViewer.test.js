@@ -78,6 +78,27 @@ describe('audit viewer', () => {
     expect(w.vm.failed).toBe(true)
   })
 
+  test('falls back to the dev preview route when the real endpoint is refused', async () => {
+    // Real endpoint 403 (dev user isn't a Mentor) → fall back to /preview → show ribbon.
+    global.fetch = jest.fn((url) => {
+      if (url.startsWith('/api/people/audit/preview')) { return Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: ENTRIES }) }) }
+      return Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) })
+    })
+    const w = factory({ endpoint: '/api/people/audit', fallbackEndpoint: '/api/people/audit/preview' })
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.usedFallback).toBe(true)
+    expect(w.vm.filtered).toHaveLength(3)
+    expect(w.vm.failed).toBe(false)
+  })
+
+  test('no fallback when the real endpoint succeeds (production Mentor)', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: ENTRIES }) }))
+    const w = factory({ endpoint: '/api/people/audit', fallbackEndpoint: '/api/people/audit/preview' })
+    await flush(); await w.vm.$nextTick()
+    expect(w.vm.usedFallback).toBe(false)
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
   test('empty trail + helper formatting', async () => {
     global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ entries: [] }) }))
     const w = factory()
