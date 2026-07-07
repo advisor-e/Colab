@@ -116,8 +116,10 @@ server.post('/api/people/connections/:id/accept', auth, people.acceptConnection)
 server.post('/api/people/connections/:id/decline', auth, people.declineConnection)
 server.get('/api/people/notifications', auth, people.listNotifications)
 server.post('/api/people/notifications/read', auth, people.markNotificationsRead)
-// Audit trail (admin/compliance). DEV-OPEN — gate behind FEAT-RBAC before production.
+// Audit trail (admin/compliance). Admin-gated (Mentor super-admin) in the route;
+// the /preview variant is dev-only (refused unless ALLOW_DEV_AUTH) for the show-home.
 server.get('/api/people/audit', auth, people.getAuditLog)
+server.get('/api/people/audit/preview', auth, people.getAuditLogPreview)
 // Firm Manager console (RBAC SEAM: manager-gated in the repository).
 server.get('/api/people/firm', auth, people.getFirmConsole)
 server.post('/api/people/firm/posture', auth, people.setFirmPosture)
@@ -130,6 +132,22 @@ server.get('/api/people/marketplace', auth, people.listMarketplace)
 server.post('/api/people/marketplace', auth, people.createListing)
 server.get('/api/people/marketplace/:id', auth, people.getListing)
 server.post('/api/people/marketplace/:id/purchase', auth, people.purchaseListing)
+
+// Dev-only demo audit trail so the show-home audit viewer (FEAT-AUDIT-UI) has
+// content on a fresh boot. Real entries accrue as the app is used; these seed a
+// realistic mix (incl. security events). Never runs outside dev (ALLOW_DEV_AUTH).
+;(function seedDemoAudit () {
+  if (process.env.ALLOW_DEV_AUTH !== 'true') { return }
+  const audit = require('./data/auditLog')
+  ;[
+    { actorId: 'me', action: 'profile.update', targetType: 'advisor', targetId: 'me', meta: { fields: ['about'] } },
+    { actorId: 'anna-r', action: 'group.create', targetType: 'group', targetId: 'seafood-modelling' },
+    { actorId: 'sara-okafor', action: 'connection.request', targetType: 'advisor', targetId: 'me' },
+    { actorId: 'bob-lindt', action: 'outreach.blocked', targetType: 'advisor', targetId: 'me', meta: { reason: 'cross_org' } },
+    { actorId: 'sofia-marchetti', action: 'listing.create', targetType: 'listing', targetId: 'm-trucking' },
+    { actorId: 'me', action: 'purchase.record', targetType: 'listing', targetId: 'm-trucking' }
+  ].forEach(e => audit.record(e))
+}())
 
 server.listen(PORT, () => {
   console.error('[restify] advisor-collaborate-api listening on port ' + PORT)

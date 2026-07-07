@@ -102,6 +102,7 @@
     "breakdownTitle": "Breakdown",
     "breakdownSub": "Roll-up by {level} — click a row to drill down.",
     "unavailable": "Unavailable",
+    "viewFullAudit": "View the full network audit log →",
     "crossOrg": {
       "ceilingLabel": "Set by the level above you:",
       "hintOpen": "Open — advisers here can reach across organisations (both sides must be open).",
@@ -117,6 +118,21 @@
         "global": "the brand level above it"
       }
     }
+  },
+  "audit": {
+    "title": "Audit log",
+    "subtitle": "Every recorded action across the network — for compliance and oversight. Newest first.",
+    "previewRibbon": "Preview — demo data. In the live app the audit log is shown to platform administrators only.",
+    "search": "Search by person, action or item…",
+    "allActions": "All actions",
+    "colWhen": "When",
+    "colPerson": "Person",
+    "colAction": "Action",
+    "colDetail": "Item",
+    "showing": "Showing {shown} of {total}",
+    "empty": "No audit entries yet — actions appear here as advisers use the app.",
+    "noMatch": "No entries match your filters.",
+    "loadFailed": "Couldn't load the audit log."
   },
   "home": {
     "title": "Find your people. Build together.",
