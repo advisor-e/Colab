@@ -113,7 +113,7 @@ tooling. Don't re-plan or re-build the document mechanics.
 | 1 | **Discovery (two-sided)** | Advisors advertise their strengths/interests AND search to find groups & people — recruitment flows both ways. |
 | 2 | **Connection** | 1:1 connect request → mutual accept. |
 | 3 | **Groups (SIGs)** | Specialty groups that advertise themselves and accept join requests. |
-| 4 | **Collaboration spaces** | Private rooms — chat + shared work — for a connection or a group. |
+| 4 | **Collaboration spaces** *(superseded 2026-07-07 — see §13)* | Was: private rooms — chat + shared work — per connection/group. **Dropped:** chat + **"Add a tool"** (link into Advisory's existing template blanks/models) replaces the standalone room. |
 | 5 | **Co-creation** | Jointly edit Google-hosted templates in a space; clone, then clone-and-share finished versions with clients. |
 | 6 | **Marketplace / licensing** | A group can sell/license its group-owned IP to other network members (§7). |
 
@@ -466,6 +466,7 @@ Each phase is independently valuable; the app is demoable from Phase 1.
 | 2026-07-03 | **T2** — notifications: build an **in-app-only MVP** for highest-value events (no email); event list TBD. |
 | 2026-07-03 | **T3** — IP governance: build an **MVP** (4-tier ownership labels + enforce locked flag); per-space terms-acceptance deferred (depends on spaces). |
 | 2026-07-03 | **T1** — collaboration "spaces" (chat + shared content) **deferred** to a later phase. |
+| 2026-07-07 | **T1 — collaboration "spaces" CLOSED / SUPERSEDED (owner)**, replacing the 2026-07-03 deferral. The standalone empty "space" is no longer required: once a 1:1 or group chat is under way, a member uses **"Add a tool"**, which links the conversation/group to an **existing Advisory page** — where they take a **blank template** and build something, or **clone an existing template/model** and make it their own. Collaboration thus lives in **Advisory's existing Google tooling** (§3/§5 hand-off), reached from the chat's attached tool — so pillar 4's separate "room" adds nothing and is dropped. Knock-ons: the §8 cross-org "gates spaces" clause is moot for the space concept (person-to-person + groups + marketplace remain gated); T3's per-space terms-acceptance is moot in its space form (any future IP-terms gate hangs off "Add a tool"). |
 | 2026-07-03 | **Q-CHAT-AUDIENCE** — message audience = **Model A**: a conversation is either a **private 1:1** or a **single shared group room** (all members); no per-message choice, no sub-group huddles. Already implemented; sub-group side-chats (Model B) deferred as FEAT-CHAT-SUBGROUPS, blocked by the role hierarchy (Q-ROLES). |
 | 2026-06-30 | Group creation open to every role **except Client**; membership opt-in. |
 | 2026-06-30 | Marketplace: no Advisory fee; **off-platform, record-only**; buyer gets unlimited-client usage (no resale); **ongoing updates** included. |
