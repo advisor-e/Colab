@@ -1236,3 +1236,54 @@ describe('console previews (show-home, dev-gated)', () => {
     expect(sent(res)[0]).toBe(404)
   })
 })
+
+// Cross-org wall for GROUPS (owner 2026-07-15): browsing stays open; joining and
+// the group chat are sealed by the OWNER-of-the-group rule; refusals are audited.
+describe('groups cross-org wall (routes)', () => {
+  const repo = () => require('../server/data/repository')
+  const audit = () => require('../server/data/auditLog')
+
+  test('getGroup seals an out-of-reach group: flag set, member names hidden, counts kept', async () => {
+    await repo().setOrgPosture('Lindt Zürich', 'closed') // the owner's (bob-lindt) branch
+    const res = mkRes()
+    await route.getGroup({ params: { id: 'tax-automation' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200) // still browsable
+    expect(body.crossOrgBlocked).toBe(true)
+    expect(body.members).toEqual([])
+    expect(body.memberCount).toBe(9)
+  })
+
+  test('joinGroup is 403 CROSS_ORG_BLOCKED across the wall, and the refusal is audited', async () => {
+    await repo().setOrgPosture('Lindt Zürich', 'closed')
+    const res = mkRes()
+    await route.joinGroup({ params: { id: 'tax-automation' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(403)
+    expect(body.error.code).toBe('CROSS_ORG_BLOCKED')
+    const blocked = await audit().list({ action: 'group.join_blocked' })
+    expect(blocked).toHaveLength(1)
+    expect(blocked[0].meta).toEqual({ reason: 'cross_org' })
+  })
+
+  test('openGroupChat and messageGroup are refused across the wall (chat cannot bypass the join block)', async () => {
+    await repo().setOrgPosture('Lindt Zürich', 'closed')
+    const chat = mkRes()
+    await route.openGroupChat({ params: { id: 'tax-automation' } }, chat)
+    expect(sent(chat)[0]).toBe(403)
+    expect(sent(chat)[1].error.code).toBe('CROSS_ORG_BLOCKED')
+    const msg = mkRes()
+    await route.messageGroup({ params: { id: 'tax-automation' }, body: { text: 'hi' } }, msg)
+    expect(sent(msg)[0]).toBe(403)
+    expect(await audit().list({ action: 'group.chat_blocked' })).toHaveLength(2)
+  })
+
+  test('an existing member keeps the group chat after the owner org seals (membership untouched)', async () => {
+    await repo().setOrgPosture('BDO Hamburg', 'closed') // seafood-modelling's owner; 'me' is a member
+    const res = mkRes()
+    await route.openGroupChat({ params: { id: 'seafood-modelling' } }, res)
+    const [status, body] = sent(res)
+    expect(status).toBe(200)
+    expect(body.success).toBe(true)
+  })
+})

@@ -177,3 +177,29 @@ describe('group detail page', () => {
     expect(w.vm.avatarStyle({ id: 'anna-r' }).background).toMatch(/linear-gradient/)
   })
 })
+
+// Cross-org wall (owner 2026-07-15): an out-of-reach group is browsable but the
+// join/chat buttons are greyed with a plain-English note, and member names are
+// replaced by the "hidden" line (the server already ships members empty).
+describe('out-of-reach group (cross-org wall)', () => {
+  afterEach(() => { delete global.fetch })
+
+  test('shows the blocked note and the members-hidden line instead of names', async () => {
+    const sealed = Object.assign({}, GROUP, { crossOrgBlocked: true, members: [] })
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(sealed) }))
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.text()).toContain('group.crossOrgNote')
+    expect(w.text()).toContain('group.membersHidden')
+    expect(w.text()).not.toContain('Mike Barnes') // no member names rendered
+  })
+
+  test('a reachable group shows neither blocked note', async () => {
+    mockApi()
+    const w = factory()
+    await flush(); await w.vm.$nextTick()
+    expect(w.text()).not.toContain('group.crossOrgNote')
+    expect(w.text()).not.toContain('group.membersHidden')
+    expect(w.text()).toContain('Mike Barnes')
+  })
+})

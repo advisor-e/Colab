@@ -278,7 +278,10 @@
     "approvedToast": "Added to the group.",
     "declinedToast": "Request declined.",
     "noRequests": "No pending requests to join.",
-    "notFound": "Group not found."
+    "notFound": "Group not found.",
+    "crossOrgNote": "This group is outside your organisation's reach, so you can't join or message it. Your manager can open your organisation to others from their console.",
+    "membersHidden": "Member names are hidden because this group is outside your organisation's reach.",
+    "joinClosed": "Not open to your organisation"
   },
   "connections": {
     "title": "Connections",

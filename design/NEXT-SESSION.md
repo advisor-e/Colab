@@ -3,7 +3,8 @@
 > Quick-start for the next working session. Deeper detail in
 > [`HANDOVER.md`](../HANDOVER.md) and
 > [`advisor-collaboration-platform-plan.md`](advisor-collaboration-platform-plan.md).
-> **Snapshot date:** 2026-07-07 · **Last commit:** `65e0f17` (FEAT-RBAC slice ④ — audit viewer).
+> **Snapshot date:** 2026-07-15 · **Last change:** FEAT-CROSSORG-GROUPS final slice —
+> the cross-org wall now covers groups (browse-yes / join-no; owner's 5 decisions in plan §13).
 >
 > **The live task list is [`ACTIONS.md`](ACTIONS.md)** — this file is only a quick orientation;
 > `ACTIONS.md` is authoritative for what's outstanding.
@@ -18,7 +19,9 @@ on in-memory demo data (resets on backend restart):
 1. **Discovery** — two-sided search (people + groups), voice input, language switch.
 2. **Connection** — 1:1 connect → mutual accept; Connections page shows individuals **and**
    your groups with their members.
-3. **Groups** — browse/detail/create, request-to-join (consent-based).
+3. **Groups** — browse/detail/create, request-to-join (consent-based); cross-org wall:
+   everyone can browse, but joining/chatting into an out-of-reach group is refused
+   (member names hidden, counts kept; existing members untouched).
 4. **Messaging** — two-pane chat; purposeful outreach + group message create threads;
    **in-chat translation** (any language → reader's language).
 5. **Co-creation** — out of scope (handled by Advisory's existing Google cascade).
@@ -51,10 +54,11 @@ npm run dev:all          # Nuxt :3000 + Restify backend :4000
 
 ## What to do next (suggested priorities)
 
-> The design-triage (T1–T6), the P1 governance backlog (CI, hooks, audit gate, prod guard,
-> branch protection, test coverage), and the **FEAT-RBAC** build (role consoles, cross-org
-> **ceiling**, audit viewer) are all **done** — see the `ACTIONS.md` Done table. What remains
-> splits into "needs the master team" and "buildable now".
+> The design-triage (T1–T6), the P1 governance backlog, the **FEAT-RBAC** build (role consoles,
+> cross-org **ceiling**, audit viewer), the pre-handover review hardening, and the whole former
+> "buildable now" list (marketplace wall, lazy console tree, bulk-invite, ToolPicker extract,
+> **groups wall**) are **done** — see the `ACTIONS.md` Done table. Everything substantial that
+> remains **needs the master team**; `START-HERE.md` is their checklist.
 
 **Blocked on the master team (integration — needs creds/decisions):**
 
@@ -64,13 +68,16 @@ npm run dev:all          # Nuxt :3000 + Restify backend :4000
    the Advisory session reaches the app. Then the two remaining RBAC slices: real **Client-token
    rejection** and wiring the real Advisory **`role` claim** (retire the interim override table).
    At the same wiring, close **SEC-THREAD-ACL** (message participant/member authorization).
+3. **P2-TEMPLATE-FEED** (live Advisory template feed) and the two URL/access decisions
+   **Q-PAGE-URL** + **Q-ACCESS-CASCADE** (which also unblocks FEAT-MARKET-HELP).
 
-**Buildable now (no external blocker):**
+**Owner decisions, if wanted (no build blocked without them):**
 
-1. **SEC-MARKET-CROSSORG (P2)** — make the cross-org wall also gate the marketplace (plan §8).
-2. **PERF-CONSOLE-TREE (P2)** — lazy-load a branch's advisers on expand (real-scale hardening).
-3. **FEAT-BULKINVITE (P3)** — manager bulk-invite. Smaller nice-to-haves: FEAT-TOOLPICKER-EXTRACT,
-   FEAT-MARKET-HELP.
+- **Q-VIEWAS-MODE** (view-as: act-as vs read-only) · **Q5-GROUPIP** (pre-existing personal IP
+  edge cases) · **T5-MARKET-SIGNALS** (ratings/proven-tools signal).
+
+**Smaller open items:** P1-TOOLCHAIN (re-enable `engine-strict`, needs 2 transitive `overrides`) ·
+FEAT-CHAT-SUBGROUPS (Model B side-chats) · FEAT-MENTOR-CONSOLE higher-tier live wiring.
 
 > **Live task tracker:** `design/ACTIONS.md` is authoritative — the master to-do index at the top
 > lists everything outstanding, each row pointing to its detailed entry.

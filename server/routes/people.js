@@ -139,9 +139,10 @@ async function listGroups (req, res) {
 }
 
 async function getGroup (req, res) {
-  const g = await repo.getGroupById(req.params.id)
-  if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
   const me = await currentAdvisor(req)
+  // Sealed for an out-of-reach viewer: member names hidden, crossOrgBlocked set.
+  const g = await repo.getGroupById(req.params.id, me.id)
+  if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
   // Attach the viewer's join status so the page can show Request Pending / Member.
   ok(res, Object.assign({}, g, { joinStatus: repo.groupJoinStatus(g.id, me.id) }))
 }
@@ -159,6 +160,12 @@ async function joinGroup (req, res) {
   const me = await currentAdvisor(req)
   const r = await repo.requestJoinGroup(req.params.id, me.id)
   if (!r) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
+  // Cross-org wall (owner 2026-07-15): browsing is open, joining is not.
+  if (r.error === 'CROSS_ORG_BLOCKED') {
+    audit.record({ actorId: me.id, action: 'group.join_blocked', targetType: 'group', targetId: req.params.id, meta: { reason: 'cross_org' } })
+    fail(res, 403, 'CROSS_ORG_BLOCKED', 'This group is outside your organisation\'s reach, so you can\'t request to join it.')
+    return
+  }
   // Consent-based: a request is recorded; no auto-join. Owner/manager approves.
   audit.record({ actorId: me.id, action: 'group.join_request', targetType: 'group', targetId: req.params.id })
   ok(res, Object.assign({ success: true }, r))
@@ -263,9 +270,20 @@ async function declineInvitation (req, res) {
   ok(res, r)
 }
 
+// The group room is sealed along with joining (owner 2026-07-15) — otherwise
+// chat would bypass the join block. Fails + audits when the group is out of reach.
+async function guardGroupReach (req, res, g, me) {
+  if (await repo.canReachGroup(me.id, g.id)) { return true }
+  audit.record({ actorId: me.id, action: 'group.chat_blocked', targetType: 'group', targetId: g.id, meta: { reason: 'cross_org' } })
+  fail(res, 403, 'CROSS_ORG_BLOCKED', 'This group is outside your organisation\'s reach.')
+  return false
+}
+
 async function messageGroup (req, res) {
   const g = await repo.getGroupById(req.params.id)
   if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
+  const me = await currentAdvisor(req)
+  if (!(await guardGroupReach(req, res, g, me))) { return }
   const text = ((req.body || {}).text || '').trim()
   if (!text) { fail(res, 400, 'EMPTY', 'Message is empty.'); return }
   const t = await repo.findOrCreateGroupThread(g)
@@ -278,6 +296,8 @@ async function messageGroup (req, res) {
 async function openGroupChat (req, res) {
   const g = await repo.getGroupById(req.params.id)
   if (!g) { fail(res, 404, 'NOT_FOUND', 'Group not found'); return }
+  const me = await currentAdvisor(req)
+  if (!(await guardGroupReach(req, res, g, me))) { return }
   const t = await repo.findOrCreateGroupThread(g)
   ok(res, { success: true, threadId: t.id })
 }
