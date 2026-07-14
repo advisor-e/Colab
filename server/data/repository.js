@@ -399,13 +399,48 @@ async function updateAdvisorInterest (id, fields) {
 
 // ── Groups ───────────────────────────────────────────────────────────────────
 
+// Cross-org wall for GROUPS (owner decisions 2026-07-15, plan §13): browsing
+// stays open, but reach — for joining and for the group chat — is judged by the
+// group's OWNER, the same rule the marketplace applies to a listing's owner. An
+// existing member is never walled (sealing stops NEW cross-org joins; it doesn't
+// eject anyone). An unresolved viewer or owner (dev identity / legacy data) is
+// not blocked — mirrors canReachAdvisor's leniency.
+function groupOwnerMember (g) {
+  // Owner id isn't stored explicitly in the mock; derive it by matching the
+  // `createdBy` label to a member (holds for seeded + user-created groups).
+  return (g.members || []).find(m => (g.createdBy || '').startsWith(m.name)) || null
+}
+
+function canReachGroupRecord (viewerId, g) {
+  if ((g.members || []).some(m => m.id === viewerId)) { return true }
+  const viewer = advisors.find(a => a.id === viewerId)
+  if (!viewer) { return true }
+  const ownerMember = groupOwnerMember(g)
+  const owner = ownerMember && advisors.find(a => a.id === ownerMember.id)
+  if (!owner || owner.id === viewer.id) { return true }
+  return canReach(viewer, owner)
+}
+
+// Route-facing form (looks the group up by id).
+async function canReachGroup (viewerId, groupId) {
+  const g = groups.find(x => x.id === groupId)
+  return g ? canReachGroupRecord(viewerId, g) : false
+}
+
+// The out-of-reach view of a group: still browsable, but member NAMES are hidden
+// (the counts stay) and `crossOrgBlocked` tells the UI to grey out join/chat.
+function sealGroupFor (g, viewerId) {
+  if (viewerId === undefined || canReachGroupRecord(viewerId, g)) { return g }
+  return Object.assign({}, g, { crossOrgBlocked: true, members: [] })
+}
+
 async function listGroups (opts) {
   // SQL SEAM: SELECT * FROM `group` (+ group_tag) WHERE visibility='listed' AND (search match)
   //           LEFT JOIN group_member / group_join_request to derive the viewer's joinStatus.
   const o = opts || {}
   return groups
     .filter(g => matchesQuery(g, o.q))
-    .map(g => Object.assign({}, g, { joinStatus: groupJoinStatus(g.id, o.viewerId) }))
+    .map(g => Object.assign({}, sealGroupFor(g, o.viewerId), { joinStatus: groupJoinStatus(g.id, o.viewerId) }))
 }
 
 // Turn each shared Advisor-e page/tool into a deep-link, using the same seam the
@@ -419,9 +454,12 @@ function enrichShared (entity) {
   })
 }
 
-async function getGroupById (id) {
+// `viewerId` is optional: routes pass it so an out-of-reach group is sealed
+// (counts only, no member names); internal callers omit it for the raw record.
+async function getGroupById (id, viewerId) {
   // SQL SEAM: SELECT `group` + group_tag + group_member (+ group_shared_page) WHERE id = ?
-  return enrichShared(groups.find(g => g.id === id) || null)
+  const g = groups.find(x => x.id === id) || null
+  return g ? enrichShared(sealGroupFor(g, viewerId)) : null
 }
 
 // Attach an Advisor-e catalogue tool/page to a group's Shared workspace so members
@@ -486,14 +524,15 @@ async function requestJoinGroup (groupId, advisorId) {
   if (!g) { return null }
   // Already in the group → nothing to request.
   if ((g.members || []).some(m => m.id === advisorId)) { return { status: 'member', groupId: g.id } }
+  // Cross-org wall (owner 2026-07-15): a sealed org can browse but not JOIN a
+  // group outside its reach.
+  if (!canReachGroupRecord(advisorId, g)) { return { error: 'CROSS_ORG_BLOCKED' } }
   // Record the request once (idempotent) and notify the group's owner so it's
   // consistent with connection requests / invitations. Owner approval is a
   // tracked follow-up (see design/ACTIONS.md).
   if (!groupJoinRequests.some(r => r.groupId === groupId && r.advisorId === advisorId)) {
     groupJoinRequests.push({ id: 'gjr-' + (gjrSeq++), groupId: groupId, advisorId: advisorId, status: 'requested' })
-    // Owner id isn't stored explicitly in the mock; derive it by matching the
-    // `createdBy` label to a member (holds for seeded + user-created groups).
-    const owner = (g.members || []).find(m => (g.createdBy || '').startsWith(m.name))
+    const owner = groupOwnerMember(g)
     if (owner) {
       pushNotification(owner.id, 'group_join_request', { name: advisorName(advisorId), group: g.name }, '/groups/' + g.id)
     }
@@ -1229,7 +1268,7 @@ module.exports = {
   requestConnection, listConnections, listConnecting, respondConnection,
   listListings, getListing, createListing, recordPurchase,
   listNotifications, markNotificationsRead,
-  canReachAdvisor, getOrgPosture, setOrgPosture,
+  canReachAdvisor, canReachGroup, getOrgPosture, setOrgPosture,
   isFirmManager, isManager, isAdmin, advisorLabel, canManage, getFirmConsole, getConsolePreview, setFirmPosture,
   listConsoleAdvisers, listConsoleAdvisersPreview, actorInScope
 }

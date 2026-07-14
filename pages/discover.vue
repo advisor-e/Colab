@@ -61,6 +61,8 @@
             nuxt-link.button.is-small.is-light(:to="'/groups/' + g.id") {{ $t('common.view') }}
             span.button.is-small.is-static(v-if="g.joinStatus === 'member'") ✓ {{ $t('group.member') }}
             span.button.is-small.is-static(v-else-if="g.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}
+            //- Cross-org wall (owner 2026-07-15): browse stays open, joining doesn't.
+            span.button.is-small.is-static(v-else-if="g.crossOrgBlocked" :title="$t('group.crossOrgNote')") 🔒 {{ $t('group.joinClosed') }}
             button.button.is-warning.is-small(v-else @click="requestJoin(g)") {{ $t('common.requestToJoin') }}
 
       b-modal(v-model="outreachOpen" has-modal-card)

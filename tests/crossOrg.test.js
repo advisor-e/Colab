@@ -195,3 +195,56 @@ describe('marketplace cross-org wall (§8)', () => {
     expect(list.some(x => x.id === l.id)).toBe(true)
   })
 })
+
+// Owner decisions 2026-07-15: a sealed org can BROWSE groups but not JOIN (or
+// chat into) one outside its reach. Reach is judged by the group's OWNER — the
+// same rule the marketplace applies — member NAMES are hidden (counts stay), and
+// existing members are never ejected. Viewer 'me' = Advisor-e Munich. Seed
+// groups: tax-automation is owned by bob-lindt (Lindt Zürich); seafood-modelling
+// is owned by anna-r (BDO Hamburg) but 'me' is already a member of it.
+describe('cross-org wall for groups (browse-yes / join-no)', () => {
+  test('listGroups keeps a sealed group browsable but flags it and hides member names', async () => {
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
+    const list = await repo.listGroups({ viewerId: 'me' })
+    const sealed = list.find(g => g.id === 'tax-automation')
+    expect(sealed).toBeDefined() // still browsable
+    expect(sealed.crossOrgBlocked).toBe(true)
+    expect(sealed.members).toEqual([]) // names hidden…
+    expect(sealed.memberCount).toBe(9) // …counts stay
+  })
+
+  test('a group you already belong to is never walled, whoever owns it', async () => {
+    await repo.setOrgPosture('BDO Hamburg', 'closed') // seal the owner of seafood-modelling
+    const g = await repo.getGroupById('seafood-modelling', 'me')
+    expect(g.crossOrgBlocked).toBeUndefined()
+    expect(g.members.length).toBeGreaterThan(0)
+  })
+
+  test('getGroupById seals for an out-of-reach viewer but stays raw for internal callers', async () => {
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
+    const sealed = await repo.getGroupById('tax-automation', 'me')
+    expect(sealed.crossOrgBlocked).toBe(true)
+    expect(sealed.members).toEqual([])
+    const raw = await repo.getGroupById('tax-automation') // no viewer → internal caller
+    expect(raw.crossOrgBlocked).toBeUndefined()
+    expect(raw.members.length).toBeGreaterThan(0)
+  })
+
+  test('requestJoinGroup is refused across a sealed boundary', async () => {
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
+    expect(await repo.requestJoinGroup('tax-automation', 'me')).toEqual({ error: 'CROSS_ORG_BLOCKED' })
+  })
+
+  test('requestJoinGroup still works between two open orgs', async () => {
+    const r = await repo.requestJoinGroup('tax-automation', 'me')
+    expect(r).toEqual(expect.objectContaining({ status: 'requested' }))
+  })
+
+  test('canReachGroup gates the group chat the same way (membership always wins)', async () => {
+    expect(await repo.canReachGroup('me', 'tax-automation')).toBe(true)
+    await repo.setOrgPosture('Lindt Zürich', 'closed')
+    expect(await repo.canReachGroup('me', 'tax-automation')).toBe(false)
+    await repo.setOrgPosture('BDO Hamburg', 'closed')
+    expect(await repo.canReachGroup('me', 'seafood-modelling')).toBe(true) // member
+  })
+})

@@ -16,7 +16,9 @@
           .tags
             span.tag(v-for="t in (group.tags || [])" :key="t") {{ t }}
           p.label.mt-5 {{ $t('group.members') }}
-          .members
+          //- Out of reach (cross-org wall): counts stay, names are hidden.
+          p.has-text-grey.is-size-7(v-if="group.crossOrgBlocked") 🔒 {{ $t('group.membersHidden') }}
+          .members(v-else)
             .member(v-for="m in (group.members || [])" :key="m.id")
               .avatar(:style="avatarStyle(m)") {{ initials(m) }}
               span {{ m.name }}
@@ -38,8 +40,11 @@
           .buttons.mt-5
             span.tag.is-success.is-light.is-medium(v-if="group.joinStatus === 'member'") ✓ {{ $t('group.member') }}
             span.tag.is-warning.is-light.is-medium(v-else-if="group.joinStatus === 'requested'") ⏳ {{ $t('group.requestPending') }}
-            b-button(v-else type="is-warning" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
-            b-button(@click="openGroupChat") {{ $t('group.openGroupChat') }}
+            //- Greyed, not hidden, when the cross-org wall applies (owner 2026-07-15)
+            //- — the note below says why. The server refuses the calls regardless.
+            b-button(v-else type="is-warning" :disabled="group.crossOrgBlocked" :loading="joining" @click="join") {{ $t('common.requestToJoin') }}
+            b-button(:disabled="group.crossOrgBlocked" @click="openGroupChat") {{ $t('group.openGroupChat') }}
+          p.has-text-grey.is-size-7(v-if="group.crossOrgBlocked") 🔒 {{ $t('group.crossOrgNote') }}
 
         //- Manager-only: approve/decline requests to join this group. "Manage" is
         //- approximated as membership (RBAC seam) — see server/data/repository.js.

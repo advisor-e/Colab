@@ -177,3 +177,19 @@ describe('discover page', () => {
     expect(vm.avatarStyle({ id: 'bob-lindt' }).background).toMatch(/linear-gradient/)
   })
 })
+
+// Cross-org wall (owner 2026-07-15): an out-of-reach group card swaps its
+// "Request to join" button for a static 🔒 marker — browsing stays open.
+describe('out-of-reach group card (cross-org wall)', () => {
+  afterEach(() => { delete global.fetch })
+
+  test('a crossOrgBlocked group card shows the lock marker, not the join button', async () => {
+    mockApi()
+    const w = factory({ tab: 'groups' })
+    await flush(); await w.vm.$nextTick()
+    w.vm.groups = [{ id: 'tax', name: 'Tax Lab', icon: '🧮', firms: 4, memberCount: 9, summary: 'x', tags: [], crossOrgBlocked: true, joinStatus: 'none' }]
+    await w.vm.$nextTick()
+    expect(w.text()).toContain('group.joinClosed')
+    expect(w.text()).not.toContain('common.requestToJoin')
+  })
+})
