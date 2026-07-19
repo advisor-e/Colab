@@ -1,5 +1,17 @@
 # Project Rules for Claude
 
+## Version-Pull Recording Rule (binding)
+
+Any time this repository's code is pulled, installed, or updated in any environment
+beyond a developer's own machine — UAT, production, a demo, or inside the Advisory.com
+master app — the person doing it must record it at that moment in
+`design/DEPLOYED-VERSIONS.md`: the date, the environment, the exact commit hash pulled,
+who pulled it, and any notes. **A deployment is not complete until its row is written.**
+This is how everyone always knows which version is running where, and in what state.
+When helping with any deploy, handover, or release step, prompt for this row — and if a
+deployment is discovered with no ledger row, that is a gap to surface and backfill,
+never to ignore.
+
 ## Stack Constitution — THE LOCKED SOURCE OF TRUTH
 
 These are the coding team's authoritative requirements. They override anything the AI

@@ -1,5 +1,11 @@
 # Advisor-e Collaborate
 
+> **📌 Pulling this code into any environment (UAT, production, the Advisory.com master
+> app, a demo)? Record the exact commit you pulled in
+> [`design/DEPLOYED-VERSIONS.md`](design/DEPLOYED-VERSIONS.md) — the deployment is not
+> complete until its row is written.** That ledger is how everyone knows which version
+> is running where, and in what state.
+
 The advisor collaboration platform — the **people layer** that lets advisers across the
 Advisory.com network find each other, reach out, and form specialty groups. A standalone
 sibling of the Virt Advisor app, built to the same Stack Constitution (see [`CLAUDE.md`](CLAUDE.md)).
